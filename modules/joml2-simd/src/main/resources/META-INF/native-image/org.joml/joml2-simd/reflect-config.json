@@ -1,0 +1,10 @@
+[
+  {
+    "name": "java.nio.Buffer",
+    "fields": [{ "name": "address" }]
+  },
+  {
+    "name": "sun.misc.Unsafe",
+    "fields": [{ "name": "theUnsafe" }]
+  }
+]
