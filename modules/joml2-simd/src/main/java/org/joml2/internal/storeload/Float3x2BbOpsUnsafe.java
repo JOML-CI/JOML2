@@ -1,0 +1,717 @@
+// Copyright (c) 2015-2026 JOML
+// SPDX-License-Identifier: MIT
+package org.joml2.internal.storeload;
+
+import org.joml2.*;
+import org.joml2.Math;
+import org.joml2.internal.types.*;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+import org.joml2.internal.unsafe.UnsafeCopy;
+import static org.joml2.internal.unsafe.UnsafeOpsHolder.U;
+
+public final class Float3x2BbOpsUnsafe extends Float3x2BbOps {
+    private static final Float3x2BbOpsApi API = new Float3x2BbOpsApi();
+
+    public FloatBuffer storeCMAbsolute(Float3x2Impl self, int index, FloatBuffer buf) {
+        if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeCMAbsolute(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+        _U.putFloat(address, self.data[0]);
+        _U.putFloat(address + 4L, self.data[1]);
+        _U.putFloat(address + 8L, self.data[2]);
+        _U.putFloat(address + 12L, self.data[3]);
+        _U.putFloat(address + 16L, self.data[4]);
+        _U.putFloat(address + 20L, self.data[5]);
+        return buf;
+    }
+
+    public Float3x2 loadCMAbsolute(Float3x2Impl self, int index, FloatBuffer buf) {
+        if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadCMAbsolute(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+        self.data[0] = _U.getFloat(address);
+        self.data[1] = _U.getFloat(address + 4L);
+        self.data[2] = _U.getFloat(address + 8L);
+        self.data[3] = _U.getFloat(address + 12L);
+        self.data[4] = _U.getFloat(address + 16L);
+        self.data[5] = _U.getFloat(address + 20L);
+        return self;
+    }
+
+    public ByteBuffer storeCMAbsolute(Float3x2Impl self, int index, ByteBuffer buf) {
+        if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeCMAbsoluteElse(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        _U.putFloat(address, self.data[0]);
+        _U.putFloat(address + 4L, self.data[1]);
+        _U.putFloat(address + 8L, self.data[2]);
+        _U.putFloat(address + 12L, self.data[3]);
+        _U.putFloat(address + 16L, self.data[4]);
+        _U.putFloat(address + 20L, self.data[5]);
+        return buf;
+    }
+
+    private static ByteBuffer storeCMAbsoluteElse(Float3x2Impl self, int index, ByteBuffer buf) {
+        byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+        if (bytes == null) return API.storeCMAbsolute(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        _U.putFloat(bytes, address, self.data[0]);
+        _U.putFloat(bytes, address + 4L, self.data[1]);
+        _U.putFloat(bytes, address + 8L, self.data[2]);
+        _U.putFloat(bytes, address + 12L, self.data[3]);
+        _U.putFloat(bytes, address + 16L, self.data[4]);
+        _U.putFloat(bytes, address + 20L, self.data[5]);
+        return buf;
+    }
+
+    public Float3x2 loadCMAbsolute(Float3x2Impl self, int index, ByteBuffer buf) {
+        if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return loadCMAbsoluteElse(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        self.data[0] = _U.getFloat(address);
+        self.data[1] = _U.getFloat(address + 4L);
+        self.data[2] = _U.getFloat(address + 8L);
+        self.data[3] = _U.getFloat(address + 12L);
+        self.data[4] = _U.getFloat(address + 16L);
+        self.data[5] = _U.getFloat(address + 20L);
+        return self;
+    }
+
+    private static Float3x2 loadCMAbsoluteElse(Float3x2Impl self, int index, ByteBuffer buf) {
+        byte[] bytes = buf.isDirect() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+        if (bytes == null) return API.loadCMAbsolute(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        self.data[0] = _U.getFloat(bytes, address);
+        self.data[1] = _U.getFloat(bytes, address + 4L);
+        self.data[2] = _U.getFloat(bytes, address + 8L);
+        self.data[3] = _U.getFloat(bytes, address + 12L);
+        self.data[4] = _U.getFloat(bytes, address + 16L);
+        self.data[5] = _U.getFloat(bytes, address + 20L);
+        return self;
+    }
+
+    public DoubleBuffer storeCMAbsolute(Float3x2Impl self, int index, DoubleBuffer buf) {
+        if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeCMAbsolute(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+        _U.putDouble(address, self.data[0]);
+        _U.putDouble(address + 8L, self.data[1]);
+        _U.putDouble(address + 16L, self.data[2]);
+        _U.putDouble(address + 24L, self.data[3]);
+        _U.putDouble(address + 32L, self.data[4]);
+        _U.putDouble(address + 40L, self.data[5]);
+        return buf;
+    }
+
+    public Float3x2 loadCMAbsolute(Float3x2Impl self, int index, DoubleBuffer buf) {
+        if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadCMAbsolute(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+        self.data[0] = (float) _U.getDouble(address);
+        self.data[1] = (float) _U.getDouble(address + 8L);
+        self.data[2] = (float) _U.getDouble(address + 16L);
+        self.data[3] = (float) _U.getDouble(address + 24L);
+        self.data[4] = (float) _U.getDouble(address + 32L);
+        self.data[5] = (float) _U.getDouble(address + 40L);
+        return self;
+    }
+
+    public ByteBuffer storeCMDoubleAbsolute(Float3x2Impl self, int index, ByteBuffer buf) {
+        if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeCMDoubleAbsoluteElse(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        _U.putDouble(address, self.data[0]);
+        _U.putDouble(address + 8L, self.data[1]);
+        _U.putDouble(address + 16L, self.data[2]);
+        _U.putDouble(address + 24L, self.data[3]);
+        _U.putDouble(address + 32L, self.data[4]);
+        _U.putDouble(address + 40L, self.data[5]);
+        return buf;
+    }
+
+    private static ByteBuffer storeCMDoubleAbsoluteElse(Float3x2Impl self, int index, ByteBuffer buf) {
+        byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+        if (bytes == null) return API.storeCMDoubleAbsolute(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        _U.putDouble(bytes, address, self.data[0]);
+        _U.putDouble(bytes, address + 8L, self.data[1]);
+        _U.putDouble(bytes, address + 16L, self.data[2]);
+        _U.putDouble(bytes, address + 24L, self.data[3]);
+        _U.putDouble(bytes, address + 32L, self.data[4]);
+        _U.putDouble(bytes, address + 40L, self.data[5]);
+        return buf;
+    }
+
+    public Float3x2 loadCMDoubleAbsolute(Float3x2Impl self, int index, ByteBuffer buf) {
+        if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return loadCMDoubleAbsoluteElse(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        self.data[0] = (float) _U.getDouble(address);
+        self.data[1] = (float) _U.getDouble(address + 8L);
+        self.data[2] = (float) _U.getDouble(address + 16L);
+        self.data[3] = (float) _U.getDouble(address + 24L);
+        self.data[4] = (float) _U.getDouble(address + 32L);
+        self.data[5] = (float) _U.getDouble(address + 40L);
+        return self;
+    }
+
+    private static Float3x2 loadCMDoubleAbsoluteElse(Float3x2Impl self, int index, ByteBuffer buf) {
+        byte[] bytes = buf.isDirect() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+        if (bytes == null) return API.loadCMDoubleAbsolute(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        self.data[0] = (float) _U.getDouble(bytes, address);
+        self.data[1] = (float) _U.getDouble(bytes, address + 8L);
+        self.data[2] = (float) _U.getDouble(bytes, address + 16L);
+        self.data[3] = (float) _U.getDouble(bytes, address + 24L);
+        self.data[4] = (float) _U.getDouble(bytes, address + 32L);
+        self.data[5] = (float) _U.getDouble(bytes, address + 40L);
+        return self;
+    }
+
+    public FloatBuffer storeRMAbsolute(Float3x2Impl self, int index, FloatBuffer buf) {
+        if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeRMAbsolute(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+        _U.putFloat(address, self.data[0]);
+        _U.putFloat(address + 4L, self.data[3]);
+        _U.putFloat(address + 8L, self.data[1]);
+        _U.putFloat(address + 12L, self.data[4]);
+        _U.putFloat(address + 16L, self.data[2]);
+        _U.putFloat(address + 20L, self.data[5]);
+        return buf;
+    }
+
+    public Float3x2 loadRMAbsolute(Float3x2Impl self, int index, FloatBuffer buf) {
+        if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadRMAbsolute(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+        self.data[0] = _U.getFloat(address);
+        self.data[3] = _U.getFloat(address + 4L);
+        self.data[1] = _U.getFloat(address + 8L);
+        self.data[4] = _U.getFloat(address + 12L);
+        self.data[2] = _U.getFloat(address + 16L);
+        self.data[5] = _U.getFloat(address + 20L);
+        return self;
+    }
+
+    public ByteBuffer storeRMAbsolute(Float3x2Impl self, int index, ByteBuffer buf) {
+        if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeRMAbsoluteElse(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        _U.putFloat(address, self.data[0]);
+        _U.putFloat(address + 4L, self.data[3]);
+        _U.putFloat(address + 8L, self.data[1]);
+        _U.putFloat(address + 12L, self.data[4]);
+        _U.putFloat(address + 16L, self.data[2]);
+        _U.putFloat(address + 20L, self.data[5]);
+        return buf;
+    }
+
+    private static ByteBuffer storeRMAbsoluteElse(Float3x2Impl self, int index, ByteBuffer buf) {
+        byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+        if (bytes == null) return API.storeRMAbsolute(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        _U.putFloat(bytes, address, self.data[0]);
+        _U.putFloat(bytes, address + 4L, self.data[3]);
+        _U.putFloat(bytes, address + 8L, self.data[1]);
+        _U.putFloat(bytes, address + 12L, self.data[4]);
+        _U.putFloat(bytes, address + 16L, self.data[2]);
+        _U.putFloat(bytes, address + 20L, self.data[5]);
+        return buf;
+    }
+
+    public Float3x2 loadRMAbsolute(Float3x2Impl self, int index, ByteBuffer buf) {
+        if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return loadRMAbsoluteElse(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        self.data[0] = _U.getFloat(address);
+        self.data[3] = _U.getFloat(address + 4L);
+        self.data[1] = _U.getFloat(address + 8L);
+        self.data[4] = _U.getFloat(address + 12L);
+        self.data[2] = _U.getFloat(address + 16L);
+        self.data[5] = _U.getFloat(address + 20L);
+        return self;
+    }
+
+    private static Float3x2 loadRMAbsoluteElse(Float3x2Impl self, int index, ByteBuffer buf) {
+        byte[] bytes = buf.isDirect() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+        if (bytes == null) return API.loadRMAbsolute(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        self.data[0] = _U.getFloat(bytes, address);
+        self.data[3] = _U.getFloat(bytes, address + 4L);
+        self.data[1] = _U.getFloat(bytes, address + 8L);
+        self.data[4] = _U.getFloat(bytes, address + 12L);
+        self.data[2] = _U.getFloat(bytes, address + 16L);
+        self.data[5] = _U.getFloat(bytes, address + 20L);
+        return self;
+    }
+
+    public DoubleBuffer storeRMAbsolute(Float3x2Impl self, int index, DoubleBuffer buf) {
+        if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeRMAbsolute(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+        _U.putDouble(address, self.data[0]);
+        _U.putDouble(address + 8L, self.data[3]);
+        _U.putDouble(address + 16L, self.data[1]);
+        _U.putDouble(address + 24L, self.data[4]);
+        _U.putDouble(address + 32L, self.data[2]);
+        _U.putDouble(address + 40L, self.data[5]);
+        return buf;
+    }
+
+    public Float3x2 loadRMAbsolute(Float3x2Impl self, int index, DoubleBuffer buf) {
+        if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadRMAbsolute(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+        self.data[0] = (float) _U.getDouble(address);
+        self.data[3] = (float) _U.getDouble(address + 8L);
+        self.data[1] = (float) _U.getDouble(address + 16L);
+        self.data[4] = (float) _U.getDouble(address + 24L);
+        self.data[2] = (float) _U.getDouble(address + 32L);
+        self.data[5] = (float) _U.getDouble(address + 40L);
+        return self;
+    }
+
+    public ByteBuffer storeRMDoubleAbsolute(Float3x2Impl self, int index, ByteBuffer buf) {
+        if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeRMDoubleAbsoluteElse(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        _U.putDouble(address, self.data[0]);
+        _U.putDouble(address + 8L, self.data[3]);
+        _U.putDouble(address + 16L, self.data[1]);
+        _U.putDouble(address + 24L, self.data[4]);
+        _U.putDouble(address + 32L, self.data[2]);
+        _U.putDouble(address + 40L, self.data[5]);
+        return buf;
+    }
+
+    private static ByteBuffer storeRMDoubleAbsoluteElse(Float3x2Impl self, int index, ByteBuffer buf) {
+        byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+        if (bytes == null) return API.storeRMDoubleAbsolute(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        _U.putDouble(bytes, address, self.data[0]);
+        _U.putDouble(bytes, address + 8L, self.data[3]);
+        _U.putDouble(bytes, address + 16L, self.data[1]);
+        _U.putDouble(bytes, address + 24L, self.data[4]);
+        _U.putDouble(bytes, address + 32L, self.data[2]);
+        _U.putDouble(bytes, address + 40L, self.data[5]);
+        return buf;
+    }
+
+    public Float3x2 loadRMDoubleAbsolute(Float3x2Impl self, int index, ByteBuffer buf) {
+        if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return loadRMDoubleAbsoluteElse(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        self.data[0] = (float) _U.getDouble(address);
+        self.data[3] = (float) _U.getDouble(address + 8L);
+        self.data[1] = (float) _U.getDouble(address + 16L);
+        self.data[4] = (float) _U.getDouble(address + 24L);
+        self.data[2] = (float) _U.getDouble(address + 32L);
+        self.data[5] = (float) _U.getDouble(address + 40L);
+        return self;
+    }
+
+    private static Float3x2 loadRMDoubleAbsoluteElse(Float3x2Impl self, int index, ByteBuffer buf) {
+        byte[] bytes = buf.isDirect() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+        if (bytes == null) return API.loadRMDoubleAbsolute(self, index, buf);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        self.data[0] = (float) _U.getDouble(bytes, address);
+        self.data[3] = (float) _U.getDouble(bytes, address + 8L);
+        self.data[1] = (float) _U.getDouble(bytes, address + 16L);
+        self.data[4] = (float) _U.getDouble(bytes, address + 24L);
+        self.data[2] = (float) _U.getDouble(bytes, address + 32L);
+        self.data[5] = (float) _U.getDouble(bytes, address + 40L);
+        return self;
+    }
+
+    public FloatBuffer storeCMAbsolute(Float3x2Impl self, int index, FloatBuffer buf, int stride) {
+        if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeCMAbsolute(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+        long _ps = stride * 4L;
+        long _p1 = address + _ps;
+        _U.putFloat(address, self.data[0]);
+        _U.putFloat(address + 4, self.data[1]);
+        _U.putFloat(address + 8, self.data[2]);
+        _U.putFloat(_p1, self.data[3]);
+        _U.putFloat(_p1 + 4, self.data[4]);
+        _U.putFloat(_p1 + 8, self.data[5]);
+        return buf;
+    }
+
+    public Float3x2 loadCMAbsolute(Float3x2Impl self, int index, FloatBuffer buf, int stride) {
+        if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadCMAbsolute(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+        long _ps = stride * 4L;
+        long _p1 = address + _ps;
+        self.data[0] = _U.getFloat(address);
+        self.data[1] = _U.getFloat(address + 4);
+        self.data[2] = _U.getFloat(address + 8);
+        self.data[3] = _U.getFloat(_p1);
+        self.data[4] = _U.getFloat(_p1 + 4);
+        self.data[5] = _U.getFloat(_p1 + 8);
+        return self;
+    }
+
+    public ByteBuffer storeCMAbsolute(Float3x2Impl self, int index, ByteBuffer buf, int stride) {
+        if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeCMAbsoluteElse(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        long _ps = stride * 4L;
+        long _p1 = address + _ps;
+        _U.putFloat(address, self.data[0]);
+        _U.putFloat(address + 4, self.data[1]);
+        _U.putFloat(address + 8, self.data[2]);
+        _U.putFloat(_p1, self.data[3]);
+        _U.putFloat(_p1 + 4, self.data[4]);
+        _U.putFloat(_p1 + 8, self.data[5]);
+        return buf;
+    }
+
+    private static ByteBuffer storeCMAbsoluteElse(Float3x2Impl self, int index, ByteBuffer buf, int stride) {
+        byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+        if (bytes == null) return API.storeCMAbsolute(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        long _ps = stride * 4L;
+        long _p1 = address + _ps;
+        _U.putFloat(bytes, address, self.data[0]);
+        _U.putFloat(bytes, address + 4, self.data[1]);
+        _U.putFloat(bytes, address + 8, self.data[2]);
+        _U.putFloat(bytes, _p1, self.data[3]);
+        _U.putFloat(bytes, _p1 + 4, self.data[4]);
+        _U.putFloat(bytes, _p1 + 8, self.data[5]);
+        return buf;
+    }
+
+    public Float3x2 loadCMAbsolute(Float3x2Impl self, int index, ByteBuffer buf, int stride) {
+        if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return loadCMAbsoluteElse(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        long _ps = stride * 4L;
+        long _p1 = address + _ps;
+        self.data[0] = _U.getFloat(address);
+        self.data[1] = _U.getFloat(address + 4);
+        self.data[2] = _U.getFloat(address + 8);
+        self.data[3] = _U.getFloat(_p1);
+        self.data[4] = _U.getFloat(_p1 + 4);
+        self.data[5] = _U.getFloat(_p1 + 8);
+        return self;
+    }
+
+    private static Float3x2 loadCMAbsoluteElse(Float3x2Impl self, int index, ByteBuffer buf, int stride) {
+        byte[] bytes = buf.isDirect() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+        if (bytes == null) return API.loadCMAbsolute(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        long _ps = stride * 4L;
+        long _p1 = address + _ps;
+        self.data[0] = _U.getFloat(bytes, address);
+        self.data[1] = _U.getFloat(bytes, address + 4);
+        self.data[2] = _U.getFloat(bytes, address + 8);
+        self.data[3] = _U.getFloat(bytes, _p1);
+        self.data[4] = _U.getFloat(bytes, _p1 + 4);
+        self.data[5] = _U.getFloat(bytes, _p1 + 8);
+        return self;
+    }
+
+    public DoubleBuffer storeCMAbsolute(Float3x2Impl self, int index, DoubleBuffer buf, int stride) {
+        if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeCMAbsolute(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+        long _ps = stride * 8L;
+        long _p1 = address + _ps;
+        _U.putDouble(address, self.data[0]);
+        _U.putDouble(address + 8, self.data[1]);
+        _U.putDouble(address + 16, self.data[2]);
+        _U.putDouble(_p1, self.data[3]);
+        _U.putDouble(_p1 + 8, self.data[4]);
+        _U.putDouble(_p1 + 16, self.data[5]);
+        return buf;
+    }
+
+    public Float3x2 loadCMAbsolute(Float3x2Impl self, int index, DoubleBuffer buf, int stride) {
+        if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadCMAbsolute(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+        long _ps = stride * 8L;
+        long _p1 = address + _ps;
+        self.data[0] = (float) _U.getDouble(address);
+        self.data[1] = (float) _U.getDouble(address + 8);
+        self.data[2] = (float) _U.getDouble(address + 16);
+        self.data[3] = (float) _U.getDouble(_p1);
+        self.data[4] = (float) _U.getDouble(_p1 + 8);
+        self.data[5] = (float) _U.getDouble(_p1 + 16);
+        return self;
+    }
+
+    public ByteBuffer storeCMDoubleAbsolute(Float3x2Impl self, int index, ByteBuffer buf, int stride) {
+        if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeCMDoubleAbsoluteElse(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        long _ps = stride * 8L;
+        long _p1 = address + _ps;
+        _U.putDouble(address, self.data[0]);
+        _U.putDouble(address + 8, self.data[1]);
+        _U.putDouble(address + 16, self.data[2]);
+        _U.putDouble(_p1, self.data[3]);
+        _U.putDouble(_p1 + 8, self.data[4]);
+        _U.putDouble(_p1 + 16, self.data[5]);
+        return buf;
+    }
+
+    private static ByteBuffer storeCMDoubleAbsoluteElse(Float3x2Impl self, int index, ByteBuffer buf, int stride) {
+        byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+        if (bytes == null) return API.storeCMDoubleAbsolute(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        long _ps = stride * 8L;
+        long _p1 = address + _ps;
+        _U.putDouble(bytes, address, self.data[0]);
+        _U.putDouble(bytes, address + 8, self.data[1]);
+        _U.putDouble(bytes, address + 16, self.data[2]);
+        _U.putDouble(bytes, _p1, self.data[3]);
+        _U.putDouble(bytes, _p1 + 8, self.data[4]);
+        _U.putDouble(bytes, _p1 + 16, self.data[5]);
+        return buf;
+    }
+
+    public Float3x2 loadCMDoubleAbsolute(Float3x2Impl self, int index, ByteBuffer buf, int stride) {
+        if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return loadCMDoubleAbsoluteElse(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        long _ps = stride * 8L;
+        long _p1 = address + _ps;
+        self.data[0] = (float) _U.getDouble(address);
+        self.data[1] = (float) _U.getDouble(address + 8);
+        self.data[2] = (float) _U.getDouble(address + 16);
+        self.data[3] = (float) _U.getDouble(_p1);
+        self.data[4] = (float) _U.getDouble(_p1 + 8);
+        self.data[5] = (float) _U.getDouble(_p1 + 16);
+        return self;
+    }
+
+    private static Float3x2 loadCMDoubleAbsoluteElse(Float3x2Impl self, int index, ByteBuffer buf, int stride) {
+        byte[] bytes = buf.isDirect() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+        if (bytes == null) return API.loadCMDoubleAbsolute(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        long _ps = stride * 8L;
+        long _p1 = address + _ps;
+        self.data[0] = (float) _U.getDouble(bytes, address);
+        self.data[1] = (float) _U.getDouble(bytes, address + 8);
+        self.data[2] = (float) _U.getDouble(bytes, address + 16);
+        self.data[3] = (float) _U.getDouble(bytes, _p1);
+        self.data[4] = (float) _U.getDouble(bytes, _p1 + 8);
+        self.data[5] = (float) _U.getDouble(bytes, _p1 + 16);
+        return self;
+    }
+
+    public FloatBuffer storeRMAbsolute(Float3x2Impl self, int index, FloatBuffer buf, int stride) {
+        if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeRMAbsolute(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+        long _ps = stride * 4L;
+        long _p1 = address + _ps;
+        long _p2 = _p1 + _ps;
+        _U.putFloat(address, self.data[0]);
+        _U.putFloat(address + 4, self.data[3]);
+        _U.putFloat(_p1, self.data[1]);
+        _U.putFloat(_p1 + 4, self.data[4]);
+        _U.putFloat(_p2, self.data[2]);
+        _U.putFloat(_p2 + 4, self.data[5]);
+        return buf;
+    }
+
+    public Float3x2 loadRMAbsolute(Float3x2Impl self, int index, FloatBuffer buf, int stride) {
+        if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadRMAbsolute(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+        long _ps = stride * 4L;
+        long _p1 = address + _ps;
+        long _p2 = _p1 + _ps;
+        self.data[0] = _U.getFloat(address);
+        self.data[3] = _U.getFloat(address + 4);
+        self.data[1] = _U.getFloat(_p1);
+        self.data[4] = _U.getFloat(_p1 + 4);
+        self.data[2] = _U.getFloat(_p2);
+        self.data[5] = _U.getFloat(_p2 + 4);
+        return self;
+    }
+
+    public ByteBuffer storeRMAbsolute(Float3x2Impl self, int index, ByteBuffer buf, int stride) {
+        if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeRMAbsoluteElse(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        long _ps = stride * 4L;
+        long _p1 = address + _ps;
+        long _p2 = _p1 + _ps;
+        _U.putFloat(address, self.data[0]);
+        _U.putFloat(address + 4, self.data[3]);
+        _U.putFloat(_p1, self.data[1]);
+        _U.putFloat(_p1 + 4, self.data[4]);
+        _U.putFloat(_p2, self.data[2]);
+        _U.putFloat(_p2 + 4, self.data[5]);
+        return buf;
+    }
+
+    private static ByteBuffer storeRMAbsoluteElse(Float3x2Impl self, int index, ByteBuffer buf, int stride) {
+        byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+        if (bytes == null) return API.storeRMAbsolute(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        long _ps = stride * 4L;
+        long _p1 = address + _ps;
+        long _p2 = _p1 + _ps;
+        _U.putFloat(bytes, address, self.data[0]);
+        _U.putFloat(bytes, address + 4, self.data[3]);
+        _U.putFloat(bytes, _p1, self.data[1]);
+        _U.putFloat(bytes, _p1 + 4, self.data[4]);
+        _U.putFloat(bytes, _p2, self.data[2]);
+        _U.putFloat(bytes, _p2 + 4, self.data[5]);
+        return buf;
+    }
+
+    public Float3x2 loadRMAbsolute(Float3x2Impl self, int index, ByteBuffer buf, int stride) {
+        if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return loadRMAbsoluteElse(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        long _ps = stride * 4L;
+        long _p1 = address + _ps;
+        long _p2 = _p1 + _ps;
+        self.data[0] = _U.getFloat(address);
+        self.data[3] = _U.getFloat(address + 4);
+        self.data[1] = _U.getFloat(_p1);
+        self.data[4] = _U.getFloat(_p1 + 4);
+        self.data[2] = _U.getFloat(_p2);
+        self.data[5] = _U.getFloat(_p2 + 4);
+        return self;
+    }
+
+    private static Float3x2 loadRMAbsoluteElse(Float3x2Impl self, int index, ByteBuffer buf, int stride) {
+        byte[] bytes = buf.isDirect() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+        if (bytes == null) return API.loadRMAbsolute(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        long _ps = stride * 4L;
+        long _p1 = address + _ps;
+        long _p2 = _p1 + _ps;
+        self.data[0] = _U.getFloat(bytes, address);
+        self.data[3] = _U.getFloat(bytes, address + 4);
+        self.data[1] = _U.getFloat(bytes, _p1);
+        self.data[4] = _U.getFloat(bytes, _p1 + 4);
+        self.data[2] = _U.getFloat(bytes, _p2);
+        self.data[5] = _U.getFloat(bytes, _p2 + 4);
+        return self;
+    }
+
+    public DoubleBuffer storeRMAbsolute(Float3x2Impl self, int index, DoubleBuffer buf, int stride) {
+        if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeRMAbsolute(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+        long _ps = stride * 8L;
+        long _p1 = address + _ps;
+        long _p2 = _p1 + _ps;
+        _U.putDouble(address, self.data[0]);
+        _U.putDouble(address + 8, self.data[3]);
+        _U.putDouble(_p1, self.data[1]);
+        _U.putDouble(_p1 + 8, self.data[4]);
+        _U.putDouble(_p2, self.data[2]);
+        _U.putDouble(_p2 + 8, self.data[5]);
+        return buf;
+    }
+
+    public Float3x2 loadRMAbsolute(Float3x2Impl self, int index, DoubleBuffer buf, int stride) {
+        if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadRMAbsolute(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+        long _ps = stride * 8L;
+        long _p1 = address + _ps;
+        long _p2 = _p1 + _ps;
+        self.data[0] = (float) _U.getDouble(address);
+        self.data[3] = (float) _U.getDouble(address + 8);
+        self.data[1] = (float) _U.getDouble(_p1);
+        self.data[4] = (float) _U.getDouble(_p1 + 8);
+        self.data[2] = (float) _U.getDouble(_p2);
+        self.data[5] = (float) _U.getDouble(_p2 + 8);
+        return self;
+    }
+
+    public ByteBuffer storeRMDoubleAbsolute(Float3x2Impl self, int index, ByteBuffer buf, int stride) {
+        if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeRMDoubleAbsoluteElse(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        long _ps = stride * 8L;
+        long _p1 = address + _ps;
+        long _p2 = _p1 + _ps;
+        _U.putDouble(address, self.data[0]);
+        _U.putDouble(address + 8, self.data[3]);
+        _U.putDouble(_p1, self.data[1]);
+        _U.putDouble(_p1 + 8, self.data[4]);
+        _U.putDouble(_p2, self.data[2]);
+        _U.putDouble(_p2 + 8, self.data[5]);
+        return buf;
+    }
+
+    private static ByteBuffer storeRMDoubleAbsoluteElse(Float3x2Impl self, int index, ByteBuffer buf, int stride) {
+        byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+        if (bytes == null) return API.storeRMDoubleAbsolute(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        long _ps = stride * 8L;
+        long _p1 = address + _ps;
+        long _p2 = _p1 + _ps;
+        _U.putDouble(bytes, address, self.data[0]);
+        _U.putDouble(bytes, address + 8, self.data[3]);
+        _U.putDouble(bytes, _p1, self.data[1]);
+        _U.putDouble(bytes, _p1 + 8, self.data[4]);
+        _U.putDouble(bytes, _p2, self.data[2]);
+        _U.putDouble(bytes, _p2 + 8, self.data[5]);
+        return buf;
+    }
+
+    public Float3x2 loadRMDoubleAbsolute(Float3x2Impl self, int index, ByteBuffer buf, int stride) {
+        if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return loadRMDoubleAbsoluteElse(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        long _ps = stride * 8L;
+        long _p1 = address + _ps;
+        long _p2 = _p1 + _ps;
+        self.data[0] = (float) _U.getDouble(address);
+        self.data[3] = (float) _U.getDouble(address + 8);
+        self.data[1] = (float) _U.getDouble(_p1);
+        self.data[4] = (float) _U.getDouble(_p1 + 8);
+        self.data[2] = (float) _U.getDouble(_p2);
+        self.data[5] = (float) _U.getDouble(_p2 + 8);
+        return self;
+    }
+
+    private static Float3x2 loadRMDoubleAbsoluteElse(Float3x2Impl self, int index, ByteBuffer buf, int stride) {
+        byte[] bytes = buf.isDirect() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+        if (bytes == null) return API.loadRMDoubleAbsolute(self, index, buf, stride);
+        org.joml2.internal.unsafe.UnsafeOps _U = U;
+        long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+        long _ps = stride * 8L;
+        long _p1 = address + _ps;
+        long _p2 = _p1 + _ps;
+        self.data[0] = (float) _U.getDouble(bytes, address);
+        self.data[3] = (float) _U.getDouble(bytes, address + 8);
+        self.data[1] = (float) _U.getDouble(bytes, _p1);
+        self.data[4] = (float) _U.getDouble(bytes, _p1 + 8);
+        self.data[2] = (float) _U.getDouble(bytes, _p2);
+        self.data[5] = (float) _U.getDouble(bytes, _p2 + 8);
+        return self;
+    }
+}

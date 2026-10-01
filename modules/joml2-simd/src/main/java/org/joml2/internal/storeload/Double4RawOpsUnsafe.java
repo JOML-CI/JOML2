@@ -1,0 +1,74 @@
+// Copyright (c) 2015-2026 JOML
+// SPDX-License-Identifier: MIT
+package org.joml2.internal.storeload;
+
+import org.joml2.*;
+import org.joml2.Math;
+import org.joml2.internal.types.*;
+import static org.joml2.internal.unsafe.UnsafeOpsHolder.U;
+
+public final class Double4RawOpsUnsafe extends Double4RawOps {
+    public Double4 storeUnsafe(Double4Impl self, long address) {
+        U.putDouble(address, self.data[0]);
+        U.putDouble(address + 8L, self.data[1]);
+        U.putDouble(address + 16L, self.data[2]);
+        U.putDouble(address + 24L, self.data[3]);
+        return self;
+    }
+
+    public Double4 storeHeap(Double4Impl self, byte[] bytes, long address) {
+        U.putDouble(bytes, address, self.data[0]);
+        U.putDouble(bytes, address + 8L, self.data[1]);
+        U.putDouble(bytes, address + 16L, self.data[2]);
+        U.putDouble(bytes, address + 24L, self.data[3]);
+        return self;
+    }
+
+    public Double4 loadUnsafe(Double4Impl self, long address) {
+        self.data[0] = U.getDouble(address);
+        self.data[1] = U.getDouble(address + 8L);
+        self.data[2] = U.getDouble(address + 16L);
+        self.data[3] = U.getDouble(address + 24L);
+        return self;
+    }
+
+    public Double4 loadHeap(Double4Impl self, byte[] bytes, long address) {
+        self.data[0] = U.getDouble(bytes, address);
+        self.data[1] = U.getDouble(bytes, address + 8L);
+        self.data[2] = U.getDouble(bytes, address + 16L);
+        self.data[3] = U.getDouble(bytes, address + 24L);
+        return self;
+    }
+
+    public Double4 storeFloatUnsafe(Double4Impl self, long address) {
+        U.putFloat(address, (float) self.data[0]);
+        U.putFloat(address + 4L, (float) self.data[1]);
+        U.putFloat(address + 8L, (float) self.data[2]);
+        U.putFloat(address + 12L, (float) self.data[3]);
+        return self;
+    }
+
+    public Double4 storeFloatHeap(Double4Impl self, byte[] bytes, long address) {
+        U.putFloat(bytes, address, (float) self.data[0]);
+        U.putFloat(bytes, address + 4L, (float) self.data[1]);
+        U.putFloat(bytes, address + 8L, (float) self.data[2]);
+        U.putFloat(bytes, address + 12L, (float) self.data[3]);
+        return self;
+    }
+
+    public Double4 loadFloatUnsafe(Double4Impl self, long address) {
+        self.data[0] = U.getFloat(address);
+        self.data[1] = U.getFloat(address + 4L);
+        self.data[2] = U.getFloat(address + 8L);
+        self.data[3] = U.getFloat(address + 12L);
+        return self;
+    }
+
+    public Double4 loadFloatHeap(Double4Impl self, byte[] bytes, long address) {
+        self.data[0] = U.getFloat(bytes, address);
+        self.data[1] = U.getFloat(bytes, address + 4L);
+        self.data[2] = U.getFloat(bytes, address + 8L);
+        self.data[3] = U.getFloat(bytes, address + 12L);
+        return self;
+    }
+}
