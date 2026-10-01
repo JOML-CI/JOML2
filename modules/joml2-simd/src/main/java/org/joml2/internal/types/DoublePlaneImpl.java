@@ -1,0 +1,607 @@
+// Copyright (c) 2015-2026 JOML
+// SPDX-License-Identifier: MIT
+package org.joml2.internal.types;
+
+import org.joml2.*;
+import org.joml2.Math;
+import org.joml2.internal.storeload.*;
+import jdk.incubator.vector.*;
+import org.joml2.internal.simd.*;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+import org.joml2.internal.unsafe.HeapSegments;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+
+/**
+ * Generated implementation of {@link DoublePlane} backed by a {@code double[]} array, with Vector
+ * API SIMD kernels where profitable.
+ * <p>
+ * Not part of the public API - obtain instances through the {@link Joml} factory methods.
+ */
+public final class DoublePlaneImpl implements DoublePlane {
+    public double[] data;
+
+    /** Store/load dispatch targets, picked on the first store/load (see {@code Joml.storeLoadBackend()}). */
+    private static final class StoreLoad {
+        static final DoublePlaneSegOps SEG_OPS = Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE
+            ? new DoublePlaneSegOpsUnsafe()
+            : new DoublePlaneSegOpsMS();
+        static final DoublePlaneBbOps BB_OPS = Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE
+            ? new DoublePlaneBbOpsUnsafe()
+            : new DoublePlaneBbOpsApi();
+        static final DoublePlaneRawOps RAW_OPS = Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE
+            ? new DoublePlaneRawOpsUnsafe()
+            : new DoublePlaneRawOpsApi();
+    }
+
+    public DoublePlaneImpl() {
+        data = new double[4];
+    }
+
+    public DoublePlaneImpl(double a, double b, double c, double d) {
+        double[] dd = this.data = new double[4];
+        dd[0] = a;
+        dd[1] = b;
+        dd[2] = c;
+        dd[3] = d;
+    }
+
+    public DoublePlaneImpl(DoublePlaneR src) {
+        double[] srcData = ((DoublePlaneImpl) src).data;
+        double[] dd = this.data = new double[4];
+        dd[0] = srcData[0];
+        dd[1] = srcData[1];
+        dd[2] = srcData[2];
+        dd[3] = srcData[3];
+    }
+
+    /**
+     * Set this plane to the given values.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param v the plane to copy
+     * @return this
+     */
+    @Mutated public DoublePlane set(DoublePlaneR v) {
+        if (COL_NARROW) return set_narrow(v);
+        double[] dd = this.data;
+        double[] vData = ((DoublePlaneImpl) v).data;
+        DoubleVector.fromArray(COL_SPECIES, vData, 0).intoArray(dd, 0);
+        return this;
+    }
+
+    /**
+     * Set this plane to the given values.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param vA the {@code a} component of the plane {@code (vA, vB, vC, vD)}
+     * @param vB the {@code b} component of the plane {@code (vA, vB, vC, vD)}
+     * @param vC the {@code c} component of the plane {@code (vA, vB, vC, vD)}
+     * @param vD the {@code d} component of the plane {@code (vA, vB, vC, vD)}
+     * @return this
+     */
+    @Mutated public DoublePlane set(double vA, double vB, double vC, double vD) {
+        double[] dd = this.data;
+        dd[0] = vA;
+        dd[1] = vB;
+        dd[2] = vC;
+        dd[3] = vD;
+        return this;
+    }
+
+    /**
+     * Set the normal of this plane to {@code n} and store the result in {@code dest}.
+     * <p>
+     * Valid input: {@code n} must be non-zero.
+     *
+     * @param n the new normal
+     * @param dest will hold the result
+     * @return dest
+     */
+    public DoublePlane setNormal(Double3R n, @Mutated DoublePlane dest) {
+        double[] sd = this.data;
+        double[] nData = ((Double3Impl) n).data;
+        double[] dd = ((DoublePlaneImpl) dest).data;
+        dd[0] = nData[0];
+        dd[1] = nData[1];
+        dd[2] = nData[2];
+        dd[3] = sd[3];
+        return dest;
+    }
+
+    /**
+     * Set the normal of this plane to ({@code nX}, {@code nY}, {@code nZ}) and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: {@code (nX, nY, nZ)} must be non-zero.
+     *
+     * @param nX the {@code x} component of the vector {@code (nX, nY, nZ)}
+     * @param nY the {@code y} component of the vector {@code (nX, nY, nZ)}
+     * @param nZ the {@code z} component of the vector {@code (nX, nY, nZ)}
+     * @param dest will hold the result
+     * @return dest
+     */
+    public DoublePlane setNormal(double nX, double nY, double nZ, @Mutated DoublePlane dest) {
+        double[] sd = this.data;
+        double[] dd = ((DoublePlaneImpl) dest).data;
+        dd[0] = nX;
+        dd[1] = nY;
+        dd[2] = nZ;
+        dd[3] = sd[3];
+        return dest;
+    }
+
+    /**
+     * Convert this plane to {@code float} precision and store the result in {@code dest}.
+     * <p>
+     * The conversion may lose precision or range.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    public FloatPlane toFloat(@Mutated FloatPlane dest) {
+        double[] sd = this.data;
+        float[] dd = ((FloatPlaneImpl) dest).data;
+        dd[0] = (float) (sd[0]);
+        dd[1] = (float) (sd[1]);
+        dd[2] = (float) (sd[2]);
+        dd[3] = (float) (sd[3]);
+        return dest;
+    }
+
+    /**
+     * Normalize this plane, scaling {@code (a, b, c, d)} so that the normal {@code (a, b, c)} has
+     * unit length, and store the result in {@code dest}.
+     * <p>
+     * Valid input: nonzero magnitudes must lie between {@code 1.5e-154} and {@code 3.8e153}; the
+     * normal of this plane must be non-zero.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    public DoublePlane normalize(@Mutated DoublePlane dest) {
+        if (COL_NARROW) return normalize_narrow(dest);
+        if (org.joml2.internal.FmaSwitch.ON) {
+            double[] sd = this.data;
+            double[] dd = ((DoublePlaneImpl) dest).data;
+            DoubleVector.fromArray(COL_SPECIES, sd, 0).mul(DoubleVector.broadcast(COL_SPECIES, (1.0 / java.lang.Math.sqrt(java.lang.Math.fma(sd[2], sd[2], java.lang.Math.fma(sd[0], sd[0], sd[1] * sd[1])))))).intoArray(dd, 0);
+            return dest;
+        } else {
+            double[] sd = this.data;
+            double[] dd = ((DoublePlaneImpl) dest).data;
+            DoubleVector.fromArray(COL_SPECIES, sd, 0).mul(DoubleVector.broadcast(COL_SPECIES, (1.0 / java.lang.Math.sqrt(((sd[2]) * (sd[2]) + (((sd[0]) * (sd[0]) + (sd[1] * sd[1])))))))).intoArray(dd, 0);
+            return dest;
+        }
+    }
+
+    /**
+     * Compute the (unsigned) distance between this plane and the given point. The plane's normal
+     * need not be of unit length: the result is divided by that normal's length.
+     * <p>
+     * Valid input: nonzero magnitudes must lie between {@code 1.5e-154} and {@code 3.8e153}; the
+     * normal of this plane must be non-zero.
+     *
+     * @param p the point to measure the distance to
+     * @return the (unsigned) distance between this plane and the given point. The plane's normal
+     *        need not be of unit length: the result is divided by that normal's length
+     */
+    public double distanceToPoint(Double3R p) {
+        double[] pData = ((Double3Impl) p).data;
+        double pX = pData[0];
+        double pY = pData[1];
+        double pZ = pData[2];
+        if (org.joml2.internal.FmaSwitch.ON) {
+            double[] sd = this.data;
+            return (1.0 / java.lang.Math.sqrt(java.lang.Math.fma(sd[2], sd[2], java.lang.Math.fma(sd[0], sd[0], sd[1] * sd[1])))) * java.lang.Math.abs(java.lang.Math.fma(pX, sd[0], java.lang.Math.fma(pY, sd[1], java.lang.Math.fma(pZ, sd[2], sd[3]))));
+        } else {
+            double[] sd = this.data;
+            return (1.0 / java.lang.Math.sqrt(((sd[2]) * (sd[2]) + (((sd[0]) * (sd[0]) + (sd[1] * sd[1])))))) * java.lang.Math.abs(((pX) * (sd[0]) + (((pY) * (sd[1]) + (((pZ) * (sd[2]) + (sd[3])))))));
+        }
+    }
+
+    /**
+     * Compute the (unsigned) distance between this plane and the given point. The plane's normal
+     * need not be of unit length: the result is divided by that normal's length.
+     * <p>
+     * Valid input: nonzero magnitudes must lie between {@code 1.5e-154} and {@code 3.8e153}; the
+     * normal of this plane must be non-zero.
+     *
+     * @param pX the {@code x} component of the point {@code (pX, pY, pZ)} to measure the distance
+     *        to
+     * @param pY the {@code y} component of the point {@code (pX, pY, pZ)} to measure the distance
+     *        to
+     * @param pZ the {@code z} component of the point {@code (pX, pY, pZ)} to measure the distance
+     *        to
+     * @return the (unsigned) distance between this plane and the given point. The plane's normal
+     *        need not be of unit length: the result is divided by that normal's length
+     */
+    public double distanceToPoint(double pX, double pY, double pZ) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            double[] sd = this.data;
+            return (1.0 / java.lang.Math.sqrt(java.lang.Math.fma(sd[2], sd[2], java.lang.Math.fma(sd[0], sd[0], sd[1] * sd[1])))) * java.lang.Math.abs(java.lang.Math.fma(pX, sd[0], java.lang.Math.fma(pY, sd[1], java.lang.Math.fma(pZ, sd[2], sd[3]))));
+        } else {
+            double[] sd = this.data;
+            return (1.0 / java.lang.Math.sqrt(((sd[2]) * (sd[2]) + (((sd[0]) * (sd[0]) + (sd[1] * sd[1])))))) * java.lang.Math.abs(((pX) * (sd[0]) + (((pY) * (sd[1]) + (((pZ) * (sd[2]) + (sd[3])))))));
+        }
+    }
+
+    /**
+     * Get the normal of this plane and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    public Double3 getNormal(@Mutated Double3 dest) {
+        double[] sd = this.data;
+        double[] dd = ((Double3Impl) dest).data;
+        dd[0] = sd[0];
+        dd[1] = sd[1];
+        dd[2] = sd[2];
+        return dest;
+    }
+
+    public double a() { return data[0]; }
+    public double b() { return data[1]; }
+    public double c() { return data[2]; }
+    public double d() { return data[3]; }
+
+    @Override public String toString() {
+        return "DoublePlane(" + this.data[0] + ", " + this.data[1] + ", " + this.data[2] + ", " + this.data[3] + ")";
+    }
+
+    @Override public boolean equals(@org.jspecify.annotations.Nullable Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof DoublePlaneImpl)) return false;
+        DoublePlaneImpl o = (DoublePlaneImpl) obj;
+        return java.util.Arrays.equals(data, o.data);
+    }
+
+    @Override public int hashCode() {
+        return java.util.Arrays.hashCode(data);
+    }
+
+    @Override public boolean isFinite() {
+        return Double.isFinite(data[0])
+            && Double.isFinite(data[1])
+            && Double.isFinite(data[2])
+            && Double.isFinite(data[3]);
+    }
+
+    @Override public boolean isNaN() {
+        return Double.isNaN(data[0])
+            || Double.isNaN(data[1])
+            || Double.isNaN(data[2])
+            || Double.isNaN(data[3]);
+    }
+
+    @Override public boolean equalsEpsilon(DoublePlaneR other, double epsilon) {
+        double[] otherData = ((DoublePlaneImpl) other).data;
+        double[] sd = this.data;
+        return java.lang.Math.abs(sd[0] - otherData[0]) <= epsilon
+            && java.lang.Math.abs(sd[1] - otherData[1]) <= epsilon
+            && java.lang.Math.abs(sd[2] - otherData[2]) <= epsilon
+            && java.lang.Math.abs(sd[3] - otherData[3]) <= epsilon;
+    }
+
+    public double signedDistance(double pX, double pY, double pZ) {
+        return Intersectiond.distancePointPlane(pX, pY, pZ, this.data[0], this.data[1], this.data[2], this.data[3]);
+    }
+
+    public double signedDistance(Double3R p) {
+        double[] pData = ((Double3Impl) p).data;
+        return signedDistance(pData[0], pData[1], pData[2]);
+    }
+
+    public Double3 projectPoint(double pX, double pY, double pZ, @Mutated Double3 dest) {
+        double a = this.data[0], b = this.data[1], c = this.data[2], d = this.data[3];
+        double invLenSq = 1d / (a * a + b * b + c * c);
+        double t = (a * pX + b * pY + c * pZ + d) * invLenSq;
+        return dest.set(pX - t * a, pY - t * b, pZ - t * c);
+    }
+
+    public Double3 projectPoint(Double3R p, @Mutated Double3 dest) {
+        double[] pData = ((Double3Impl) p).data;
+        double pX = pData[0];
+        double pY = pData[1];
+        double pZ = pData[2];
+        double a = this.data[0], b = this.data[1], c = this.data[2], d = this.data[3];
+        double invLenSq = 1d / (a * a + b * b + c * c);
+        double t = (a * pX + b * pY + c * pZ + d) * invLenSq;
+        return dest.set(pX - t * a, pY - t * b, pZ - t * c);
+    }
+
+    public boolean containsPoint(double pX, double pY, double pZ, double epsilon) {
+        return java.lang.Math.abs(signedDistance(pX, pY, pZ)) <= epsilon;
+    }
+
+    public boolean containsPoint(Double3R p, double epsilon) {
+        double[] pData = ((Double3Impl) p).data;
+        double pX = pData[0];
+        double pY = pData[1];
+        double pZ = pData[2];
+        return java.lang.Math.abs(signedDistance(pX, pY, pZ)) <= epsilon;
+    }
+
+    public boolean intersectsSphere(DoubleSphereR sph) {
+        double[] sphData = ((DoubleSphereImpl) sph).data;
+        return Intersectiond.testPlaneSphere(this.data[0], this.data[1], this.data[2], this.data[3], sphData[0], sphData[1], sphData[2], sphData[3]);
+    }
+
+    public boolean intersectsAABB(DoubleAABBR box) {
+        double[] boxData = ((DoubleAABBImpl) box).data;
+        return Intersectiond.testAabbPlane(boxData[0], boxData[1], boxData[2], boxData[3], boxData[4], boxData[5], this.data[0], this.data[1], this.data[2], this.data[3]);
+    }
+
+    public double[] store(@Mutated double[] dest, int offset) {
+        if (COL_NARROW) return store_narrow(dest, offset);
+        double[] d = this.data;
+        DoubleVector.fromArray(COL_SPECIES, d, 0).intoArray(dest, offset);
+        return dest;
+    }
+
+    @Mutated public DoublePlane load(double[] src, int offset) {
+        if (COL_NARROW) return load_narrow(src, offset);
+        double[] d = this.data;
+        DoubleVector.fromArray(COL_SPECIES, src, offset).intoArray(d, 0);
+        return this;
+    }
+
+    public DoubleBuffer storeAbsolute(int index, @Mutated DoubleBuffer buf) {
+        if (COL_NARROW) return StoreLoad.BB_OPS.storeAbsolute(this, index, buf);
+        if (!buf.hasArray()) return StoreLoad.BB_OPS.storeAbsolute(this, index, buf);
+        double[] d = this.data;
+        double[] arr = buf.array();
+        int off = buf.arrayOffset() + index;
+        DoubleVector.fromArray(COL_SPECIES, d, 0).intoArray(arr, off);
+        return buf;
+    }
+
+    @Mutated public DoublePlane loadAbsolute(int index, DoubleBuffer buf) {
+        if (COL_NARROW) return StoreLoad.BB_OPS.loadAbsolute(this, index, buf);
+        if (!buf.hasArray()) return StoreLoad.BB_OPS.loadAbsolute(this, index, buf);
+        double[] d = this.data;
+        double[] arr = buf.array();
+        int off = buf.arrayOffset() + index;
+        DoubleVector.fromArray(COL_SPECIES, arr, off).intoArray(d, 0);
+        return this;
+    }
+
+    public ByteBuffer store(@Mutated ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeAbsolute(this, buf.position(), buf);
+    }
+
+    public ByteBuffer storeAbsolute(int index, @Mutated ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeAbsolute(this, index, buf);
+    }
+
+    public ByteBuffer storeRelative(@Mutated ByteBuffer buf) {
+        if (buf.remaining() < 32) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeAbsolute(this, pos, buf);
+        buf.position(pos + 32);
+        return buf;
+    }
+
+    @Mutated public DoublePlane load(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.loadAbsolute(this, buf.position(), buf);
+    }
+
+    @Mutated public DoublePlane loadAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.loadAbsolute(this, index, buf);
+    }
+
+    @Mutated public DoublePlane loadRelative(ByteBuffer buf) {
+        if (buf.remaining() < 32) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.loadAbsolute(this, pos, buf);
+        buf.position(pos + 32);
+        return this;
+    }
+
+    public DoublePlane storeUnsafe(long address) {
+        return StoreLoad.RAW_OPS.storeUnsafe(this, address);
+    }
+
+    @Mutated public DoublePlane loadUnsafe(long address) {
+        return StoreLoad.RAW_OPS.loadUnsafe(this, address);
+    }
+
+    private boolean storeLanes(MemorySegment dest, long offset) {
+        byte[] b = HeapSegments.laneBytes(dest, true);
+        if (b == null) return false;
+        int at = HeapSegments.index(dest, offset);
+        double[] d = this.data;
+        DoubleVector.fromArray(COL_SPECIES, d, 0).reinterpretAsBytes().intoArray(b, at);
+        return true;
+    }
+
+    public MemorySegment store(long offset, @Mutated MemorySegment dest) {
+        if (COL_NARROW) return StoreLoad.SEG_OPS.store(this, offset, dest);
+        if (!dest.isNative() && storeLanes(dest, offset)) return dest;
+        double[] d = this.data;
+        DoubleVector.fromArray(COL_SPECIES, d, 0).intoMemorySegment(dest, offset, ByteOrder.nativeOrder());
+        return dest;
+    }
+
+    private boolean loadLanes(MemorySegment src, long offset) {
+        byte[] b = HeapSegments.laneBytes(src, false);
+        if (b == null) return false;
+        int at = HeapSegments.index(src, offset);
+        double[] d = this.data;
+        ByteVector.fromArray(ByteVector.SPECIES_256, b, at).reinterpretAsDoubles().intoArray(d, 0);
+        return true;
+    }
+
+    @Mutated public DoublePlane load(long offset, MemorySegment src) {
+        if (COL_NARROW) return StoreLoad.SEG_OPS.load(this, offset, src);
+        if (!src.isNative() && loadLanes(src, offset)) return this;
+        double[] d = this.data;
+        DoubleVector.fromMemorySegment(COL_SPECIES, src, offset, ByteOrder.nativeOrder()).intoArray(d, 0);
+        return this;
+    }
+
+    public float[] store(@Mutated float[] dest, int offset) {
+        dest[offset] = (float) this.data[0];
+        dest[offset + 1] = (float) this.data[1];
+        dest[offset + 2] = (float) this.data[2];
+        dest[offset + 3] = (float) this.data[3];
+        return dest;
+    }
+
+    @Mutated public DoublePlane load(float[] src, int offset) {
+        this.data[0] = src[offset];
+        this.data[1] = src[offset + 1];
+        this.data[2] = src[offset + 2];
+        this.data[3] = src[offset + 3];
+        return this;
+    }
+
+    public FloatBuffer store(@Mutated FloatBuffer buf) {
+        return StoreLoad.BB_OPS.storeAbsolute(this, buf.position(), buf);
+    }
+
+    public FloatBuffer storeAbsolute(int index, @Mutated FloatBuffer buf) {
+        return StoreLoad.BB_OPS.storeAbsolute(this, index, buf);
+    }
+
+    public FloatBuffer storeRelative(@Mutated FloatBuffer buf) {
+        if (buf.remaining() < 4) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeAbsolute(this, pos, buf);
+        buf.position(pos + 4);
+        return buf;
+    }
+
+    @Mutated public DoublePlane load(FloatBuffer buf) {
+        return StoreLoad.BB_OPS.loadAbsolute(this, buf.position(), buf);
+    }
+
+    @Mutated public DoublePlane loadAbsolute(int index, FloatBuffer buf) {
+        return StoreLoad.BB_OPS.loadAbsolute(this, index, buf);
+    }
+
+    @Mutated public DoublePlane loadRelative(FloatBuffer buf) {
+        if (buf.remaining() < 4) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.loadAbsolute(this, pos, buf);
+        buf.position(pos + 4);
+        return this;
+    }
+
+    public ByteBuffer storeFloat(@Mutated ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeFloatAbsolute(this, buf.position(), buf);
+    }
+
+    public ByteBuffer storeFloatAbsolute(int index, @Mutated ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeFloatAbsolute(this, index, buf);
+    }
+
+    public ByteBuffer storeFloatRelative(@Mutated ByteBuffer buf) {
+        if (buf.remaining() < 16) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeFloatAbsolute(this, pos, buf);
+        buf.position(pos + 16);
+        return buf;
+    }
+
+    @Mutated public DoublePlane loadFloat(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.loadFloatAbsolute(this, buf.position(), buf);
+    }
+
+    @Mutated public DoublePlane loadFloatAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.loadFloatAbsolute(this, index, buf);
+    }
+
+    @Mutated public DoublePlane loadFloatRelative(ByteBuffer buf) {
+        if (buf.remaining() < 16) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.loadFloatAbsolute(this, pos, buf);
+        buf.position(pos + 16);
+        return this;
+    }
+
+    public DoublePlane storeFloatUnsafe(long address) {
+        return StoreLoad.RAW_OPS.storeFloatUnsafe(this, address);
+    }
+
+    @Mutated public DoublePlane loadFloatUnsafe(long address) {
+        return StoreLoad.RAW_OPS.loadFloatUnsafe(this, address);
+    }
+
+    public MemorySegment storeFloat(@Mutated MemorySegment dest) { return StoreLoad.SEG_OPS.storeFloat(this, 0L, dest); }
+
+    public MemorySegment storeFloat(long offset, @Mutated MemorySegment dest) {
+        return StoreLoad.SEG_OPS.storeFloat(this, offset, dest);
+    }
+
+    @Mutated public DoublePlane loadFloat(MemorySegment src) { return StoreLoad.SEG_OPS.loadFloat(this, 0L, src); }
+
+    @Mutated public DoublePlane loadFloat(long offset, MemorySegment src) {
+        return StoreLoad.SEG_OPS.loadFloat(this, offset, src);
+    }
+
+    private static final VectorSpecies<Double> COL_SPECIES = DoubleVector.SPECIES_256;
+
+    /** The column species is wider than this machine's vector unit: take the scalar twins. */
+    private static final boolean COL_NARROW = COL_SPECIES.length() > DoubleVector.SPECIES_PREFERRED.length();
+
+    private DoublePlane set_narrow(DoublePlaneR v) {
+        double[] vData = ((DoublePlaneImpl) v).data;
+        double vB = vData[1];
+        double vC = vData[2];
+        double vD = vData[3];
+        double[] dd = this.data;
+        dd[0] = vData[0];
+        dd[1] = vB;
+        dd[2] = vC;
+        dd[3] = vD;
+        return this;
+    }
+
+    private DoublePlane normalize_narrow(@Mutated DoublePlane dest) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            double[] sd = this.data;
+            double[] dd = ((DoublePlaneImpl) dest).data;
+            double _t3 = (1.0 / java.lang.Math.sqrt(java.lang.Math.fma(sd[2], sd[2], java.lang.Math.fma(sd[0], sd[0], sd[1] * sd[1]))));
+            dd[0] = sd[0] * _t3;
+            dd[1] = sd[1] * _t3;
+            dd[2] = sd[2] * _t3;
+            dd[3] = sd[3] * _t3;
+            return dest;
+        } else {
+            double[] sd = this.data;
+            double[] dd = ((DoublePlaneImpl) dest).data;
+            double _t3 = (1.0 / java.lang.Math.sqrt(((sd[2]) * (sd[2]) + (((sd[0]) * (sd[0]) + (sd[1] * sd[1]))))));
+            dd[0] = sd[0] * _t3;
+            dd[1] = sd[1] * _t3;
+            dd[2] = sd[2] * _t3;
+            dd[3] = sd[3] * _t3;
+            return dest;
+        }
+    }
+
+    private double[] store_narrow(@Mutated double[] dest, int offset) {
+        dest[offset] = this.data[0];
+        dest[offset + 1] = this.data[1];
+        dest[offset + 2] = this.data[2];
+        dest[offset + 3] = this.data[3];
+        return dest;
+    }
+
+    private DoublePlane load_narrow(double[] src, int offset) {
+        this.data[0] = src[offset];
+        this.data[1] = src[offset + 1];
+        this.data[2] = src[offset + 2];
+        this.data[3] = src[offset + 3];
+        return this;
+    }
+}

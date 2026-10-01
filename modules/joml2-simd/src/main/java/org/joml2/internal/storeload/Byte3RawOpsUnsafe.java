@@ -1,0 +1,66 @@
+// Copyright (c) 2015-2026 JOML
+// SPDX-License-Identifier: MIT
+package org.joml2.internal.storeload;
+
+import org.joml2.*;
+import org.joml2.Math;
+import org.joml2.internal.types.*;
+import static org.joml2.internal.unsafe.UnsafeOpsHolder.U;
+
+public final class Byte3RawOpsUnsafe extends Byte3RawOps {
+    public Byte3 storeUnsafe(Byte3Impl self, long address) {
+        U.putByte(address, self.data[0]);
+        U.putByte(address + 1L, self.data[1]);
+        U.putByte(address + 2L, self.data[2]);
+        return self;
+    }
+
+    public Byte3 storeHeap(Byte3Impl self, byte[] bytes, long address) {
+        U.putByte(bytes, address, self.data[0]);
+        U.putByte(bytes, address + 1L, self.data[1]);
+        U.putByte(bytes, address + 2L, self.data[2]);
+        return self;
+    }
+
+    public Byte3 loadUnsafe(Byte3Impl self, long address) {
+        self.data[0] = U.getByte(address);
+        self.data[1] = U.getByte(address + 1L);
+        self.data[2] = U.getByte(address + 2L);
+        return self;
+    }
+
+    public Byte3 loadHeap(Byte3Impl self, byte[] bytes, long address) {
+        self.data[0] = U.getByte(bytes, address);
+        self.data[1] = U.getByte(bytes, address + 1L);
+        self.data[2] = U.getByte(bytes, address + 2L);
+        return self;
+    }
+
+    public Byte3 storeShortUnsafe(Byte3Impl self, long address) {
+        U.putShort(address, self.data[0]);
+        U.putShort(address + 2L, self.data[1]);
+        U.putShort(address + 4L, self.data[2]);
+        return self;
+    }
+
+    public Byte3 storeShortHeap(Byte3Impl self, byte[] bytes, long address) {
+        U.putShort(bytes, address, self.data[0]);
+        U.putShort(bytes, address + 2L, self.data[1]);
+        U.putShort(bytes, address + 4L, self.data[2]);
+        return self;
+    }
+
+    public Byte3 loadShortUnsafe(Byte3Impl self, long address) {
+        self.data[0] = (byte) U.getShort(address);
+        self.data[1] = (byte) U.getShort(address + 2L);
+        self.data[2] = (byte) U.getShort(address + 4L);
+        return self;
+    }
+
+    public Byte3 loadShortHeap(Byte3Impl self, byte[] bytes, long address) {
+        self.data[0] = (byte) U.getShort(bytes, address);
+        self.data[1] = (byte) U.getShort(bytes, address + 2L);
+        self.data[2] = (byte) U.getShort(bytes, address + 4L);
+        return self;
+    }
+}

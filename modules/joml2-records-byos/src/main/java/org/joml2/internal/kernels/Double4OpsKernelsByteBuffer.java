@@ -1,0 +1,5973 @@
+// Copyright (c) 2015-2026 JOML
+// SPDX-License-Identifier: MIT
+package org.joml2.internal.kernels;
+
+import org.joml2.*;
+import org.joml2.Math;
+import org.joml2.ops.*;
+import org.joml2.internal.unsafe.*;
+
+/**
+ * Scalar/Unsafe kernel leaves of {@link Double4Ops} whose leading storage
+ * parameter is a {@link java.nio.ByteBuffer}. Split into a sibling compilation unit purely
+ * to keep generated sources IDE-sized; public only because {@code Double4Ops}
+ * and its SIMD cell call it from their own packages. Not public API.
+ */
+public final class Double4OpsKernelsByteBuffer {
+    private Double4OpsKernelsByteBuffer() {}
+
+    public static java.nio.ByteBuffer add_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.add_unsafe(_destBase, _srcBase, otherX, otherY, otherZ, otherW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer add_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, otherX + _selfx);
+        dest.putDouble(destOffset + 8, otherY + _selfy);
+        dest.putDouble(destOffset + 16, otherZ + _selfz);
+        dest.putDouble(destOffset + 24, otherW + _selfw);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer add_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _otherBase = UnsafeOpsHolder.U.getLong(other, UnsafeCopy.BB_ADDRESS_OFFSET) + otherOffset;
+        Double4OpsKernelsAddress.add_unsafe(_destBase, _srcBase, _otherBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer add_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        dest.putDouble(destOffset, _otherx + _selfx);
+        dest.putDouble(destOffset + 8, _othery + _selfy);
+        dest.putDouble(destOffset + 16, _otherz + _selfz);
+        dest.putDouble(destOffset + 24, _otherw + _selfw);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer div_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double scalar) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.div_unsafe(_destBase, _srcBase, scalar);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer div_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double scalar) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, _selfx / scalar);
+        dest.putDouble(destOffset + 8, _selfy / scalar);
+        dest.putDouble(destOffset + 16, _selfz / scalar);
+        dest.putDouble(destOffset + 24, _selfw / scalar);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer div_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.div_unsafe(_destBase, _srcBase, otherX, otherY, otherZ, otherW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer div_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, _selfx / otherX);
+        dest.putDouble(destOffset + 8, _selfy / otherY);
+        dest.putDouble(destOffset + 16, _selfz / otherZ);
+        dest.putDouble(destOffset + 24, _selfw / otherW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer div_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _otherBase = UnsafeOpsHolder.U.getLong(other, UnsafeCopy.BB_ADDRESS_OFFSET) + otherOffset;
+        Double4OpsKernelsAddress.div_unsafe(_destBase, _srcBase, _otherBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer div_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        dest.putDouble(destOffset, _selfx / _otherx);
+        dest.putDouble(destOffset + 8, _selfy / _othery);
+        dest.putDouble(destOffset + 16, _selfz / _otherz);
+        dest.putDouble(destOffset + 24, _selfw / _otherw);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer fma_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double b, double cX, double cY, double cZ, double cW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.fma_unsafe(_destBase, _srcBase, b, cX, cY, cZ, cW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer fma_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double b, double cX, double cY, double cZ, double cW) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            dest.putDouble(destOffset, java.lang.Math.fma(_selfx, b, cX));
+            dest.putDouble(destOffset + 8, java.lang.Math.fma(_selfy, b, cY));
+            dest.putDouble(destOffset + 16, java.lang.Math.fma(_selfz, b, cZ));
+            dest.putDouble(destOffset + 24, java.lang.Math.fma(_selfw, b, cW));
+            return dest;
+        } else {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            dest.putDouble(destOffset, ((_selfx) * (b) + (cX)));
+            dest.putDouble(destOffset + 8, ((_selfy) * (b) + (cY)));
+            dest.putDouble(destOffset + 16, ((_selfz) * (b) + (cZ)));
+            dest.putDouble(destOffset + 24, ((_selfw) * (b) + (cW)));
+            return dest;
+        }
+    }
+
+    public static java.nio.ByteBuffer fma_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer c, int cOffset, double b) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _cBase = UnsafeOpsHolder.U.getLong(c, UnsafeCopy.BB_ADDRESS_OFFSET) + cOffset;
+        Double4OpsKernelsAddress.fma_unsafe(_destBase, _srcBase, _cBase, b);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer fma_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer c, int cOffset, double b) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            double _cx = c.getDouble(cOffset);
+            double _cy = c.getDouble(cOffset + 8);
+            double _cz = c.getDouble(cOffset + 16);
+            double _cw = c.getDouble(cOffset + 24);
+            dest.putDouble(destOffset, java.lang.Math.fma(_selfx, b, _cx));
+            dest.putDouble(destOffset + 8, java.lang.Math.fma(_selfy, b, _cy));
+            dest.putDouble(destOffset + 16, java.lang.Math.fma(_selfz, b, _cz));
+            dest.putDouble(destOffset + 24, java.lang.Math.fma(_selfw, b, _cw));
+            return dest;
+        } else {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            double _cx = c.getDouble(cOffset);
+            double _cy = c.getDouble(cOffset + 8);
+            double _cz = c.getDouble(cOffset + 16);
+            double _cw = c.getDouble(cOffset + 24);
+            dest.putDouble(destOffset, ((_selfx) * (b) + (_cx)));
+            dest.putDouble(destOffset + 8, ((_selfy) * (b) + (_cy)));
+            dest.putDouble(destOffset + 16, ((_selfz) * (b) + (_cz)));
+            dest.putDouble(destOffset + 24, ((_selfw) * (b) + (_cw)));
+            return dest;
+        }
+    }
+
+    public static java.nio.ByteBuffer fma_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double bX, double bY, double bZ, double bW, double cX, double cY, double cZ, double cW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.fma_unsafe(_destBase, _srcBase, bX, bY, bZ, bW, cX, cY, cZ, cW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer fma_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double bX, double bY, double bZ, double bW, double cX, double cY, double cZ, double cW) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            dest.putDouble(destOffset, java.lang.Math.fma(_selfx, bX, cX));
+            dest.putDouble(destOffset + 8, java.lang.Math.fma(_selfy, bY, cY));
+            dest.putDouble(destOffset + 16, java.lang.Math.fma(_selfz, bZ, cZ));
+            dest.putDouble(destOffset + 24, java.lang.Math.fma(_selfw, bW, cW));
+            return dest;
+        } else {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            dest.putDouble(destOffset, ((_selfx) * (bX) + (cX)));
+            dest.putDouble(destOffset + 8, ((_selfy) * (bY) + (cY)));
+            dest.putDouble(destOffset + 16, ((_selfz) * (bZ) + (cZ)));
+            dest.putDouble(destOffset + 24, ((_selfw) * (bW) + (cW)));
+            return dest;
+        }
+    }
+
+    public static java.nio.ByteBuffer fma_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer b, int bOffset, java.nio.ByteBuffer c, int cOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _bBase = UnsafeOpsHolder.U.getLong(b, UnsafeCopy.BB_ADDRESS_OFFSET) + bOffset;
+        long _cBase = UnsafeOpsHolder.U.getLong(c, UnsafeCopy.BB_ADDRESS_OFFSET) + cOffset;
+        Double4OpsKernelsAddress.fma_unsafe(_destBase, _srcBase, _bBase, _cBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer fma_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer b, int bOffset, java.nio.ByteBuffer c, int cOffset) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return fma_api_mulAdd(dest, destOffset, src, srcOffset, b, bOffset, c, cOffset);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _bx = b.getDouble(bOffset);
+        double _by = b.getDouble(bOffset + 8);
+        double _bz = b.getDouble(bOffset + 16);
+        double _bw = b.getDouble(bOffset + 24);
+        double _cx = c.getDouble(cOffset);
+        double _cy = c.getDouble(cOffset + 8);
+        double _cz = c.getDouble(cOffset + 16);
+        double _cw = c.getDouble(cOffset + 24);
+        dest.putDouble(destOffset, java.lang.Math.fma(_selfx, _bx, _cx));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(_selfy, _by, _cy));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_selfz, _bz, _cz));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(_selfw, _bw, _cw));
+        return dest;
+    }
+
+    /** {@code fma_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer fma_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer b, int bOffset, java.nio.ByteBuffer c, int cOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _bx = b.getDouble(bOffset);
+        double _by = b.getDouble(bOffset + 8);
+        double _bz = b.getDouble(bOffset + 16);
+        double _bw = b.getDouble(bOffset + 24);
+        double _cx = c.getDouble(cOffset);
+        double _cy = c.getDouble(cOffset + 8);
+        double _cz = c.getDouble(cOffset + 16);
+        double _cw = c.getDouble(cOffset + 24);
+        dest.putDouble(destOffset, ((_selfx) * (_bx) + (_cx)));
+        dest.putDouble(destOffset + 8, ((_selfy) * (_by) + (_cy)));
+        dest.putDouble(destOffset + 16, ((_selfz) * (_bz) + (_cz)));
+        dest.putDouble(destOffset + 24, ((_selfw) * (_bw) + (_cw)));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer mul_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double scalar) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.mul_unsafe(_destBase, _srcBase, scalar);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer mul_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double scalar) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, scalar * _selfx);
+        dest.putDouble(destOffset + 8, scalar * _selfy);
+        dest.putDouble(destOffset + 16, scalar * _selfz);
+        dest.putDouble(destOffset + 24, scalar * _selfw);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer mul_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.mul_unsafe(_destBase, _srcBase, otherX, otherY, otherZ, otherW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer mul_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, otherX * _selfx);
+        dest.putDouble(destOffset + 8, otherY * _selfy);
+        dest.putDouble(destOffset + 16, otherZ * _selfz);
+        dest.putDouble(destOffset + 24, otherW * _selfw);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer mul_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _otherBase = UnsafeOpsHolder.U.getLong(other, UnsafeCopy.BB_ADDRESS_OFFSET) + otherOffset;
+        Double4OpsKernelsAddress.mul_unsafe(_destBase, _srcBase, _otherBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer mul_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        dest.putDouble(destOffset, _otherx * _selfx);
+        dest.putDouble(destOffset + 8, _othery * _selfy);
+        dest.putDouble(destOffset + 16, _otherz * _selfz);
+        dest.putDouble(destOffset + 24, _otherw * _selfw);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer negate_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.negate_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer negate_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, -_selfx);
+        dest.putDouble(destOffset + 8, -_selfy);
+        dest.putDouble(destOffset + 16, -_selfz);
+        dest.putDouble(destOffset + 24, -_selfw);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer sub_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.sub_unsafe(_destBase, _srcBase, otherX, otherY, otherZ, otherW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer sub_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, _selfx - otherX);
+        dest.putDouble(destOffset + 8, _selfy - otherY);
+        dest.putDouble(destOffset + 16, _selfz - otherZ);
+        dest.putDouble(destOffset + 24, _selfw - otherW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer sub_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _otherBase = UnsafeOpsHolder.U.getLong(other, UnsafeCopy.BB_ADDRESS_OFFSET) + otherOffset;
+        Double4OpsKernelsAddress.sub_unsafe(_destBase, _srcBase, _otherBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer sub_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        dest.putDouble(destOffset, _selfx - _otherx);
+        dest.putDouble(destOffset + 8, _selfy - _othery);
+        dest.putDouble(destOffset + 16, _selfz - _otherz);
+        dest.putDouble(destOffset + 24, _selfw - _otherw);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer makeUniformDirection_unsafe(java.nio.ByteBuffer dest, int destOffset, double u, double v, double w) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        Double4OpsKernelsAddress.makeUniformDirection_unsafe(_destBase, u, v, w);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer makeUniformDirection_api(java.nio.ByteBuffer dest, int destOffset, double u, double v, double w) {
+        double _t0 = java.lang.Math.sqrt(u);
+        double _t1 = v * 6.283185307179586;
+        double _t3 = w * 6.283185307179586;
+        double _t4 = java.lang.Math.sqrt(1.0 - u);
+        dest.putDouble(destOffset, Math.cosWithSin(_t1) * _t4);
+        dest.putDouble(destOffset + 8, Math.sinWithCos(_t1) * _t4);
+        dest.putDouble(destOffset + 16, Math.cosWithSin(_t3) * _t0);
+        dest.putDouble(destOffset + 24, Math.sinWithCos(_t3) * _t0);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer set_unsafe(java.nio.ByteBuffer dest, int destOffset, double vX, double vY, double vZ, double vW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        Double4OpsKernelsAddress.set_unsafe(_destBase, vX, vY, vZ, vW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer set_api(java.nio.ByteBuffer dest, int destOffset, double vX, double vY, double vZ, double vW) {
+        dest.putDouble(destOffset, vX);
+        dest.putDouble(destOffset + 8, vY);
+        dest.putDouble(destOffset + 16, vZ);
+        dest.putDouble(destOffset + 24, vW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer set_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer v, int vOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _vBase = UnsafeOpsHolder.U.getLong(v, UnsafeCopy.BB_ADDRESS_OFFSET) + vOffset;
+        Double4OpsKernelsAddress.set_unsafe(_destBase, _vBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer set_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer v, int vOffset) {
+        double _vx = v.getDouble(vOffset);
+        double _vy = v.getDouble(vOffset + 8);
+        double _vz = v.getDouble(vOffset + 16);
+        double _vw = v.getDouble(vOffset + 24);
+        dest.putDouble(destOffset, _vx);
+        dest.putDouble(destOffset + 8, _vy);
+        dest.putDouble(destOffset + 16, _vz);
+        dest.putDouble(destOffset + 24, _vw);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer set_unsafe(java.nio.ByteBuffer dest, int destOffset, double s) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        Double4OpsKernelsAddress.set_unsafe(_destBase, s);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer set_api(java.nio.ByteBuffer dest, int destOffset, double s) {
+        dest.putDouble(destOffset, s);
+        dest.putDouble(destOffset + 8, s);
+        dest.putDouble(destOffset + 16, s);
+        dest.putDouble(destOffset + 24, s);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer makeZero_unsafe(java.nio.ByteBuffer dest, int destOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        Double4OpsKernelsAddress.makeZero_unsafe(_destBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer makeZero_api(java.nio.ByteBuffer dest, int destOffset) {
+        dest.putDouble(destOffset, 0.0);
+        dest.putDouble(destOffset + 8, 0.0);
+        dest.putDouble(destOffset + 16, 0.0);
+        dest.putDouble(destOffset + 24, 0.0);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer bezier_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.bezier_unsafe(_destBase, _srcBase, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer bezier_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return bezier_api_mulAdd(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t0 = 1.0 - t;
+        double _t1 = t * t;
+        double _t2 = t * _t1;
+        double _t3 = _t0 * _t0;
+        double _t6 = 3.0 * _t0 * _t1;
+        double _t7 = 3.0 * t * _t3;
+        double _t8 = _t0 * _t3;
+        dest.putDouble(destOffset, java.lang.Math.fma(p1X, _t7, _selfx * _t8) + java.lang.Math.fma(p2X, _t6, p3X * _t2));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(p1Y, _t7, _selfy * _t8) + java.lang.Math.fma(p2Y, _t6, p3Y * _t2));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(p1Z, _t7, _selfz * _t8) + java.lang.Math.fma(p2Z, _t6, p3Z * _t2));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(p1W, _t7, _selfw * _t8) + java.lang.Math.fma(p2W, _t6, p3W * _t2));
+        return dest;
+    }
+
+    /** {@code bezier_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer bezier_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t0 = 1.0 - t;
+        double _t1 = t * t;
+        double _t2 = t * _t1;
+        double _t3 = _t0 * _t0;
+        double _t6 = 3.0 * _t0 * _t1;
+        double _t7 = 3.0 * t * _t3;
+        double _t8 = _t0 * _t3;
+        dest.putDouble(destOffset, ((p1X) * (_t7) + (_selfx * _t8)) + ((p2X) * (_t6) + (p3X * _t2)));
+        dest.putDouble(destOffset + 8, ((p1Y) * (_t7) + (_selfy * _t8)) + ((p2Y) * (_t6) + (p3Y * _t2)));
+        dest.putDouble(destOffset + 16, ((p1Z) * (_t7) + (_selfz * _t8)) + ((p2Z) * (_t6) + (p3Z * _t2)));
+        dest.putDouble(destOffset + 24, ((p1W) * (_t7) + (_selfw * _t8)) + ((p2W) * (_t6) + (p3W * _t2)));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer bezier_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, java.nio.ByteBuffer p3, int p3Offset, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _p1Base = UnsafeOpsHolder.U.getLong(p1, UnsafeCopy.BB_ADDRESS_OFFSET) + p1Offset;
+        long _p2Base = UnsafeOpsHolder.U.getLong(p2, UnsafeCopy.BB_ADDRESS_OFFSET) + p2Offset;
+        long _p3Base = UnsafeOpsHolder.U.getLong(p3, UnsafeCopy.BB_ADDRESS_OFFSET) + p3Offset;
+        Double4OpsKernelsAddress.bezier_unsafe(_destBase, _srcBase, _p1Base, _p2Base, _p3Base, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer bezier_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, java.nio.ByteBuffer p3, int p3Offset, double t) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return bezier_api_fma(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        return bezier_api_mulAdd(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+    }
+
+    /** {@code bezier_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer bezier_api_fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, java.nio.ByteBuffer p3, int p3Offset, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _p1x = p1.getDouble(p1Offset);
+        double _p1y = p1.getDouble(p1Offset + 8);
+        double _p1z = p1.getDouble(p1Offset + 16);
+        double _p1w = p1.getDouble(p1Offset + 24);
+        double _p2x = p2.getDouble(p2Offset);
+        double _p2y = p2.getDouble(p2Offset + 8);
+        double _p2z = p2.getDouble(p2Offset + 16);
+        double _p2w = p2.getDouble(p2Offset + 24);
+        double _p3x = p3.getDouble(p3Offset);
+        double _p3y = p3.getDouble(p3Offset + 8);
+        double _p3z = p3.getDouble(p3Offset + 16);
+        double _p3w = p3.getDouble(p3Offset + 24);
+        double _t0 = 1.0 - t;
+        double _t1 = t * t;
+        double _t2 = t * _t1;
+        double _t3 = _t0 * _t0;
+        double _t6 = 3.0 * _t0 * _t1;
+        double _t7 = 3.0 * t * _t3;
+        double _t8 = _t0 * _t3;
+        dest.putDouble(destOffset, java.lang.Math.fma(_p1x, _t7, _selfx * _t8) + java.lang.Math.fma(_p2x, _t6, _p3x * _t2));
+        return bezier_api_fma_s16159e2b_1(dest, destOffset, _selfy, _selfz, _selfw, _p1y, _p1z, _p1w, _p2y, _p2z, _p2w, _p3y, _p3z, _p3w, _t2, _t6, _t7, _t8);
+    }
+
+    /** Piece 2 of {@code bezier_api_fma}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer bezier_api_fma_s16159e2b_1(java.nio.ByteBuffer dest, int destOffset, double _selfy, double _selfz, double _selfw, double _p1y, double _p1z, double _p1w, double _p2y, double _p2z, double _p2w, double _p3y, double _p3z, double _p3w, double _t2, double _t6, double _t7, double _t8) {
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(_p1y, _t7, _selfy * _t8) + java.lang.Math.fma(_p2y, _t6, _p3y * _t2));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_p1z, _t7, _selfz * _t8) + java.lang.Math.fma(_p2z, _t6, _p3z * _t2));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(_p1w, _t7, _selfw * _t8) + java.lang.Math.fma(_p2w, _t6, _p3w * _t2));
+        return dest;
+    }
+
+    /** {@code bezier_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer bezier_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, java.nio.ByteBuffer p3, int p3Offset, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _p1x = p1.getDouble(p1Offset);
+        double _p1y = p1.getDouble(p1Offset + 8);
+        double _p1z = p1.getDouble(p1Offset + 16);
+        double _p1w = p1.getDouble(p1Offset + 24);
+        double _p2x = p2.getDouble(p2Offset);
+        double _p2y = p2.getDouble(p2Offset + 8);
+        double _p2z = p2.getDouble(p2Offset + 16);
+        double _p2w = p2.getDouble(p2Offset + 24);
+        double _p3x = p3.getDouble(p3Offset);
+        double _p3y = p3.getDouble(p3Offset + 8);
+        double _p3z = p3.getDouble(p3Offset + 16);
+        double _p3w = p3.getDouble(p3Offset + 24);
+        double _t0 = 1.0 - t;
+        double _t1 = t * t;
+        double _t2 = t * _t1;
+        double _t3 = _t0 * _t0;
+        double _t6 = 3.0 * _t0 * _t1;
+        double _t7 = 3.0 * t * _t3;
+        double _t8 = _t0 * _t3;
+        dest.putDouble(destOffset, ((_p1x) * (_t7) + (_selfx * _t8)) + ((_p2x) * (_t6) + (_p3x * _t2)));
+        return bezier_api_mulAdd_s295ca494_1(dest, destOffset, _selfy, _selfz, _selfw, _p1y, _p1z, _p1w, _p2y, _p2z, _p2w, _p3y, _p3z, _p3w, _t2, _t6, _t7, _t8);
+    }
+
+    /** Piece 2 of {@code bezier_api_mulAdd}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer bezier_api_mulAdd_s295ca494_1(java.nio.ByteBuffer dest, int destOffset, double _selfy, double _selfz, double _selfw, double _p1y, double _p1z, double _p1w, double _p2y, double _p2z, double _p2w, double _p3y, double _p3z, double _p3w, double _t2, double _t6, double _t7, double _t8) {
+        dest.putDouble(destOffset + 8, ((_p1y) * (_t7) + (_selfy * _t8)) + ((_p2y) * (_t6) + (_p3y * _t2)));
+        dest.putDouble(destOffset + 16, ((_p1z) * (_t7) + (_selfz * _t8)) + ((_p2z) * (_t6) + (_p3z * _t2)));
+        dest.putDouble(destOffset + 24, ((_p1w) * (_t7) + (_selfw * _t8)) + ((_p2w) * (_t6) + (_p3w * _t2)));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer bezier2_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.bezier2_unsafe(_destBase, _srcBase, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer bezier2_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double t) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return bezier2_api_mulAdd(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t0 = t * t;
+        double _t1 = 1.0 - t;
+        double _t3 = (t + t) * _t1;
+        double _t4 = _t1 * _t1;
+        dest.putDouble(destOffset, java.lang.Math.fma(p2X, _t0, java.lang.Math.fma(p1X, _t3, _selfx * _t4)));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(p2Y, _t0, java.lang.Math.fma(p1Y, _t3, _selfy * _t4)));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(p2Z, _t0, java.lang.Math.fma(p1Z, _t3, _selfz * _t4)));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(p2W, _t0, java.lang.Math.fma(p1W, _t3, _selfw * _t4)));
+        return dest;
+    }
+
+    /** {@code bezier2_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer bezier2_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t0 = t * t;
+        double _t1 = 1.0 - t;
+        double _t3 = (t + t) * _t1;
+        double _t4 = _t1 * _t1;
+        dest.putDouble(destOffset, ((p2X) * (_t0) + (((p1X) * (_t3) + (_selfx * _t4)))));
+        dest.putDouble(destOffset + 8, ((p2Y) * (_t0) + (((p1Y) * (_t3) + (_selfy * _t4)))));
+        dest.putDouble(destOffset + 16, ((p2Z) * (_t0) + (((p1Z) * (_t3) + (_selfz * _t4)))));
+        dest.putDouble(destOffset + 24, ((p2W) * (_t0) + (((p1W) * (_t3) + (_selfw * _t4)))));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer bezier2_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _p1Base = UnsafeOpsHolder.U.getLong(p1, UnsafeCopy.BB_ADDRESS_OFFSET) + p1Offset;
+        long _p2Base = UnsafeOpsHolder.U.getLong(p2, UnsafeCopy.BB_ADDRESS_OFFSET) + p2Offset;
+        Double4OpsKernelsAddress.bezier2_unsafe(_destBase, _srcBase, _p1Base, _p2Base, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer bezier2_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, double t) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return bezier2_api_mulAdd(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, t);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _p1x = p1.getDouble(p1Offset);
+        double _p1y = p1.getDouble(p1Offset + 8);
+        double _p1z = p1.getDouble(p1Offset + 16);
+        double _p1w = p1.getDouble(p1Offset + 24);
+        double _p2x = p2.getDouble(p2Offset);
+        double _p2y = p2.getDouble(p2Offset + 8);
+        double _p2z = p2.getDouble(p2Offset + 16);
+        double _p2w = p2.getDouble(p2Offset + 24);
+        double _t0 = t * t;
+        double _t1 = 1.0 - t;
+        double _t3 = (t + t) * _t1;
+        double _t4 = _t1 * _t1;
+        dest.putDouble(destOffset, java.lang.Math.fma(_p2x, _t0, java.lang.Math.fma(_p1x, _t3, _selfx * _t4)));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(_p2y, _t0, java.lang.Math.fma(_p1y, _t3, _selfy * _t4)));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_p2z, _t0, java.lang.Math.fma(_p1z, _t3, _selfz * _t4)));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(_p2w, _t0, java.lang.Math.fma(_p1w, _t3, _selfw * _t4)));
+        return dest;
+    }
+
+    /** {@code bezier2_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer bezier2_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _p1x = p1.getDouble(p1Offset);
+        double _p1y = p1.getDouble(p1Offset + 8);
+        double _p1z = p1.getDouble(p1Offset + 16);
+        double _p1w = p1.getDouble(p1Offset + 24);
+        double _p2x = p2.getDouble(p2Offset);
+        double _p2y = p2.getDouble(p2Offset + 8);
+        double _p2z = p2.getDouble(p2Offset + 16);
+        double _p2w = p2.getDouble(p2Offset + 24);
+        double _t0 = t * t;
+        double _t1 = 1.0 - t;
+        double _t3 = (t + t) * _t1;
+        double _t4 = _t1 * _t1;
+        dest.putDouble(destOffset, ((_p2x) * (_t0) + (((_p1x) * (_t3) + (_selfx * _t4)))));
+        dest.putDouble(destOffset + 8, ((_p2y) * (_t0) + (((_p1y) * (_t3) + (_selfy * _t4)))));
+        dest.putDouble(destOffset + 16, ((_p2z) * (_t0) + (((_p1z) * (_t3) + (_selfz * _t4)))));
+        dest.putDouble(destOffset + 24, ((_p2w) * (_t0) + (((_p1w) * (_t3) + (_selfw * _t4)))));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer bezier2Tangent_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.bezier2Tangent_unsafe(_destBase, _srcBase, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer bezier2Tangent_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double t) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return bezier2Tangent_api_mulAdd(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t1 = t + t;
+        double _t2 = 2.0 * (1.0 - t);
+        dest.putDouble(destOffset, java.lang.Math.fma(p1X - _selfx, _t2, (p2X - p1X) * _t1));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(p1Y - _selfy, _t2, (p2Y - p1Y) * _t1));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(p1Z - _selfz, _t2, (p2Z - p1Z) * _t1));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(p1W - _selfw, _t2, (p2W - p1W) * _t1));
+        return dest;
+    }
+
+    /** {@code bezier2Tangent_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer bezier2Tangent_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t1 = t + t;
+        double _t2 = 2.0 * (1.0 - t);
+        dest.putDouble(destOffset, ((p1X - _selfx) * (_t2) + ((p2X - p1X) * _t1)));
+        dest.putDouble(destOffset + 8, ((p1Y - _selfy) * (_t2) + ((p2Y - p1Y) * _t1)));
+        dest.putDouble(destOffset + 16, ((p1Z - _selfz) * (_t2) + ((p2Z - p1Z) * _t1)));
+        dest.putDouble(destOffset + 24, ((p1W - _selfw) * (_t2) + ((p2W - p1W) * _t1)));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer bezier2Tangent_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _p1Base = UnsafeOpsHolder.U.getLong(p1, UnsafeCopy.BB_ADDRESS_OFFSET) + p1Offset;
+        long _p2Base = UnsafeOpsHolder.U.getLong(p2, UnsafeCopy.BB_ADDRESS_OFFSET) + p2Offset;
+        Double4OpsKernelsAddress.bezier2Tangent_unsafe(_destBase, _srcBase, _p1Base, _p2Base, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer bezier2Tangent_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, double t) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return bezier2Tangent_api_mulAdd(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, t);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _p1x = p1.getDouble(p1Offset);
+        double _p1y = p1.getDouble(p1Offset + 8);
+        double _p1z = p1.getDouble(p1Offset + 16);
+        double _p1w = p1.getDouble(p1Offset + 24);
+        double _p2x = p2.getDouble(p2Offset);
+        double _p2y = p2.getDouble(p2Offset + 8);
+        double _p2z = p2.getDouble(p2Offset + 16);
+        double _p2w = p2.getDouble(p2Offset + 24);
+        double _t1 = t + t;
+        double _t2 = 2.0 * (1.0 - t);
+        dest.putDouble(destOffset, java.lang.Math.fma(_p1x - _selfx, _t2, (_p2x - _p1x) * _t1));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(_p1y - _selfy, _t2, (_p2y - _p1y) * _t1));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_p1z - _selfz, _t2, (_p2z - _p1z) * _t1));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(_p1w - _selfw, _t2, (_p2w - _p1w) * _t1));
+        return dest;
+    }
+
+    /** {@code bezier2Tangent_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer bezier2Tangent_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _p1x = p1.getDouble(p1Offset);
+        double _p1y = p1.getDouble(p1Offset + 8);
+        double _p1z = p1.getDouble(p1Offset + 16);
+        double _p1w = p1.getDouble(p1Offset + 24);
+        double _p2x = p2.getDouble(p2Offset);
+        double _p2y = p2.getDouble(p2Offset + 8);
+        double _p2z = p2.getDouble(p2Offset + 16);
+        double _p2w = p2.getDouble(p2Offset + 24);
+        double _t1 = t + t;
+        double _t2 = 2.0 * (1.0 - t);
+        dest.putDouble(destOffset, ((_p1x - _selfx) * (_t2) + ((_p2x - _p1x) * _t1)));
+        dest.putDouble(destOffset + 8, ((_p1y - _selfy) * (_t2) + ((_p2y - _p1y) * _t1)));
+        dest.putDouble(destOffset + 16, ((_p1z - _selfz) * (_t2) + ((_p2z - _p1z) * _t1)));
+        dest.putDouble(destOffset + 24, ((_p1w - _selfw) * (_t2) + ((_p2w - _p1w) * _t1)));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer bezierTangent_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.bezierTangent_unsafe(_destBase, _srcBase, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer bezierTangent_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return bezierTangent_api_mulAdd(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t1 = 1.0 - t;
+        double _t2 = 3.0 * t * t;
+        double _t5 = 6.0 * t * _t1;
+        double _t6 = 3.0 * _t1 * _t1;
+        dest.putDouble(destOffset, java.lang.Math.fma(p3X - p2X, _t2, java.lang.Math.fma(p1X - _selfx, _t6, (p2X - p1X) * _t5)));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(p3Y - p2Y, _t2, java.lang.Math.fma(p1Y - _selfy, _t6, (p2Y - p1Y) * _t5)));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(p3Z - p2Z, _t2, java.lang.Math.fma(p1Z - _selfz, _t6, (p2Z - p1Z) * _t5)));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(p3W - p2W, _t2, java.lang.Math.fma(p1W - _selfw, _t6, (p2W - p1W) * _t5)));
+        return dest;
+    }
+
+    /** {@code bezierTangent_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer bezierTangent_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t1 = 1.0 - t;
+        double _t2 = 3.0 * t * t;
+        double _t5 = 6.0 * t * _t1;
+        double _t6 = 3.0 * _t1 * _t1;
+        dest.putDouble(destOffset, ((p3X - p2X) * (_t2) + (((p1X - _selfx) * (_t6) + ((p2X - p1X) * _t5)))));
+        dest.putDouble(destOffset + 8, ((p3Y - p2Y) * (_t2) + (((p1Y - _selfy) * (_t6) + ((p2Y - p1Y) * _t5)))));
+        dest.putDouble(destOffset + 16, ((p3Z - p2Z) * (_t2) + (((p1Z - _selfz) * (_t6) + ((p2Z - p1Z) * _t5)))));
+        dest.putDouble(destOffset + 24, ((p3W - p2W) * (_t2) + (((p1W - _selfw) * (_t6) + ((p2W - p1W) * _t5)))));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer bezierTangent_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, java.nio.ByteBuffer p3, int p3Offset, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _p1Base = UnsafeOpsHolder.U.getLong(p1, UnsafeCopy.BB_ADDRESS_OFFSET) + p1Offset;
+        long _p2Base = UnsafeOpsHolder.U.getLong(p2, UnsafeCopy.BB_ADDRESS_OFFSET) + p2Offset;
+        long _p3Base = UnsafeOpsHolder.U.getLong(p3, UnsafeCopy.BB_ADDRESS_OFFSET) + p3Offset;
+        Double4OpsKernelsAddress.bezierTangent_unsafe(_destBase, _srcBase, _p1Base, _p2Base, _p3Base, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer bezierTangent_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, java.nio.ByteBuffer p3, int p3Offset, double t) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return bezierTangent_api_fma(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        return bezierTangent_api_mulAdd(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+    }
+
+    /** {@code bezierTangent_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer bezierTangent_api_fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, java.nio.ByteBuffer p3, int p3Offset, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _p1x = p1.getDouble(p1Offset);
+        double _p1y = p1.getDouble(p1Offset + 8);
+        double _p1z = p1.getDouble(p1Offset + 16);
+        double _p1w = p1.getDouble(p1Offset + 24);
+        double _p2x = p2.getDouble(p2Offset);
+        double _p2y = p2.getDouble(p2Offset + 8);
+        double _p2z = p2.getDouble(p2Offset + 16);
+        double _p2w = p2.getDouble(p2Offset + 24);
+        double _p3x = p3.getDouble(p3Offset);
+        double _p3y = p3.getDouble(p3Offset + 8);
+        double _p3z = p3.getDouble(p3Offset + 16);
+        double _p3w = p3.getDouble(p3Offset + 24);
+        double _t1 = 1.0 - t;
+        double _t2 = 3.0 * t * t;
+        double _t5 = 6.0 * t * _t1;
+        double _t6 = 3.0 * _t1 * _t1;
+        dest.putDouble(destOffset, java.lang.Math.fma(_p3x - _p2x, _t2, java.lang.Math.fma(_p1x - _selfx, _t6, (_p2x - _p1x) * _t5)));
+        return bezierTangent_api_fma_s180ea4dc_1(dest, destOffset, _selfy, _selfz, _selfw, _p1y, _p1z, _p1w, _p2y, _p2z, _p2w, _p3y, _p3z, _p3w, _t2, _t5, _t6);
+    }
+
+    /** Piece 2 of {@code bezierTangent_api_fma}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer bezierTangent_api_fma_s180ea4dc_1(java.nio.ByteBuffer dest, int destOffset, double _selfy, double _selfz, double _selfw, double _p1y, double _p1z, double _p1w, double _p2y, double _p2z, double _p2w, double _p3y, double _p3z, double _p3w, double _t2, double _t5, double _t6) {
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(_p3y - _p2y, _t2, java.lang.Math.fma(_p1y - _selfy, _t6, (_p2y - _p1y) * _t5)));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_p3z - _p2z, _t2, java.lang.Math.fma(_p1z - _selfz, _t6, (_p2z - _p1z) * _t5)));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(_p3w - _p2w, _t2, java.lang.Math.fma(_p1w - _selfw, _t6, (_p2w - _p1w) * _t5)));
+        return dest;
+    }
+
+    /** {@code bezierTangent_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer bezierTangent_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, java.nio.ByteBuffer p3, int p3Offset, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _p1x = p1.getDouble(p1Offset);
+        double _p1y = p1.getDouble(p1Offset + 8);
+        double _p1z = p1.getDouble(p1Offset + 16);
+        double _p1w = p1.getDouble(p1Offset + 24);
+        double _p2x = p2.getDouble(p2Offset);
+        double _p2y = p2.getDouble(p2Offset + 8);
+        double _p2z = p2.getDouble(p2Offset + 16);
+        double _p2w = p2.getDouble(p2Offset + 24);
+        double _p3x = p3.getDouble(p3Offset);
+        double _p3y = p3.getDouble(p3Offset + 8);
+        double _p3z = p3.getDouble(p3Offset + 16);
+        double _p3w = p3.getDouble(p3Offset + 24);
+        double _t1 = 1.0 - t;
+        double _t2 = 3.0 * t * t;
+        double _t5 = 6.0 * t * _t1;
+        double _t6 = 3.0 * _t1 * _t1;
+        dest.putDouble(destOffset, ((_p3x - _p2x) * (_t2) + (((_p1x - _selfx) * (_t6) + ((_p2x - _p1x) * _t5)))));
+        dest.putDouble(destOffset + 8, ((_p3y - _p2y) * (_t2) + (((_p1y - _selfy) * (_t6) + ((_p2y - _p1y) * _t5)))));
+        return bezierTangent_api_mulAdd_sf9252921_1(dest, destOffset, _selfz, _selfw, _p1z, _p1w, _p2z, _p2w, _p3z, _p3w, _t2, _t5, _t6);
+    }
+
+    /** Piece 2 of {@code bezierTangent_api_mulAdd}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer bezierTangent_api_mulAdd_sf9252921_1(java.nio.ByteBuffer dest, int destOffset, double _selfz, double _selfw, double _p1z, double _p1w, double _p2z, double _p2w, double _p3z, double _p3w, double _t2, double _t5, double _t6) {
+        dest.putDouble(destOffset + 16, ((_p3z - _p2z) * (_t2) + (((_p1z - _selfz) * (_t6) + ((_p2z - _p1z) * _t5)))));
+        dest.putDouble(destOffset + 24, ((_p3w - _p2w) * (_t2) + (((_p1w - _selfw) * (_t6) + ((_p2w - _p1w) * _t5)))));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer catmullRom_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.catmullRom_unsafe(_destBase, _srcBase, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer catmullRom_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return catmullRom_api_fma(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return catmullRom_api_mulAdd(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+    }
+
+    /** {@code catmullRom_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer catmullRom_api_fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t0 = t * t;
+        double _t1 = t * _t0;
+        dest.putDouble(destOffset, 0.5 * (java.lang.Math.fma(2.0, p1X, t * (p2X - _selfx)) + java.lang.Math.fma(java.lang.Math.fma(-5.0, p1X, java.lang.Math.fma(2.0, _selfx, java.lang.Math.fma(4.0, p2X, -p3X))), _t0, java.lang.Math.fma(-3.0, p2X, java.lang.Math.fma(3.0, p1X, p3X - _selfx)) * _t1)));
+        dest.putDouble(destOffset + 8, 0.5 * (java.lang.Math.fma(2.0, p1Y, t * (p2Y - _selfy)) + java.lang.Math.fma(java.lang.Math.fma(-5.0, p1Y, java.lang.Math.fma(2.0, _selfy, java.lang.Math.fma(4.0, p2Y, -p3Y))), _t0, java.lang.Math.fma(-3.0, p2Y, java.lang.Math.fma(3.0, p1Y, p3Y - _selfy)) * _t1)));
+        return catmullRom_api_fma_sb1d03630_1(dest, destOffset, p1Z, p1W, p2Z, p2W, p3Z, p3W, t, _selfz, _selfw, _t0, _t1);
+    }
+
+    /** Piece 2 of {@code catmullRom_api_fma}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer catmullRom_api_fma_sb1d03630_1(java.nio.ByteBuffer dest, int destOffset, double p1Z, double p1W, double p2Z, double p2W, double p3Z, double p3W, double t, double _selfz, double _selfw, double _t0, double _t1) {
+        dest.putDouble(destOffset + 16, 0.5 * (java.lang.Math.fma(2.0, p1Z, t * (p2Z - _selfz)) + java.lang.Math.fma(java.lang.Math.fma(-5.0, p1Z, java.lang.Math.fma(2.0, _selfz, java.lang.Math.fma(4.0, p2Z, -p3Z))), _t0, java.lang.Math.fma(-3.0, p2Z, java.lang.Math.fma(3.0, p1Z, p3Z - _selfz)) * _t1)));
+        dest.putDouble(destOffset + 24, 0.5 * (java.lang.Math.fma(2.0, p1W, t * (p2W - _selfw)) + java.lang.Math.fma(java.lang.Math.fma(-5.0, p1W, java.lang.Math.fma(2.0, _selfw, java.lang.Math.fma(4.0, p2W, -p3W))), _t0, java.lang.Math.fma(-3.0, p2W, java.lang.Math.fma(3.0, p1W, p3W - _selfw)) * _t1)));
+        return dest;
+    }
+
+    /** {@code catmullRom_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer catmullRom_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t0 = t * t;
+        double _t1 = t * _t0;
+        dest.putDouble(destOffset, 0.5 * (((2.0) * (p1X) + (t * (p2X - _selfx))) + ((((((2.0) * (_selfx) + (((4.0) * (p2X) - (p3X))))) - (5.0) * (p1X))) * (_t0) + (((((3.0) * (p1X) + (p3X - _selfx))) - (3.0) * (p2X)) * _t1))));
+        dest.putDouble(destOffset + 8, 0.5 * (((2.0) * (p1Y) + (t * (p2Y - _selfy))) + ((((((2.0) * (_selfy) + (((4.0) * (p2Y) - (p3Y))))) - (5.0) * (p1Y))) * (_t0) + (((((3.0) * (p1Y) + (p3Y - _selfy))) - (3.0) * (p2Y)) * _t1))));
+        dest.putDouble(destOffset + 16, 0.5 * (((2.0) * (p1Z) + (t * (p2Z - _selfz))) + ((((((2.0) * (_selfz) + (((4.0) * (p2Z) - (p3Z))))) - (5.0) * (p1Z))) * (_t0) + (((((3.0) * (p1Z) + (p3Z - _selfz))) - (3.0) * (p2Z)) * _t1))));
+        return catmullRom_api_mulAdd_sacac0da9_1(dest, destOffset, p1W, p2W, p3W, t, _selfw, _t0, _t1);
+    }
+
+    /** Piece 2 of {@code catmullRom_api_mulAdd}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer catmullRom_api_mulAdd_sacac0da9_1(java.nio.ByteBuffer dest, int destOffset, double p1W, double p2W, double p3W, double t, double _selfw, double _t0, double _t1) {
+        dest.putDouble(destOffset + 24, 0.5 * (((2.0) * (p1W) + (t * (p2W - _selfw))) + ((((((2.0) * (_selfw) + (((4.0) * (p2W) - (p3W))))) - (5.0) * (p1W))) * (_t0) + (((((3.0) * (p1W) + (p3W - _selfw))) - (3.0) * (p2W)) * _t1))));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer catmullRom_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, java.nio.ByteBuffer p3, int p3Offset, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _p1Base = UnsafeOpsHolder.U.getLong(p1, UnsafeCopy.BB_ADDRESS_OFFSET) + p1Offset;
+        long _p2Base = UnsafeOpsHolder.U.getLong(p2, UnsafeCopy.BB_ADDRESS_OFFSET) + p2Offset;
+        long _p3Base = UnsafeOpsHolder.U.getLong(p3, UnsafeCopy.BB_ADDRESS_OFFSET) + p3Offset;
+        Double4OpsKernelsAddress.catmullRom_unsafe(_destBase, _srcBase, _p1Base, _p2Base, _p3Base, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer catmullRom_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, java.nio.ByteBuffer p3, int p3Offset, double t) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return catmullRom_api_fma(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        return catmullRom_api_mulAdd(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+    }
+
+    /** {@code catmullRom_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer catmullRom_api_fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, java.nio.ByteBuffer p3, int p3Offset, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _p1x = p1.getDouble(p1Offset);
+        double _p1y = p1.getDouble(p1Offset + 8);
+        double _p1z = p1.getDouble(p1Offset + 16);
+        double _p1w = p1.getDouble(p1Offset + 24);
+        double _p2x = p2.getDouble(p2Offset);
+        double _p2y = p2.getDouble(p2Offset + 8);
+        double _p2z = p2.getDouble(p2Offset + 16);
+        double _p2w = p2.getDouble(p2Offset + 24);
+        double _p3x = p3.getDouble(p3Offset);
+        double _p3y = p3.getDouble(p3Offset + 8);
+        double _p3z = p3.getDouble(p3Offset + 16);
+        double _p3w = p3.getDouble(p3Offset + 24);
+        double _t0 = t * t;
+        double _t1 = t * _t0;
+        dest.putDouble(destOffset, 0.5 * (java.lang.Math.fma(2.0, _p1x, t * (_p2x - _selfx)) + java.lang.Math.fma(java.lang.Math.fma(-5.0, _p1x, java.lang.Math.fma(2.0, _selfx, java.lang.Math.fma(4.0, _p2x, -_p3x))), _t0, java.lang.Math.fma(-3.0, _p2x, java.lang.Math.fma(3.0, _p1x, _p3x - _selfx)) * _t1)));
+        return catmullRom_api_fma_s3220010a_1(dest, destOffset, t, _selfy, _selfz, _selfw, _p1y, _p1z, _p1w, _p2y, _p2z, _p2w, _p3y, _p3z, _p3w, _t0, _t1);
+    }
+
+    /** Piece 2 of {@code catmullRom_api_fma}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer catmullRom_api_fma_s3220010a_1(java.nio.ByteBuffer dest, int destOffset, double t, double _selfy, double _selfz, double _selfw, double _p1y, double _p1z, double _p1w, double _p2y, double _p2z, double _p2w, double _p3y, double _p3z, double _p3w, double _t0, double _t1) {
+        dest.putDouble(destOffset + 8, 0.5 * (java.lang.Math.fma(2.0, _p1y, t * (_p2y - _selfy)) + java.lang.Math.fma(java.lang.Math.fma(-5.0, _p1y, java.lang.Math.fma(2.0, _selfy, java.lang.Math.fma(4.0, _p2y, -_p3y))), _t0, java.lang.Math.fma(-3.0, _p2y, java.lang.Math.fma(3.0, _p1y, _p3y - _selfy)) * _t1)));
+        dest.putDouble(destOffset + 16, 0.5 * (java.lang.Math.fma(2.0, _p1z, t * (_p2z - _selfz)) + java.lang.Math.fma(java.lang.Math.fma(-5.0, _p1z, java.lang.Math.fma(2.0, _selfz, java.lang.Math.fma(4.0, _p2z, -_p3z))), _t0, java.lang.Math.fma(-3.0, _p2z, java.lang.Math.fma(3.0, _p1z, _p3z - _selfz)) * _t1)));
+        dest.putDouble(destOffset + 24, 0.5 * (java.lang.Math.fma(2.0, _p1w, t * (_p2w - _selfw)) + java.lang.Math.fma(java.lang.Math.fma(-5.0, _p1w, java.lang.Math.fma(2.0, _selfw, java.lang.Math.fma(4.0, _p2w, -_p3w))), _t0, java.lang.Math.fma(-3.0, _p2w, java.lang.Math.fma(3.0, _p1w, _p3w - _selfw)) * _t1)));
+        return dest;
+    }
+
+    /** {@code catmullRom_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer catmullRom_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, java.nio.ByteBuffer p3, int p3Offset, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _p1x = p1.getDouble(p1Offset);
+        double _p1y = p1.getDouble(p1Offset + 8);
+        double _p1z = p1.getDouble(p1Offset + 16);
+        double _p1w = p1.getDouble(p1Offset + 24);
+        double _p2x = p2.getDouble(p2Offset);
+        double _p2y = p2.getDouble(p2Offset + 8);
+        double _p2z = p2.getDouble(p2Offset + 16);
+        double _p2w = p2.getDouble(p2Offset + 24);
+        double _p3x = p3.getDouble(p3Offset);
+        double _p3y = p3.getDouble(p3Offset + 8);
+        double _p3z = p3.getDouble(p3Offset + 16);
+        double _p3w = p3.getDouble(p3Offset + 24);
+        double _t0 = t * t;
+        double _t1 = t * _t0;
+        dest.putDouble(destOffset, 0.5 * (((2.0) * (_p1x) + (t * (_p2x - _selfx))) + ((((((2.0) * (_selfx) + (((4.0) * (_p2x) - (_p3x))))) - (5.0) * (_p1x))) * (_t0) + (((((3.0) * (_p1x) + (_p3x - _selfx))) - (3.0) * (_p2x)) * _t1))));
+        return catmullRom_api_mulAdd_s4f7354f_1(dest, destOffset, t, _selfy, _selfz, _selfw, _p1y, _p1z, _p1w, _p2y, _p2z, _p2w, _p3y, _p3z, _p3w, _t0, _t1);
+    }
+
+    /** Piece 2 of {@code catmullRom_api_mulAdd}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer catmullRom_api_mulAdd_s4f7354f_1(java.nio.ByteBuffer dest, int destOffset, double t, double _selfy, double _selfz, double _selfw, double _p1y, double _p1z, double _p1w, double _p2y, double _p2z, double _p2w, double _p3y, double _p3z, double _p3w, double _t0, double _t1) {
+        dest.putDouble(destOffset + 8, 0.5 * (((2.0) * (_p1y) + (t * (_p2y - _selfy))) + ((((((2.0) * (_selfy) + (((4.0) * (_p2y) - (_p3y))))) - (5.0) * (_p1y))) * (_t0) + (((((3.0) * (_p1y) + (_p3y - _selfy))) - (3.0) * (_p2y)) * _t1))));
+        dest.putDouble(destOffset + 16, 0.5 * (((2.0) * (_p1z) + (t * (_p2z - _selfz))) + ((((((2.0) * (_selfz) + (((4.0) * (_p2z) - (_p3z))))) - (5.0) * (_p1z))) * (_t0) + (((((3.0) * (_p1z) + (_p3z - _selfz))) - (3.0) * (_p2z)) * _t1))));
+        dest.putDouble(destOffset + 24, 0.5 * (((2.0) * (_p1w) + (t * (_p2w - _selfw))) + ((((((2.0) * (_selfw) + (((4.0) * (_p2w) - (_p3w))))) - (5.0) * (_p1w))) * (_t0) + (((((3.0) * (_p1w) + (_p3w - _selfw))) - (3.0) * (_p2w)) * _t1))));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer catmullRomTangent_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.catmullRomTangent_unsafe(_destBase, _srcBase, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer catmullRomTangent_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return catmullRomTangent_api_fma(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return catmullRomTangent_api_mulAdd(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+    }
+
+    /** {@code catmullRomTangent_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer catmullRomTangent_api_fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t0 = t * t;
+        dest.putDouble(destOffset, 0.5 * java.lang.Math.fma(t, 2.0 * java.lang.Math.fma(-5.0, p1X, java.lang.Math.fma(2.0, _selfx, java.lang.Math.fma(4.0, p2X, -p3X))), java.lang.Math.fma(3.0 * java.lang.Math.fma(-3.0, p2X, java.lang.Math.fma(3.0, p1X, p3X - _selfx)), _t0, p2X - _selfx)));
+        dest.putDouble(destOffset + 8, 0.5 * java.lang.Math.fma(t, 2.0 * java.lang.Math.fma(-5.0, p1Y, java.lang.Math.fma(2.0, _selfy, java.lang.Math.fma(4.0, p2Y, -p3Y))), java.lang.Math.fma(3.0 * java.lang.Math.fma(-3.0, p2Y, java.lang.Math.fma(3.0, p1Y, p3Y - _selfy)), _t0, p2Y - _selfy)));
+        return catmullRomTangent_api_fma_sfe5b5ba1_1(dest, destOffset, p1Z, p1W, p2Z, p2W, p3Z, p3W, t, _selfz, _selfw, _t0);
+    }
+
+    /** Piece 2 of {@code catmullRomTangent_api_fma}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer catmullRomTangent_api_fma_sfe5b5ba1_1(java.nio.ByteBuffer dest, int destOffset, double p1Z, double p1W, double p2Z, double p2W, double p3Z, double p3W, double t, double _selfz, double _selfw, double _t0) {
+        dest.putDouble(destOffset + 16, 0.5 * java.lang.Math.fma(t, 2.0 * java.lang.Math.fma(-5.0, p1Z, java.lang.Math.fma(2.0, _selfz, java.lang.Math.fma(4.0, p2Z, -p3Z))), java.lang.Math.fma(3.0 * java.lang.Math.fma(-3.0, p2Z, java.lang.Math.fma(3.0, p1Z, p3Z - _selfz)), _t0, p2Z - _selfz)));
+        dest.putDouble(destOffset + 24, 0.5 * java.lang.Math.fma(t, 2.0 * java.lang.Math.fma(-5.0, p1W, java.lang.Math.fma(2.0, _selfw, java.lang.Math.fma(4.0, p2W, -p3W))), java.lang.Math.fma(3.0 * java.lang.Math.fma(-3.0, p2W, java.lang.Math.fma(3.0, p1W, p3W - _selfw)), _t0, p2W - _selfw)));
+        return dest;
+    }
+
+    /** {@code catmullRomTangent_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer catmullRomTangent_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t0 = t * t;
+        dest.putDouble(destOffset, 0.5 * ((t) * (2.0 * ((((2.0) * (_selfx) + (((4.0) * (p2X) - (p3X))))) - (5.0) * (p1X))) + (((3.0 * ((((3.0) * (p1X) + (p3X - _selfx))) - (3.0) * (p2X))) * (_t0) + (p2X - _selfx)))));
+        dest.putDouble(destOffset + 8, 0.5 * ((t) * (2.0 * ((((2.0) * (_selfy) + (((4.0) * (p2Y) - (p3Y))))) - (5.0) * (p1Y))) + (((3.0 * ((((3.0) * (p1Y) + (p3Y - _selfy))) - (3.0) * (p2Y))) * (_t0) + (p2Y - _selfy)))));
+        dest.putDouble(destOffset + 16, 0.5 * ((t) * (2.0 * ((((2.0) * (_selfz) + (((4.0) * (p2Z) - (p3Z))))) - (5.0) * (p1Z))) + (((3.0 * ((((3.0) * (p1Z) + (p3Z - _selfz))) - (3.0) * (p2Z))) * (_t0) + (p2Z - _selfz)))));
+        return catmullRomTangent_api_mulAdd_s1374ec4e_1(dest, destOffset, p1W, p2W, p3W, t, _selfw, _t0);
+    }
+
+    /** Piece 2 of {@code catmullRomTangent_api_mulAdd}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer catmullRomTangent_api_mulAdd_s1374ec4e_1(java.nio.ByteBuffer dest, int destOffset, double p1W, double p2W, double p3W, double t, double _selfw, double _t0) {
+        dest.putDouble(destOffset + 24, 0.5 * ((t) * (2.0 * ((((2.0) * (_selfw) + (((4.0) * (p2W) - (p3W))))) - (5.0) * (p1W))) + (((3.0 * ((((3.0) * (p1W) + (p3W - _selfw))) - (3.0) * (p2W))) * (_t0) + (p2W - _selfw)))));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer catmullRomTangent_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, java.nio.ByteBuffer p3, int p3Offset, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _p1Base = UnsafeOpsHolder.U.getLong(p1, UnsafeCopy.BB_ADDRESS_OFFSET) + p1Offset;
+        long _p2Base = UnsafeOpsHolder.U.getLong(p2, UnsafeCopy.BB_ADDRESS_OFFSET) + p2Offset;
+        long _p3Base = UnsafeOpsHolder.U.getLong(p3, UnsafeCopy.BB_ADDRESS_OFFSET) + p3Offset;
+        Double4OpsKernelsAddress.catmullRomTangent_unsafe(_destBase, _srcBase, _p1Base, _p2Base, _p3Base, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer catmullRomTangent_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, java.nio.ByteBuffer p3, int p3Offset, double t) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return catmullRomTangent_api_fma(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        return catmullRomTangent_api_mulAdd(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+    }
+
+    /** {@code catmullRomTangent_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer catmullRomTangent_api_fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, java.nio.ByteBuffer p3, int p3Offset, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _p1x = p1.getDouble(p1Offset);
+        double _p1y = p1.getDouble(p1Offset + 8);
+        double _p1z = p1.getDouble(p1Offset + 16);
+        double _p1w = p1.getDouble(p1Offset + 24);
+        double _p2x = p2.getDouble(p2Offset);
+        double _p2y = p2.getDouble(p2Offset + 8);
+        double _p2z = p2.getDouble(p2Offset + 16);
+        double _p2w = p2.getDouble(p2Offset + 24);
+        double _p3x = p3.getDouble(p3Offset);
+        double _p3y = p3.getDouble(p3Offset + 8);
+        double _p3z = p3.getDouble(p3Offset + 16);
+        double _p3w = p3.getDouble(p3Offset + 24);
+        double _t0 = t * t;
+        dest.putDouble(destOffset, 0.5 * java.lang.Math.fma(t, 2.0 * java.lang.Math.fma(-5.0, _p1x, java.lang.Math.fma(2.0, _selfx, java.lang.Math.fma(4.0, _p2x, -_p3x))), java.lang.Math.fma(3.0 * java.lang.Math.fma(-3.0, _p2x, java.lang.Math.fma(3.0, _p1x, _p3x - _selfx)), _t0, _p2x - _selfx)));
+        return catmullRomTangent_api_fma_se85dcb37_1(dest, destOffset, t, _selfy, _selfz, _selfw, _p1y, _p1z, _p1w, _p2y, _p2z, _p2w, _p3y, _p3z, _p3w, _t0);
+    }
+
+    /** Piece 2 of {@code catmullRomTangent_api_fma}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer catmullRomTangent_api_fma_se85dcb37_1(java.nio.ByteBuffer dest, int destOffset, double t, double _selfy, double _selfz, double _selfw, double _p1y, double _p1z, double _p1w, double _p2y, double _p2z, double _p2w, double _p3y, double _p3z, double _p3w, double _t0) {
+        dest.putDouble(destOffset + 8, 0.5 * java.lang.Math.fma(t, 2.0 * java.lang.Math.fma(-5.0, _p1y, java.lang.Math.fma(2.0, _selfy, java.lang.Math.fma(4.0, _p2y, -_p3y))), java.lang.Math.fma(3.0 * java.lang.Math.fma(-3.0, _p2y, java.lang.Math.fma(3.0, _p1y, _p3y - _selfy)), _t0, _p2y - _selfy)));
+        dest.putDouble(destOffset + 16, 0.5 * java.lang.Math.fma(t, 2.0 * java.lang.Math.fma(-5.0, _p1z, java.lang.Math.fma(2.0, _selfz, java.lang.Math.fma(4.0, _p2z, -_p3z))), java.lang.Math.fma(3.0 * java.lang.Math.fma(-3.0, _p2z, java.lang.Math.fma(3.0, _p1z, _p3z - _selfz)), _t0, _p2z - _selfz)));
+        dest.putDouble(destOffset + 24, 0.5 * java.lang.Math.fma(t, 2.0 * java.lang.Math.fma(-5.0, _p1w, java.lang.Math.fma(2.0, _selfw, java.lang.Math.fma(4.0, _p2w, -_p3w))), java.lang.Math.fma(3.0 * java.lang.Math.fma(-3.0, _p2w, java.lang.Math.fma(3.0, _p1w, _p3w - _selfw)), _t0, _p2w - _selfw)));
+        return dest;
+    }
+
+    /** {@code catmullRomTangent_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer catmullRomTangent_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, java.nio.ByteBuffer p3, int p3Offset, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _p1x = p1.getDouble(p1Offset);
+        double _p1y = p1.getDouble(p1Offset + 8);
+        double _p1z = p1.getDouble(p1Offset + 16);
+        double _p1w = p1.getDouble(p1Offset + 24);
+        double _p2x = p2.getDouble(p2Offset);
+        double _p2y = p2.getDouble(p2Offset + 8);
+        double _p2z = p2.getDouble(p2Offset + 16);
+        double _p2w = p2.getDouble(p2Offset + 24);
+        double _p3x = p3.getDouble(p3Offset);
+        double _p3y = p3.getDouble(p3Offset + 8);
+        double _p3z = p3.getDouble(p3Offset + 16);
+        double _p3w = p3.getDouble(p3Offset + 24);
+        double _t0 = t * t;
+        dest.putDouble(destOffset, 0.5 * ((t) * (2.0 * ((((2.0) * (_selfx) + (((4.0) * (_p2x) - (_p3x))))) - (5.0) * (_p1x))) + (((3.0 * ((((3.0) * (_p1x) + (_p3x - _selfx))) - (3.0) * (_p2x))) * (_t0) + (_p2x - _selfx)))));
+        return catmullRomTangent_api_mulAdd_s4e61f780_1(dest, destOffset, t, _selfy, _selfz, _selfw, _p1y, _p1z, _p1w, _p2y, _p2z, _p2w, _p3y, _p3z, _p3w, _t0);
+    }
+
+    /** Piece 2 of {@code catmullRomTangent_api_mulAdd}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer catmullRomTangent_api_mulAdd_s4e61f780_1(java.nio.ByteBuffer dest, int destOffset, double t, double _selfy, double _selfz, double _selfw, double _p1y, double _p1z, double _p1w, double _p2y, double _p2z, double _p2w, double _p3y, double _p3z, double _p3w, double _t0) {
+        dest.putDouble(destOffset + 8, 0.5 * ((t) * (2.0 * ((((2.0) * (_selfy) + (((4.0) * (_p2y) - (_p3y))))) - (5.0) * (_p1y))) + (((3.0 * ((((3.0) * (_p1y) + (_p3y - _selfy))) - (3.0) * (_p2y))) * (_t0) + (_p2y - _selfy)))));
+        dest.putDouble(destOffset + 16, 0.5 * ((t) * (2.0 * ((((2.0) * (_selfz) + (((4.0) * (_p2z) - (_p3z))))) - (5.0) * (_p1z))) + (((3.0 * ((((3.0) * (_p1z) + (_p3z - _selfz))) - (3.0) * (_p2z))) * (_t0) + (_p2z - _selfz)))));
+        dest.putDouble(destOffset + 24, 0.5 * ((t) * (2.0 * ((((2.0) * (_selfw) + (((4.0) * (_p2w) - (_p3w))))) - (5.0) * (_p1w))) + (((3.0 * ((((3.0) * (_p1w) + (_p3w - _selfw))) - (3.0) * (_p2w))) * (_t0) + (_p2w - _selfw)))));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer hermite_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double t0X, double t0Y, double t0Z, double t0W, double v1X, double v1Y, double v1Z, double v1W, double t1X, double t1Y, double t1Z, double t1W, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.hermite_unsafe(_destBase, _srcBase, t0X, t0Y, t0Z, t0W, v1X, v1Y, v1Z, v1W, t1X, t1Y, t1Z, t1W, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer hermite_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double t0X, double t0Y, double t0Z, double t0W, double v1X, double v1Y, double v1Z, double v1W, double t1X, double t1Y, double t1Z, double t1W, double t) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return hermite_api_mulAdd(dest, destOffset, src, srcOffset, t0X, t0Y, t0Z, t0W, v1X, v1Y, v1Z, v1W, t1X, t1Y, t1Z, t1W, t);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t0 = t * t;
+        double _t2 = t * _t0;
+        double _t5 = t * java.lang.Math.fma(t, t, -t);
+        double _t7 = java.lang.Math.fma(t - 2.0, _t0, t);
+        double _t9 = java.lang.Math.fma(3.0, _t0, -(_t2 + _t2));
+        double _t10 = java.lang.Math.fma(2.0, _t2, java.lang.Math.fma(-3.0, _t0, 1.0));
+        dest.putDouble(destOffset, java.lang.Math.fma(_selfx, _t10, t0X * _t7) + java.lang.Math.fma(t1X, _t5, v1X * _t9));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(_selfy, _t10, t0Y * _t7) + java.lang.Math.fma(t1Y, _t5, v1Y * _t9));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_selfz, _t10, t0Z * _t7) + java.lang.Math.fma(t1Z, _t5, v1Z * _t9));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(_selfw, _t10, t0W * _t7) + java.lang.Math.fma(t1W, _t5, v1W * _t9));
+        return dest;
+    }
+
+    /** {@code hermite_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer hermite_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double t0X, double t0Y, double t0Z, double t0W, double v1X, double v1Y, double v1Z, double v1W, double t1X, double t1Y, double t1Z, double t1W, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t0 = t * t;
+        double _t2 = t * _t0;
+        double _t5 = t * ((t) * (t) - (t));
+        double _t7 = ((t - 2.0) * (_t0) + (t));
+        double _t9 = ((3.0) * (_t0) - (_t2 + _t2));
+        double _t10 = ((2.0) * (_t2) + (((1.0) - (3.0) * (_t0))));
+        dest.putDouble(destOffset, ((_selfx) * (_t10) + (t0X * _t7)) + ((t1X) * (_t5) + (v1X * _t9)));
+        dest.putDouble(destOffset + 8, ((_selfy) * (_t10) + (t0Y * _t7)) + ((t1Y) * (_t5) + (v1Y * _t9)));
+        dest.putDouble(destOffset + 16, ((_selfz) * (_t10) + (t0Z * _t7)) + ((t1Z) * (_t5) + (v1Z * _t9)));
+        dest.putDouble(destOffset + 24, ((_selfw) * (_t10) + (t0W * _t7)) + ((t1W) * (_t5) + (v1W * _t9)));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer hermite_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer t0, int t0Offset, java.nio.ByteBuffer v1, int v1Offset, java.nio.ByteBuffer t1, int t1Offset, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _t0Base = UnsafeOpsHolder.U.getLong(t0, UnsafeCopy.BB_ADDRESS_OFFSET) + t0Offset;
+        long _v1Base = UnsafeOpsHolder.U.getLong(v1, UnsafeCopy.BB_ADDRESS_OFFSET) + v1Offset;
+        long _t1Base = UnsafeOpsHolder.U.getLong(t1, UnsafeCopy.BB_ADDRESS_OFFSET) + t1Offset;
+        Double4OpsKernelsAddress.hermite_unsafe(_destBase, _srcBase, _t0Base, _v1Base, _t1Base, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer hermite_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer t0, int t0Offset, java.nio.ByteBuffer v1, int v1Offset, java.nio.ByteBuffer t1, int t1Offset, double t) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return hermite_api_fma(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+        return hermite_api_mulAdd(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+    }
+
+    /** {@code hermite_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer hermite_api_fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer t0, int t0Offset, java.nio.ByteBuffer v1, int v1Offset, java.nio.ByteBuffer t1, int t1Offset, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t0x = t0.getDouble(t0Offset);
+        double _t0y = t0.getDouble(t0Offset + 8);
+        double _t0z = t0.getDouble(t0Offset + 16);
+        double _t0w = t0.getDouble(t0Offset + 24);
+        double _v1x = v1.getDouble(v1Offset);
+        double _v1y = v1.getDouble(v1Offset + 8);
+        double _v1z = v1.getDouble(v1Offset + 16);
+        double _v1w = v1.getDouble(v1Offset + 24);
+        double _t1x = t1.getDouble(t1Offset);
+        double _t1y = t1.getDouble(t1Offset + 8);
+        double _t1z = t1.getDouble(t1Offset + 16);
+        double _t1w = t1.getDouble(t1Offset + 24);
+        double _t0 = t * t;
+        double _t2 = t * _t0;
+        return hermite_api_fma_s6e7becea_1(dest, destOffset, _selfx, _selfy, _selfz, _selfw, _t0x, _t0y, _t0z, _t0w, _v1x, _v1y, _v1z, _v1w, _t1x, _t1y, _t1z, _t1w, t * java.lang.Math.fma(t, t, -t), java.lang.Math.fma(t - 2.0, _t0, t), java.lang.Math.fma(3.0, _t0, -(_t2 + _t2)), java.lang.Math.fma(2.0, _t2, java.lang.Math.fma(-3.0, _t0, 1.0)));
+    }
+
+    /** Piece 2 of {@code hermite_api_fma}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer hermite_api_fma_s6e7becea_1(java.nio.ByteBuffer dest, int destOffset, double _selfx, double _selfy, double _selfz, double _selfw, double _t0x, double _t0y, double _t0z, double _t0w, double _v1x, double _v1y, double _v1z, double _v1w, double _t1x, double _t1y, double _t1z, double _t1w, double _t5, double _t7, double _t9, double _t10) {
+        dest.putDouble(destOffset, java.lang.Math.fma(_selfx, _t10, _t0x * _t7) + java.lang.Math.fma(_t1x, _t5, _v1x * _t9));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(_selfy, _t10, _t0y * _t7) + java.lang.Math.fma(_t1y, _t5, _v1y * _t9));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_selfz, _t10, _t0z * _t7) + java.lang.Math.fma(_t1z, _t5, _v1z * _t9));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(_selfw, _t10, _t0w * _t7) + java.lang.Math.fma(_t1w, _t5, _v1w * _t9));
+        return dest;
+    }
+
+    /** {@code hermite_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer hermite_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer t0, int t0Offset, java.nio.ByteBuffer v1, int v1Offset, java.nio.ByteBuffer t1, int t1Offset, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t0x = t0.getDouble(t0Offset);
+        double _t0y = t0.getDouble(t0Offset + 8);
+        double _t0z = t0.getDouble(t0Offset + 16);
+        double _t0w = t0.getDouble(t0Offset + 24);
+        double _v1x = v1.getDouble(v1Offset);
+        double _v1y = v1.getDouble(v1Offset + 8);
+        double _v1z = v1.getDouble(v1Offset + 16);
+        double _v1w = v1.getDouble(v1Offset + 24);
+        double _t1x = t1.getDouble(t1Offset);
+        double _t1y = t1.getDouble(t1Offset + 8);
+        double _t1z = t1.getDouble(t1Offset + 16);
+        double _t1w = t1.getDouble(t1Offset + 24);
+        double _t0 = t * t;
+        double _t2 = t * _t0;
+        return hermite_api_mulAdd_see23ef97_1(dest, destOffset, _selfx, _selfy, _selfz, _selfw, _t0x, _t0y, _t0z, _t0w, _v1x, _v1y, _v1z, _v1w, _t1x, _t1y, _t1z, _t1w, t * ((t) * (t) - (t)), ((t - 2.0) * (_t0) + (t)), ((3.0) * (_t0) - (_t2 + _t2)), ((2.0) * (_t2) + (((1.0) - (3.0) * (_t0)))));
+    }
+
+    /** Piece 2 of {@code hermite_api_mulAdd}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer hermite_api_mulAdd_see23ef97_1(java.nio.ByteBuffer dest, int destOffset, double _selfx, double _selfy, double _selfz, double _selfw, double _t0x, double _t0y, double _t0z, double _t0w, double _v1x, double _v1y, double _v1z, double _v1w, double _t1x, double _t1y, double _t1z, double _t1w, double _t5, double _t7, double _t9, double _t10) {
+        dest.putDouble(destOffset, ((_selfx) * (_t10) + (_t0x * _t7)) + ((_t1x) * (_t5) + (_v1x * _t9)));
+        dest.putDouble(destOffset + 8, ((_selfy) * (_t10) + (_t0y * _t7)) + ((_t1y) * (_t5) + (_v1y * _t9)));
+        dest.putDouble(destOffset + 16, ((_selfz) * (_t10) + (_t0z * _t7)) + ((_t1z) * (_t5) + (_v1z * _t9)));
+        dest.putDouble(destOffset + 24, ((_selfw) * (_t10) + (_t0w * _t7)) + ((_t1w) * (_t5) + (_v1w * _t9)));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer hermiteTangent_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double t0X, double t0Y, double t0Z, double t0W, double v1X, double v1Y, double v1Z, double v1W, double t1X, double t1Y, double t1Z, double t1W, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.hermiteTangent_unsafe(_destBase, _srcBase, t0X, t0Y, t0Z, t0W, v1X, v1Y, v1Z, v1W, t1X, t1Y, t1Z, t1W, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer hermiteTangent_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double t0X, double t0Y, double t0Z, double t0W, double v1X, double v1Y, double v1Z, double v1W, double t1X, double t1Y, double t1Z, double t1W, double t) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return hermiteTangent_api_mulAdd(dest, destOffset, src, srcOffset, t0X, t0Y, t0Z, t0W, v1X, v1Y, v1Z, v1W, t1X, t1Y, t1Z, t1W, t);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t0 = t * t;
+        double _t6 = 6.0 * java.lang.Math.fma(t, t, -t);
+        double _t7 = 6.0 * java.lang.Math.fma(-t, t, t);
+        double _t8 = java.lang.Math.fma(3.0, _t0, -(t + t));
+        double _t9 = java.lang.Math.fma(3.0, _t0, java.lang.Math.fma(-4.0, t, 1.0));
+        dest.putDouble(destOffset, java.lang.Math.fma(_selfx, _t6, t0X * _t9) + java.lang.Math.fma(t1X, _t8, v1X * _t7));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(_selfy, _t6, t0Y * _t9) + java.lang.Math.fma(t1Y, _t8, v1Y * _t7));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_selfz, _t6, t0Z * _t9) + java.lang.Math.fma(t1Z, _t8, v1Z * _t7));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(_selfw, _t6, t0W * _t9) + java.lang.Math.fma(t1W, _t8, v1W * _t7));
+        return dest;
+    }
+
+    /** {@code hermiteTangent_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer hermiteTangent_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double t0X, double t0Y, double t0Z, double t0W, double v1X, double v1Y, double v1Z, double v1W, double t1X, double t1Y, double t1Z, double t1W, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t0 = t * t;
+        double _t6 = 6.0 * ((t) * (t) - (t));
+        double _t7 = 6.0 * ((t) - (t) * (t));
+        double _t8 = ((3.0) * (_t0) - (t + t));
+        double _t9 = ((3.0) * (_t0) + (((1.0) - (4.0) * (t))));
+        dest.putDouble(destOffset, ((_selfx) * (_t6) + (t0X * _t9)) + ((t1X) * (_t8) + (v1X * _t7)));
+        dest.putDouble(destOffset + 8, ((_selfy) * (_t6) + (t0Y * _t9)) + ((t1Y) * (_t8) + (v1Y * _t7)));
+        dest.putDouble(destOffset + 16, ((_selfz) * (_t6) + (t0Z * _t9)) + ((t1Z) * (_t8) + (v1Z * _t7)));
+        dest.putDouble(destOffset + 24, ((_selfw) * (_t6) + (t0W * _t9)) + ((t1W) * (_t8) + (v1W * _t7)));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer hermiteTangent_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer t0, int t0Offset, java.nio.ByteBuffer v1, int v1Offset, java.nio.ByteBuffer t1, int t1Offset, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _t0Base = UnsafeOpsHolder.U.getLong(t0, UnsafeCopy.BB_ADDRESS_OFFSET) + t0Offset;
+        long _v1Base = UnsafeOpsHolder.U.getLong(v1, UnsafeCopy.BB_ADDRESS_OFFSET) + v1Offset;
+        long _t1Base = UnsafeOpsHolder.U.getLong(t1, UnsafeCopy.BB_ADDRESS_OFFSET) + t1Offset;
+        Double4OpsKernelsAddress.hermiteTangent_unsafe(_destBase, _srcBase, _t0Base, _v1Base, _t1Base, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer hermiteTangent_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer t0, int t0Offset, java.nio.ByteBuffer v1, int v1Offset, java.nio.ByteBuffer t1, int t1Offset, double t) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return hermiteTangent_api_fma(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+        return hermiteTangent_api_mulAdd(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+    }
+
+    /** {@code hermiteTangent_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer hermiteTangent_api_fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer t0, int t0Offset, java.nio.ByteBuffer v1, int v1Offset, java.nio.ByteBuffer t1, int t1Offset, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t0x = t0.getDouble(t0Offset);
+        double _t0y = t0.getDouble(t0Offset + 8);
+        double _t0z = t0.getDouble(t0Offset + 16);
+        double _t0w = t0.getDouble(t0Offset + 24);
+        double _v1x = v1.getDouble(v1Offset);
+        double _v1y = v1.getDouble(v1Offset + 8);
+        double _v1z = v1.getDouble(v1Offset + 16);
+        double _v1w = v1.getDouble(v1Offset + 24);
+        double _t1x = t1.getDouble(t1Offset);
+        double _t1y = t1.getDouble(t1Offset + 8);
+        double _t1z = t1.getDouble(t1Offset + 16);
+        double _t1w = t1.getDouble(t1Offset + 24);
+        double _t0 = t * t;
+        return hermiteTangent_api_fma_s1eb44f67_1(dest, destOffset, _selfx, _selfy, _selfz, _selfw, _t0x, _t0y, _t0z, _t0w, _v1x, _v1y, _v1z, _v1w, _t1x, _t1y, _t1z, _t1w, 6.0 * java.lang.Math.fma(t, t, -t), 6.0 * java.lang.Math.fma(-t, t, t), java.lang.Math.fma(3.0, _t0, -(t + t)), java.lang.Math.fma(3.0, _t0, java.lang.Math.fma(-4.0, t, 1.0)));
+    }
+
+    /** Piece 2 of {@code hermiteTangent_api_fma}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer hermiteTangent_api_fma_s1eb44f67_1(java.nio.ByteBuffer dest, int destOffset, double _selfx, double _selfy, double _selfz, double _selfw, double _t0x, double _t0y, double _t0z, double _t0w, double _v1x, double _v1y, double _v1z, double _v1w, double _t1x, double _t1y, double _t1z, double _t1w, double _t6, double _t7, double _t8, double _t9) {
+        dest.putDouble(destOffset, java.lang.Math.fma(_selfx, _t6, _t0x * _t9) + java.lang.Math.fma(_t1x, _t8, _v1x * _t7));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(_selfy, _t6, _t0y * _t9) + java.lang.Math.fma(_t1y, _t8, _v1y * _t7));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_selfz, _t6, _t0z * _t9) + java.lang.Math.fma(_t1z, _t8, _v1z * _t7));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(_selfw, _t6, _t0w * _t9) + java.lang.Math.fma(_t1w, _t8, _v1w * _t7));
+        return dest;
+    }
+
+    /** {@code hermiteTangent_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer hermiteTangent_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer t0, int t0Offset, java.nio.ByteBuffer v1, int v1Offset, java.nio.ByteBuffer t1, int t1Offset, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t0x = t0.getDouble(t0Offset);
+        double _t0y = t0.getDouble(t0Offset + 8);
+        double _t0z = t0.getDouble(t0Offset + 16);
+        double _t0w = t0.getDouble(t0Offset + 24);
+        double _v1x = v1.getDouble(v1Offset);
+        double _v1y = v1.getDouble(v1Offset + 8);
+        double _v1z = v1.getDouble(v1Offset + 16);
+        double _v1w = v1.getDouble(v1Offset + 24);
+        double _t1x = t1.getDouble(t1Offset);
+        double _t1y = t1.getDouble(t1Offset + 8);
+        double _t1z = t1.getDouble(t1Offset + 16);
+        double _t1w = t1.getDouble(t1Offset + 24);
+        double _t0 = t * t;
+        double _t6 = 6.0 * ((t) * (t) - (t));
+        double _t7 = 6.0 * ((t) - (t) * (t));
+        double _t8 = ((3.0) * (_t0) - (t + t));
+        double _t9 = ((3.0) * (_t0) + (((1.0) - (4.0) * (t))));
+        dest.putDouble(destOffset, ((_selfx) * (_t6) + (_t0x * _t9)) + ((_t1x) * (_t8) + (_v1x * _t7)));
+        return hermiteTangent_api_mulAdd_s91f20680_1(dest, destOffset, _selfy, _selfz, _selfw, _t0y, _t0z, _t0w, _v1y, _v1z, _v1w, _t1y, _t1z, _t1w, _t6, _t7, _t8, _t9);
+    }
+
+    /** Piece 2 of {@code hermiteTangent_api_mulAdd}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer hermiteTangent_api_mulAdd_s91f20680_1(java.nio.ByteBuffer dest, int destOffset, double _selfy, double _selfz, double _selfw, double _t0y, double _t0z, double _t0w, double _v1y, double _v1z, double _v1w, double _t1y, double _t1z, double _t1w, double _t6, double _t7, double _t8, double _t9) {
+        dest.putDouble(destOffset + 8, ((_selfy) * (_t6) + (_t0y * _t9)) + ((_t1y) * (_t8) + (_v1y * _t7)));
+        dest.putDouble(destOffset + 16, ((_selfz) * (_t6) + (_t0z * _t9)) + ((_t1z) * (_t8) + (_v1z * _t7)));
+        dest.putDouble(destOffset + 24, ((_selfw) * (_t6) + (_t0w * _t9)) + ((_t1w) * (_t8) + (_v1w * _t7)));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer lerp_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.lerp_unsafe(_destBase, _srcBase, otherX, otherY, otherZ, otherW, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer lerp_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            dest.putDouble(destOffset, java.lang.Math.fma(t, otherX - _selfx, _selfx));
+            dest.putDouble(destOffset + 8, java.lang.Math.fma(t, otherY - _selfy, _selfy));
+            dest.putDouble(destOffset + 16, java.lang.Math.fma(t, otherZ - _selfz, _selfz));
+            dest.putDouble(destOffset + 24, java.lang.Math.fma(t, otherW - _selfw, _selfw));
+            return dest;
+        } else {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            dest.putDouble(destOffset, ((t) * (otherX - _selfx) + (_selfx)));
+            dest.putDouble(destOffset + 8, ((t) * (otherY - _selfy) + (_selfy)));
+            dest.putDouble(destOffset + 16, ((t) * (otherZ - _selfz) + (_selfz)));
+            dest.putDouble(destOffset + 24, ((t) * (otherW - _selfw) + (_selfw)));
+            return dest;
+        }
+    }
+
+    public static java.nio.ByteBuffer lerp_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _otherBase = UnsafeOpsHolder.U.getLong(other, UnsafeCopy.BB_ADDRESS_OFFSET) + otherOffset;
+        Double4OpsKernelsAddress.lerp_unsafe(_destBase, _srcBase, _otherBase, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer lerp_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return lerp_api_mulAdd(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        dest.putDouble(destOffset, java.lang.Math.fma(t, _otherx - _selfx, _selfx));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(t, _othery - _selfy, _selfy));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(t, _otherz - _selfz, _selfz));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(t, _otherw - _selfw, _selfw));
+        return dest;
+    }
+
+    /** {@code lerp_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer lerp_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        dest.putDouble(destOffset, ((t) * (_otherx - _selfx) + (_selfx)));
+        dest.putDouble(destOffset + 8, ((t) * (_othery - _selfy) + (_selfy)));
+        dest.putDouble(destOffset + 16, ((t) * (_otherz - _selfz) + (_selfz)));
+        dest.putDouble(destOffset + 24, ((t) * (_otherw - _selfw) + (_selfw)));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer lerp_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double tX, double tY, double tZ, double tW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.lerp_unsafe(_destBase, _srcBase, otherX, otherY, otherZ, otherW, tX, tY, tZ, tW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer lerp_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double tX, double tY, double tZ, double tW) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            dest.putDouble(destOffset, java.lang.Math.fma(tX, otherX - _selfx, _selfx));
+            dest.putDouble(destOffset + 8, java.lang.Math.fma(tY, otherY - _selfy, _selfy));
+            dest.putDouble(destOffset + 16, java.lang.Math.fma(tZ, otherZ - _selfz, _selfz));
+            dest.putDouble(destOffset + 24, java.lang.Math.fma(tW, otherW - _selfw, _selfw));
+            return dest;
+        } else {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            dest.putDouble(destOffset, ((tX) * (otherX - _selfx) + (_selfx)));
+            dest.putDouble(destOffset + 8, ((tY) * (otherY - _selfy) + (_selfy)));
+            dest.putDouble(destOffset + 16, ((tZ) * (otherZ - _selfz) + (_selfz)));
+            dest.putDouble(destOffset + 24, ((tW) * (otherW - _selfw) + (_selfw)));
+            return dest;
+        }
+    }
+
+    public static java.nio.ByteBuffer lerp_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, java.nio.ByteBuffer t, int tOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _otherBase = UnsafeOpsHolder.U.getLong(other, UnsafeCopy.BB_ADDRESS_OFFSET) + otherOffset;
+        long _tBase = UnsafeOpsHolder.U.getLong(t, UnsafeCopy.BB_ADDRESS_OFFSET) + tOffset;
+        Double4OpsKernelsAddress.lerp_unsafe(_destBase, _srcBase, _otherBase, _tBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer lerp_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, java.nio.ByteBuffer t, int tOffset) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return lerp_api_mulAdd(dest, destOffset, src, srcOffset, other, otherOffset, t, tOffset);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        double _tx = t.getDouble(tOffset);
+        double _ty = t.getDouble(tOffset + 8);
+        double _tz = t.getDouble(tOffset + 16);
+        double _tw = t.getDouble(tOffset + 24);
+        dest.putDouble(destOffset, java.lang.Math.fma(_tx, _otherx - _selfx, _selfx));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(_ty, _othery - _selfy, _selfy));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_tz, _otherz - _selfz, _selfz));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(_tw, _otherw - _selfw, _selfw));
+        return dest;
+    }
+
+    /** {@code lerp_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer lerp_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, java.nio.ByteBuffer t, int tOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        double _tx = t.getDouble(tOffset);
+        double _ty = t.getDouble(tOffset + 8);
+        double _tz = t.getDouble(tOffset + 16);
+        double _tw = t.getDouble(tOffset + 24);
+        dest.putDouble(destOffset, ((_tx) * (_otherx - _selfx) + (_selfx)));
+        dest.putDouble(destOffset + 8, ((_ty) * (_othery - _selfy) + (_selfy)));
+        dest.putDouble(destOffset + 16, ((_tz) * (_otherz - _selfz) + (_selfz)));
+        dest.putDouble(destOffset + 24, ((_tw) * (_otherw - _selfw) + (_selfw)));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer slerp_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.slerp_unsafe(_destBase, _srcBase, otherX, otherY, otherZ, otherW, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer slerp_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return slerp_api_fma(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        return slerp_api_mulAdd(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+    }
+
+    /** {@code slerp_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t9 = java.lang.Math.fma(_selfw, _selfw, java.lang.Math.fma(_selfz, _selfz, java.lang.Math.fma(_selfx, _selfx, _selfy * _selfy)));
+        if (!(_t9 > 2.2250738585072014E-308 && _t9 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        double _t10 = java.lang.Math.fma(otherW, otherW, java.lang.Math.fma(otherZ, otherZ, java.lang.Math.fma(otherX, otherX, otherY * otherY)));
+        if (!(_t10 > 2.2250738585072014E-308 && _t10 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        double _t11 = (1.0 / java.lang.Math.sqrt(_t9));
+        double _t14 = (1.0 / java.lang.Math.sqrt(_t10));
+        double _t16 = _selfx * _t11;
+        double _t19 = _selfw * _t11;
+        double _t21 = _selfz * _t11;
+        double _t24 = _selfy * _t11;
+        return slerp_api_fma_s1a1ed84a_1(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t, _t14, _t16, _t19, _t21, _t24, t * java.lang.Math.sqrt(_t10) + (1.0 - t) * java.lang.Math.sqrt(_t9), java.lang.Math.fma(otherW * _t14, _t19, java.lang.Math.fma(otherZ * _t14, _t21, java.lang.Math.fma(otherX * _t14, _t16, otherY * _t14 * _t24))));
+    }
+
+    /** Piece 2 of {@code slerp_api_fma}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_fma_s1a1ed84a_1(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t, double _t14, double _t16, double _t19, double _t21, double _t24, double _t28, double _t31) {
+        double _t40 = java.lang.Math.fma(otherW, _t14, -(_t31 * _t19));
+        double _t41 = java.lang.Math.fma(otherZ, _t14, -(_t31 * _t21));
+        double _t42 = java.lang.Math.fma(otherX, _t14, -(_t31 * _t16));
+        double _t43 = java.lang.Math.fma(otherY, _t14, -(_t31 * _t24));
+        double _t48 = -java.lang.Math.fma(_t40, _t19, java.lang.Math.fma(_t41, _t21, java.lang.Math.fma(_t42, _t16, _t43 * _t24)));
+        double _t49 = java.lang.Math.fma(_t48, _t19, _t40);
+        double _t50 = java.lang.Math.fma(_t48, _t21, _t41);
+        double _t51 = java.lang.Math.fma(_t48, _t16, _t42);
+        double _t52 = java.lang.Math.fma(_t48, _t24, _t43);
+        double _t57 = java.lang.Math.fma(_t49, _t49, java.lang.Math.fma(_t50, _t50, java.lang.Math.fma(_t51, _t51, _t52 * _t52)));
+        if (!(_t57 > 5.048709793414476E-29 && _t57 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        double _t61 = t * Math.atan2(java.lang.Math.sqrt(_t57), _t31);
+        double _t64 = _t28 * Math.cosWithSin(_t61);
+        double _sp0 = _t28 * Math.sinWithCos(_t61) * (1.0 / java.lang.Math.sqrt(_t57));
+        dest.putDouble(destOffset, java.lang.Math.fma(_t16, _t64, _sp0 * _t51));
+        return slerp_api_fma_s1a1ed84a_2(dest, destOffset, _t19, _t21, _t24, _t49, _t50, _t52, _t64, _sp0);
+    }
+
+    /** Piece 3 of {@code slerp_api_fma}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_fma_s1a1ed84a_2(java.nio.ByteBuffer dest, int destOffset, double _t19, double _t21, double _t24, double _t49, double _t50, double _t52, double _t64, double _sp0) {
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(_t24, _t64, _sp0 * _t52));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_t21, _t64, _sp0 * _t50));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(_t19, _t64, _sp0 * _t49));
+        return dest;
+    }
+
+    /** {@code slerp_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t9 = ((_selfw) * (_selfw) + (((_selfz) * (_selfz) + (((_selfx) * (_selfx) + (_selfy * _selfy))))));
+        if (!(_t9 > 2.2250738585072014E-308 && _t9 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        double _t10 = ((otherW) * (otherW) + (((otherZ) * (otherZ) + (((otherX) * (otherX) + (otherY * otherY))))));
+        if (!(_t10 > 2.2250738585072014E-308 && _t10 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        double _t11 = (1.0 / java.lang.Math.sqrt(_t9));
+        double _t14 = (1.0 / java.lang.Math.sqrt(_t10));
+        double _t16 = _selfx * _t11;
+        double _t19 = _selfw * _t11;
+        double _t21 = _selfz * _t11;
+        double _t24 = _selfy * _t11;
+        double _t31 = ((otherW * _t14) * (_t19) + (((otherZ * _t14) * (_t21) + (((otherX * _t14) * (_t16) + (otherY * _t14 * _t24))))));
+        return slerp_api_mulAdd_s887ca7cf_1(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t, _t14, _t16, _t19, _t21, _t24, t * java.lang.Math.sqrt(_t10) + (1.0 - t) * java.lang.Math.sqrt(_t9), _t31, ((otherW) * (_t14) - (_t31 * _t19)));
+    }
+
+    /** Piece 2 of {@code slerp_api_mulAdd}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_mulAdd_s887ca7cf_1(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t, double _t14, double _t16, double _t19, double _t21, double _t24, double _t28, double _t31, double _t40) {
+        double _t41 = ((otherZ) * (_t14) - (_t31 * _t21));
+        double _t42 = ((otherX) * (_t14) - (_t31 * _t16));
+        double _t43 = ((otherY) * (_t14) - (_t31 * _t24));
+        double _t48 = -((_t40) * (_t19) + (((_t41) * (_t21) + (((_t42) * (_t16) + (_t43 * _t24))))));
+        double _t49 = ((_t48) * (_t19) + (_t40));
+        double _t50 = ((_t48) * (_t21) + (_t41));
+        double _t51 = ((_t48) * (_t16) + (_t42));
+        double _t52 = ((_t48) * (_t24) + (_t43));
+        double _t57 = ((_t49) * (_t49) + (((_t50) * (_t50) + (((_t51) * (_t51) + (_t52 * _t52))))));
+        if (!(_t57 > 5.048709793414476E-29 && _t57 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        double _t61 = t * Math.atan2(java.lang.Math.sqrt(_t57), _t31);
+        double _t64 = _t28 * Math.cosWithSin(_t61);
+        double _sp0 = _t28 * Math.sinWithCos(_t61) * (1.0 / java.lang.Math.sqrt(_t57));
+        dest.putDouble(destOffset, ((_t16) * (_t64) + (_sp0 * _t51)));
+        dest.putDouble(destOffset + 8, ((_t24) * (_t64) + (_sp0 * _t52)));
+        dest.putDouble(destOffset + 16, ((_t21) * (_t64) + (_sp0 * _t50)));
+        dest.putDouble(destOffset + 24, ((_t19) * (_t64) + (_sp0 * _t49)));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer slerp_degenerate(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.slerp_degenerate_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return slerp_degenerate_api_fma(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        return slerp_degenerate_api_mulAdd(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+    }
+
+    public static java.nio.ByteBuffer slerp_degenerate_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.slerp_degenerate_unsafe(_destBase, _srcBase, otherX, otherY, otherZ, otherW, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer slerp_degenerate_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return slerp_degenerate_api_fma(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        return slerp_degenerate_api_mulAdd(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+    }
+
+    /** {@code slerp_degenerate_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer slerp_degenerate_api_fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t7 = unitScale(otherZ, otherW, Math.max(java.lang.Math.abs(otherX), java.lang.Math.abs(otherY)));
+        double _t8 = unitScale(_selfz, _selfw, Math.max(java.lang.Math.abs(_selfx), java.lang.Math.abs(_selfy)));
+        double _t17 = otherW * _t7;
+        double _t18 = otherZ * _t7;
+        double _t19 = otherX * _t7;
+        double _t20 = otherY * _t7;
+        double _t21 = _selfw * _t8;
+        double _t22 = _selfz * _t8;
+        double _t23 = _selfx * _t8;
+        double _t24 = _selfy * _t8;
+        double _t25 = Math.min(_t8, _t7);
+        double _t25_inv = 1.0 / _t25;
+        double _t36 = java.lang.Math.fma(_t17, _t17, java.lang.Math.fma(_t18, _t18, java.lang.Math.fma(_t19, _t19, _t20 * _t20)));
+        double _t37 = java.lang.Math.fma(_t21, _t21, java.lang.Math.fma(_t22, _t22, java.lang.Math.fma(_t23, _t23, _t24 * _t24)));
+        double _t40 = (1.0 / java.lang.Math.sqrt(_t36));
+        double _t41 = (1.0 / java.lang.Math.sqrt(_t37));
+        double _t43 = _t41 * _t21;
+        double _t45 = _t41 * _t22;
+        double _t47 = _t41 * _t23;
+        double _t49 = _t41 * _t24;
+        double _t50 = -_t49;
+        double _t51 = -_t43;
+        double _t60 = t * java.lang.Math.sqrt(_t36) * (_t25 / _t7) + (1.0 - t) * java.lang.Math.sqrt(_t37) * (_t25 / _t8);
+        double _t63 = java.lang.Math.fma(_t40 * _t17, _t43, java.lang.Math.fma(_t40 * _t18, _t45, java.lang.Math.fma(_t40 * _t19, _t47, _t40 * _t20 * _t49)));
+        double _t72 = java.lang.Math.fma(_t40, _t17, -(_t63 * _t43));
+        double _t73 = java.lang.Math.fma(_t40, _t18, -(_t63 * _t45));
+        double _t74 = java.lang.Math.fma(_t40, _t19, -(_t63 * _t47));
+        double _t75 = java.lang.Math.fma(_t40, _t20, -(_t63 * _t49));
+        double _t80 = -java.lang.Math.fma(_t72, _t43, java.lang.Math.fma(_t73, _t45, java.lang.Math.fma(_t74, _t47, _t75 * _t49)));
+        double _t81 = java.lang.Math.fma(_t80, _t43, _t72);
+        double _t82 = java.lang.Math.fma(_t80, _t45, _t73);
+        double _t83 = java.lang.Math.fma(_t80, _t47, _t74);
+        double _t84 = java.lang.Math.fma(_t80, _t49, _t75);
+        double _t90 = unitScale(_t82, _t81, Math.max(java.lang.Math.abs(_t83), java.lang.Math.abs(_t84)));
+        double _t97 = _t81 * _t90;
+        double _t98 = _t82 * _t90;
+        double _t99 = _t83 * _t90;
+        double _t100 = _t84 * _t90;
+        double _t106 = java.lang.Math.fma(_t97, _t97, java.lang.Math.fma(_t98, _t98, java.lang.Math.fma(_t99, _t99, _t100 * _t100)));
+        double _t108 = (1.0 / java.lang.Math.sqrt(_t106));
+        double _t110 = t * Math.atan2(java.lang.Math.sqrt(_t106), _t63 * _t90);
+        double _t113 = _t60 * Math.sinWithCos(_t110);
+        double _t114 = _t60 * Math.cosWithSin(_t110);
+        double _t119, _t120, _t121, _t122;
+        if (_t106 > 0.0) {
+            _t119 = _t108 * _t100;
+            _t120 = _t108 * _t97;
+            _t121 = _t108 * _t99;
+            _t122 = _t108 * _t98;
+        } else {
+            _t119 = _t47;
+            _t120 = _t45;
+            _t121 = _t50;
+            _t122 = _t51;
+        }
+        if (_t36 * _t37 > 0.0) {
+            if (_t63 < 0.0) {
+                if (java.lang.Math.fma(_t81, _t81, java.lang.Math.fma(_t82, _t82, java.lang.Math.fma(_t83, _t83, _t84 * _t84))) <= 5.048709793414476E-29) {
+                    dest.putDouble(destOffset, java.lang.Math.fma(_t113, _t50, _t114 * _t47) * _t25_inv);
+                    dest.putDouble(destOffset + 8, java.lang.Math.fma(_t113, _t47, _t114 * _t49) * _t25_inv);
+                    dest.putDouble(destOffset + 16, java.lang.Math.fma(_t113, _t51, _t114 * _t45) * _t25_inv);
+                    dest.putDouble(destOffset + 24, java.lang.Math.fma(_t113, _t45, _t114 * _t43) * _t25_inv);
+                } else {
+                    dest.putDouble(destOffset, java.lang.Math.fma(_t113, _t121, _t114 * _t47) * _t25_inv);
+                    dest.putDouble(destOffset + 8, java.lang.Math.fma(_t113, _t119, _t114 * _t49) * _t25_inv);
+                    dest.putDouble(destOffset + 16, java.lang.Math.fma(_t113, _t122, _t114 * _t45) * _t25_inv);
+                    dest.putDouble(destOffset + 24, java.lang.Math.fma(_t113, _t120, _t114 * _t43) * _t25_inv);
+                }
+            } else {
+                dest.putDouble(destOffset, java.lang.Math.fma(_t113, _t121, _t114 * _t47) * _t25_inv);
+                dest.putDouble(destOffset + 8, java.lang.Math.fma(_t113, _t119, _t114 * _t49) * _t25_inv);
+                dest.putDouble(destOffset + 16, java.lang.Math.fma(_t113, _t122, _t114 * _t45) * _t25_inv);
+                dest.putDouble(destOffset + 24, java.lang.Math.fma(_t113, _t120, _t114 * _t43) * _t25_inv);
+            }
+        } else {
+            dest.putDouble(destOffset, java.lang.Math.fma(t, otherX - _selfx, _selfx));
+            dest.putDouble(destOffset + 8, java.lang.Math.fma(t, otherY - _selfy, _selfy));
+            dest.putDouble(destOffset + 16, java.lang.Math.fma(t, otherZ - _selfz, _selfz));
+            dest.putDouble(destOffset + 24, java.lang.Math.fma(t, otherW - _selfw, _selfw));
+        }
+        return dest;
+    }
+
+    /** {@code slerp_degenerate_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer slerp_degenerate_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t7 = unitScale(otherZ, otherW, Math.max(java.lang.Math.abs(otherX), java.lang.Math.abs(otherY)));
+        double _t8 = unitScale(_selfz, _selfw, Math.max(java.lang.Math.abs(_selfx), java.lang.Math.abs(_selfy)));
+        double _t17 = otherW * _t7;
+        double _t18 = otherZ * _t7;
+        double _t19 = otherX * _t7;
+        double _t20 = otherY * _t7;
+        double _t21 = _selfw * _t8;
+        double _t22 = _selfz * _t8;
+        double _t23 = _selfx * _t8;
+        double _t24 = _selfy * _t8;
+        double _t25 = Math.min(_t8, _t7);
+        double _t25_inv = 1.0 / _t25;
+        double _t36 = ((_t17) * (_t17) + (((_t18) * (_t18) + (((_t19) * (_t19) + (_t20 * _t20))))));
+        double _t37 = ((_t21) * (_t21) + (((_t22) * (_t22) + (((_t23) * (_t23) + (_t24 * _t24))))));
+        double _t40 = (1.0 / java.lang.Math.sqrt(_t36));
+        double _t41 = (1.0 / java.lang.Math.sqrt(_t37));
+        double _t43 = _t41 * _t21;
+        double _t45 = _t41 * _t22;
+        double _t47 = _t41 * _t23;
+        double _t49 = _t41 * _t24;
+        double _t50 = -_t49;
+        double _t51 = -_t43;
+        double _t60 = t * java.lang.Math.sqrt(_t36) * (_t25 / _t7) + (1.0 - t) * java.lang.Math.sqrt(_t37) * (_t25 / _t8);
+        double _t63 = ((_t40 * _t17) * (_t43) + (((_t40 * _t18) * (_t45) + (((_t40 * _t19) * (_t47) + (_t40 * _t20 * _t49))))));
+        double _t72 = ((_t40) * (_t17) - (_t63 * _t43));
+        double _t73 = ((_t40) * (_t18) - (_t63 * _t45));
+        double _t74 = ((_t40) * (_t19) - (_t63 * _t47));
+        double _t75 = ((_t40) * (_t20) - (_t63 * _t49));
+        double _t80 = -((_t72) * (_t43) + (((_t73) * (_t45) + (((_t74) * (_t47) + (_t75 * _t49))))));
+        double _t81 = ((_t80) * (_t43) + (_t72));
+        double _t82 = ((_t80) * (_t45) + (_t73));
+        double _t83 = ((_t80) * (_t47) + (_t74));
+        double _t84 = ((_t80) * (_t49) + (_t75));
+        double _t90 = unitScale(_t82, _t81, Math.max(java.lang.Math.abs(_t83), java.lang.Math.abs(_t84)));
+        double _t97 = _t81 * _t90;
+        double _t98 = _t82 * _t90;
+        double _t99 = _t83 * _t90;
+        double _t100 = _t84 * _t90;
+        double _t106 = ((_t97) * (_t97) + (((_t98) * (_t98) + (((_t99) * (_t99) + (_t100 * _t100))))));
+        double _t108 = (1.0 / java.lang.Math.sqrt(_t106));
+        double _t110 = t * Math.atan2(java.lang.Math.sqrt(_t106), _t63 * _t90);
+        double _t113 = _t60 * Math.sinWithCos(_t110);
+        double _t114 = _t60 * Math.cosWithSin(_t110);
+        double _t119, _t120, _t121, _t122;
+        if (_t106 > 0.0) {
+            _t119 = _t108 * _t100;
+            _t120 = _t108 * _t97;
+            _t121 = _t108 * _t99;
+            _t122 = _t108 * _t98;
+        } else {
+            _t119 = _t47;
+            _t120 = _t45;
+            _t121 = _t50;
+            _t122 = _t51;
+        }
+        if (_t36 * _t37 > 0.0) {
+            if (_t63 < 0.0) {
+                if (((_t81) * (_t81) + (((_t82) * (_t82) + (((_t83) * (_t83) + (_t84 * _t84)))))) <= 5.048709793414476E-29) {
+                    dest.putDouble(destOffset, ((_t113) * (_t50) + (_t114 * _t47)) * _t25_inv);
+                    dest.putDouble(destOffset + 8, ((_t113) * (_t47) + (_t114 * _t49)) * _t25_inv);
+                    dest.putDouble(destOffset + 16, ((_t113) * (_t51) + (_t114 * _t45)) * _t25_inv);
+                    dest.putDouble(destOffset + 24, ((_t113) * (_t45) + (_t114 * _t43)) * _t25_inv);
+                } else {
+                    dest.putDouble(destOffset, ((_t113) * (_t121) + (_t114 * _t47)) * _t25_inv);
+                    dest.putDouble(destOffset + 8, ((_t113) * (_t119) + (_t114 * _t49)) * _t25_inv);
+                    dest.putDouble(destOffset + 16, ((_t113) * (_t122) + (_t114 * _t45)) * _t25_inv);
+                    dest.putDouble(destOffset + 24, ((_t113) * (_t120) + (_t114 * _t43)) * _t25_inv);
+                }
+            } else {
+                dest.putDouble(destOffset, ((_t113) * (_t121) + (_t114 * _t47)) * _t25_inv);
+                dest.putDouble(destOffset + 8, ((_t113) * (_t119) + (_t114 * _t49)) * _t25_inv);
+                dest.putDouble(destOffset + 16, ((_t113) * (_t122) + (_t114 * _t45)) * _t25_inv);
+                dest.putDouble(destOffset + 24, ((_t113) * (_t120) + (_t114 * _t43)) * _t25_inv);
+            }
+        } else {
+            dest.putDouble(destOffset, ((t) * (otherX - _selfx) + (_selfx)));
+            dest.putDouble(destOffset + 8, ((t) * (otherY - _selfy) + (_selfy)));
+            dest.putDouble(destOffset + 16, ((t) * (otherZ - _selfz) + (_selfz)));
+            dest.putDouble(destOffset + 24, ((t) * (otherW - _selfw) + (_selfw)));
+        }
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer slerp_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _otherBase = UnsafeOpsHolder.U.getLong(other, UnsafeCopy.BB_ADDRESS_OFFSET) + otherOffset;
+        Double4OpsKernelsAddress.slerp_unsafe(_destBase, _srcBase, _otherBase, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer slerp_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return slerp_api_fma(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        return slerp_api_mulAdd(dest, destOffset, src, srcOffset, other, otherOffset, t);
+    }
+
+    /** {@code slerp_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        double _t9 = java.lang.Math.fma(_selfw, _selfw, java.lang.Math.fma(_selfz, _selfz, java.lang.Math.fma(_selfx, _selfx, _selfy * _selfy)));
+        if (!(_t9 > 2.2250738585072014E-308 && _t9 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        double _t10 = java.lang.Math.fma(_otherw, _otherw, java.lang.Math.fma(_otherz, _otherz, java.lang.Math.fma(_otherx, _otherx, _othery * _othery)));
+        if (!(_t10 > 2.2250738585072014E-308 && _t10 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        double _t11 = (1.0 / java.lang.Math.sqrt(_t9));
+        return slerp_api_fma_s163f95fe_1(dest, destOffset, src, srcOffset, other, otherOffset, t, _otherx, _othery, _otherz, _otherw, (1.0 / java.lang.Math.sqrt(_t10)), _selfx * _t11, _selfw * _t11, _selfz * _t11, _selfy * _t11, t * java.lang.Math.sqrt(_t10) + (1.0 - t) * java.lang.Math.sqrt(_t9));
+    }
+
+    /** Piece 2 of {@code slerp_api_fma}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_fma_s163f95fe_1(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t, double _otherx, double _othery, double _otherz, double _otherw, double _t14, double _t16, double _t19, double _t21, double _t24, double _t28) {
+        double _t31 = java.lang.Math.fma(_otherw * _t14, _t19, java.lang.Math.fma(_otherz * _t14, _t21, java.lang.Math.fma(_otherx * _t14, _t16, _othery * _t14 * _t24)));
+        double _t40 = java.lang.Math.fma(_otherw, _t14, -(_t31 * _t19));
+        double _t41 = java.lang.Math.fma(_otherz, _t14, -(_t31 * _t21));
+        double _t42 = java.lang.Math.fma(_otherx, _t14, -(_t31 * _t16));
+        double _t43 = java.lang.Math.fma(_othery, _t14, -(_t31 * _t24));
+        double _t48 = -java.lang.Math.fma(_t40, _t19, java.lang.Math.fma(_t41, _t21, java.lang.Math.fma(_t42, _t16, _t43 * _t24)));
+        double _t49 = java.lang.Math.fma(_t48, _t19, _t40);
+        double _t50 = java.lang.Math.fma(_t48, _t21, _t41);
+        double _t51 = java.lang.Math.fma(_t48, _t16, _t42);
+        double _t52 = java.lang.Math.fma(_t48, _t24, _t43);
+        double _t57 = java.lang.Math.fma(_t49, _t49, java.lang.Math.fma(_t50, _t50, java.lang.Math.fma(_t51, _t51, _t52 * _t52)));
+        if (!(_t57 > 5.048709793414476E-29 && _t57 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        double _t61 = t * Math.atan2(java.lang.Math.sqrt(_t57), _t31);
+        return slerp_api_fma_s163f95fe_2(dest, destOffset, _t16, _t19, _t21, _t24, _t49, _t50, _t51, _t52, _t28 * Math.cosWithSin(_t61), _t28 * Math.sinWithCos(_t61) * (1.0 / java.lang.Math.sqrt(_t57)));
+    }
+
+    /** Piece 3 of {@code slerp_api_fma}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_fma_s163f95fe_2(java.nio.ByteBuffer dest, int destOffset, double _t16, double _t19, double _t21, double _t24, double _t49, double _t50, double _t51, double _t52, double _t64, double _sp0) {
+        dest.putDouble(destOffset, java.lang.Math.fma(_t16, _t64, _sp0 * _t51));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(_t24, _t64, _sp0 * _t52));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_t21, _t64, _sp0 * _t50));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(_t19, _t64, _sp0 * _t49));
+        return dest;
+    }
+
+    /** {@code slerp_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        double _t9 = ((_selfw) * (_selfw) + (((_selfz) * (_selfz) + (((_selfx) * (_selfx) + (_selfy * _selfy))))));
+        if (!(_t9 > 2.2250738585072014E-308 && _t9 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        double _t10 = ((_otherw) * (_otherw) + (((_otherz) * (_otherz) + (((_otherx) * (_otherx) + (_othery * _othery))))));
+        if (!(_t10 > 2.2250738585072014E-308 && _t10 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        double _t11 = (1.0 / java.lang.Math.sqrt(_t9));
+        return slerp_api_mulAdd_s6820a913_1(dest, destOffset, src, srcOffset, other, otherOffset, t, _otherx, _othery, _otherz, _otherw, (1.0 / java.lang.Math.sqrt(_t10)), _selfx * _t11, _selfw * _t11, _selfz * _t11, _selfy * _t11, t * java.lang.Math.sqrt(_t10) + (1.0 - t) * java.lang.Math.sqrt(_t9));
+    }
+
+    /** Piece 2 of {@code slerp_api_mulAdd}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_mulAdd_s6820a913_1(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t, double _otherx, double _othery, double _otherz, double _otherw, double _t14, double _t16, double _t19, double _t21, double _t24, double _t28) {
+        double _t31 = ((_otherw * _t14) * (_t19) + (((_otherz * _t14) * (_t21) + (((_otherx * _t14) * (_t16) + (_othery * _t14 * _t24))))));
+        double _t40 = ((_otherw) * (_t14) - (_t31 * _t19));
+        double _t41 = ((_otherz) * (_t14) - (_t31 * _t21));
+        double _t42 = ((_otherx) * (_t14) - (_t31 * _t16));
+        double _t43 = ((_othery) * (_t14) - (_t31 * _t24));
+        double _t48 = -((_t40) * (_t19) + (((_t41) * (_t21) + (((_t42) * (_t16) + (_t43 * _t24))))));
+        double _t49 = ((_t48) * (_t19) + (_t40));
+        double _t50 = ((_t48) * (_t21) + (_t41));
+        double _t51 = ((_t48) * (_t16) + (_t42));
+        double _t52 = ((_t48) * (_t24) + (_t43));
+        double _t57 = ((_t49) * (_t49) + (((_t50) * (_t50) + (((_t51) * (_t51) + (_t52 * _t52))))));
+        if (!(_t57 > 5.048709793414476E-29 && _t57 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        double _t61 = t * Math.atan2(java.lang.Math.sqrt(_t57), _t31);
+        double _t64 = _t28 * Math.cosWithSin(_t61);
+        double _sp0 = _t28 * Math.sinWithCos(_t61) * (1.0 / java.lang.Math.sqrt(_t57));
+        dest.putDouble(destOffset, ((_t16) * (_t64) + (_sp0 * _t51)));
+        return slerp_api_mulAdd_s6820a913_2(dest, destOffset, _t19, _t21, _t24, _t49, _t50, _t52, _t64, _sp0);
+    }
+
+    /** Piece 3 of {@code slerp_api_mulAdd}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_mulAdd_s6820a913_2(java.nio.ByteBuffer dest, int destOffset, double _t19, double _t21, double _t24, double _t49, double _t50, double _t52, double _t64, double _sp0) {
+        dest.putDouble(destOffset + 8, ((_t24) * (_t64) + (_sp0 * _t52)));
+        dest.putDouble(destOffset + 16, ((_t21) * (_t64) + (_sp0 * _t50)));
+        dest.putDouble(destOffset + 24, ((_t19) * (_t64) + (_sp0 * _t49)));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer slerp_degenerate(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.slerp_degenerate_unsafe(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return slerp_degenerate_api_fma(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        return slerp_degenerate_api_mulAdd(dest, destOffset, src, srcOffset, other, otherOffset, t);
+    }
+
+    public static java.nio.ByteBuffer slerp_degenerate_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _otherBase = UnsafeOpsHolder.U.getLong(other, UnsafeCopy.BB_ADDRESS_OFFSET) + otherOffset;
+        Double4OpsKernelsAddress.slerp_degenerate_unsafe(_destBase, _srcBase, _otherBase, t);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer slerp_degenerate_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return slerp_degenerate_api_fma(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        return slerp_degenerate_api_mulAdd(dest, destOffset, src, srcOffset, other, otherOffset, t);
+    }
+
+    /** {@code slerp_degenerate_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer slerp_degenerate_api_fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        double _t7 = unitScale(_otherz, _otherw, Math.max(java.lang.Math.abs(_otherx), java.lang.Math.abs(_othery)));
+        double _t8 = unitScale(_selfz, _selfw, Math.max(java.lang.Math.abs(_selfx), java.lang.Math.abs(_selfy)));
+        double _t17 = _otherw * _t7;
+        double _t18 = _otherz * _t7;
+        double _t19 = _otherx * _t7;
+        double _t20 = _othery * _t7;
+        double _t21 = _selfw * _t8;
+        double _t22 = _selfz * _t8;
+        double _t23 = _selfx * _t8;
+        double _t24 = _selfy * _t8;
+        double _t25 = Math.min(_t8, _t7);
+        double _t25_inv = 1.0 / _t25;
+        double _t36 = java.lang.Math.fma(_t17, _t17, java.lang.Math.fma(_t18, _t18, java.lang.Math.fma(_t19, _t19, _t20 * _t20)));
+        double _t37 = java.lang.Math.fma(_t21, _t21, java.lang.Math.fma(_t22, _t22, java.lang.Math.fma(_t23, _t23, _t24 * _t24)));
+        double _t40 = (1.0 / java.lang.Math.sqrt(_t36));
+        double _t41 = (1.0 / java.lang.Math.sqrt(_t37));
+        double _t43 = _t41 * _t21;
+        double _t45 = _t41 * _t22;
+        double _t47 = _t41 * _t23;
+        double _t49 = _t41 * _t24;
+        double _t50 = -_t49;
+        double _t51 = -_t43;
+        double _t60 = t * java.lang.Math.sqrt(_t36) * (_t25 / _t7) + (1.0 - t) * java.lang.Math.sqrt(_t37) * (_t25 / _t8);
+        double _t63 = java.lang.Math.fma(_t40 * _t17, _t43, java.lang.Math.fma(_t40 * _t18, _t45, java.lang.Math.fma(_t40 * _t19, _t47, _t40 * _t20 * _t49)));
+        double _t72 = java.lang.Math.fma(_t40, _t17, -(_t63 * _t43));
+        double _t73 = java.lang.Math.fma(_t40, _t18, -(_t63 * _t45));
+        double _t74 = java.lang.Math.fma(_t40, _t19, -(_t63 * _t47));
+        double _t75 = java.lang.Math.fma(_t40, _t20, -(_t63 * _t49));
+        double _t80 = -java.lang.Math.fma(_t72, _t43, java.lang.Math.fma(_t73, _t45, java.lang.Math.fma(_t74, _t47, _t75 * _t49)));
+        double _t81 = java.lang.Math.fma(_t80, _t43, _t72);
+        double _t82 = java.lang.Math.fma(_t80, _t45, _t73);
+        double _t83 = java.lang.Math.fma(_t80, _t47, _t74);
+        double _t84 = java.lang.Math.fma(_t80, _t49, _t75);
+        double _t90 = unitScale(_t82, _t81, Math.max(java.lang.Math.abs(_t83), java.lang.Math.abs(_t84)));
+        double _t97 = _t81 * _t90;
+        double _t98 = _t82 * _t90;
+        double _t99 = _t83 * _t90;
+        double _t100 = _t84 * _t90;
+        double _t106 = java.lang.Math.fma(_t97, _t97, java.lang.Math.fma(_t98, _t98, java.lang.Math.fma(_t99, _t99, _t100 * _t100)));
+        double _t108 = (1.0 / java.lang.Math.sqrt(_t106));
+        double _t110 = t * Math.atan2(java.lang.Math.sqrt(_t106), _t63 * _t90);
+        double _t113 = _t60 * Math.sinWithCos(_t110);
+        double _t114 = _t60 * Math.cosWithSin(_t110);
+        double _t119, _t120, _t121, _t122;
+        if (_t106 > 0.0) {
+            _t119 = _t108 * _t100;
+            _t120 = _t108 * _t97;
+            _t121 = _t108 * _t99;
+            _t122 = _t108 * _t98;
+        } else {
+            _t119 = _t47;
+            _t120 = _t45;
+            _t121 = _t50;
+            _t122 = _t51;
+        }
+        if (_t36 * _t37 > 0.0) {
+            if (_t63 < 0.0) {
+                if (java.lang.Math.fma(_t81, _t81, java.lang.Math.fma(_t82, _t82, java.lang.Math.fma(_t83, _t83, _t84 * _t84))) <= 5.048709793414476E-29) {
+                    dest.putDouble(destOffset, java.lang.Math.fma(_t113, _t50, _t114 * _t47) * _t25_inv);
+                    dest.putDouble(destOffset + 8, java.lang.Math.fma(_t113, _t47, _t114 * _t49) * _t25_inv);
+                    dest.putDouble(destOffset + 16, java.lang.Math.fma(_t113, _t51, _t114 * _t45) * _t25_inv);
+                    dest.putDouble(destOffset + 24, java.lang.Math.fma(_t113, _t45, _t114 * _t43) * _t25_inv);
+                } else {
+                    dest.putDouble(destOffset, java.lang.Math.fma(_t113, _t121, _t114 * _t47) * _t25_inv);
+                    dest.putDouble(destOffset + 8, java.lang.Math.fma(_t113, _t119, _t114 * _t49) * _t25_inv);
+                    dest.putDouble(destOffset + 16, java.lang.Math.fma(_t113, _t122, _t114 * _t45) * _t25_inv);
+                    dest.putDouble(destOffset + 24, java.lang.Math.fma(_t113, _t120, _t114 * _t43) * _t25_inv);
+                }
+            } else {
+                dest.putDouble(destOffset, java.lang.Math.fma(_t113, _t121, _t114 * _t47) * _t25_inv);
+                dest.putDouble(destOffset + 8, java.lang.Math.fma(_t113, _t119, _t114 * _t49) * _t25_inv);
+                dest.putDouble(destOffset + 16, java.lang.Math.fma(_t113, _t122, _t114 * _t45) * _t25_inv);
+                dest.putDouble(destOffset + 24, java.lang.Math.fma(_t113, _t120, _t114 * _t43) * _t25_inv);
+            }
+        } else {
+            dest.putDouble(destOffset, java.lang.Math.fma(t, _otherx - _selfx, _selfx));
+            dest.putDouble(destOffset + 8, java.lang.Math.fma(t, _othery - _selfy, _selfy));
+            dest.putDouble(destOffset + 16, java.lang.Math.fma(t, _otherz - _selfz, _selfz));
+            dest.putDouble(destOffset + 24, java.lang.Math.fma(t, _otherw - _selfw, _selfw));
+        }
+        return dest;
+    }
+
+    /** {@code slerp_degenerate_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer slerp_degenerate_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        double _t7 = unitScale(_otherz, _otherw, Math.max(java.lang.Math.abs(_otherx), java.lang.Math.abs(_othery)));
+        double _t8 = unitScale(_selfz, _selfw, Math.max(java.lang.Math.abs(_selfx), java.lang.Math.abs(_selfy)));
+        double _t17 = _otherw * _t7;
+        double _t18 = _otherz * _t7;
+        double _t19 = _otherx * _t7;
+        double _t20 = _othery * _t7;
+        double _t21 = _selfw * _t8;
+        double _t22 = _selfz * _t8;
+        double _t23 = _selfx * _t8;
+        double _t24 = _selfy * _t8;
+        double _t25 = Math.min(_t8, _t7);
+        double _t25_inv = 1.0 / _t25;
+        double _t36 = ((_t17) * (_t17) + (((_t18) * (_t18) + (((_t19) * (_t19) + (_t20 * _t20))))));
+        double _t37 = ((_t21) * (_t21) + (((_t22) * (_t22) + (((_t23) * (_t23) + (_t24 * _t24))))));
+        double _t40 = (1.0 / java.lang.Math.sqrt(_t36));
+        double _t41 = (1.0 / java.lang.Math.sqrt(_t37));
+        double _t43 = _t41 * _t21;
+        double _t45 = _t41 * _t22;
+        double _t47 = _t41 * _t23;
+        double _t49 = _t41 * _t24;
+        double _t50 = -_t49;
+        double _t51 = -_t43;
+        double _t60 = t * java.lang.Math.sqrt(_t36) * (_t25 / _t7) + (1.0 - t) * java.lang.Math.sqrt(_t37) * (_t25 / _t8);
+        double _t63 = ((_t40 * _t17) * (_t43) + (((_t40 * _t18) * (_t45) + (((_t40 * _t19) * (_t47) + (_t40 * _t20 * _t49))))));
+        double _t72 = ((_t40) * (_t17) - (_t63 * _t43));
+        double _t73 = ((_t40) * (_t18) - (_t63 * _t45));
+        double _t74 = ((_t40) * (_t19) - (_t63 * _t47));
+        double _t75 = ((_t40) * (_t20) - (_t63 * _t49));
+        double _t80 = -((_t72) * (_t43) + (((_t73) * (_t45) + (((_t74) * (_t47) + (_t75 * _t49))))));
+        double _t81 = ((_t80) * (_t43) + (_t72));
+        double _t82 = ((_t80) * (_t45) + (_t73));
+        double _t83 = ((_t80) * (_t47) + (_t74));
+        double _t84 = ((_t80) * (_t49) + (_t75));
+        double _t90 = unitScale(_t82, _t81, Math.max(java.lang.Math.abs(_t83), java.lang.Math.abs(_t84)));
+        double _t97 = _t81 * _t90;
+        double _t98 = _t82 * _t90;
+        double _t99 = _t83 * _t90;
+        double _t100 = _t84 * _t90;
+        double _t106 = ((_t97) * (_t97) + (((_t98) * (_t98) + (((_t99) * (_t99) + (_t100 * _t100))))));
+        double _t108 = (1.0 / java.lang.Math.sqrt(_t106));
+        double _t110 = t * Math.atan2(java.lang.Math.sqrt(_t106), _t63 * _t90);
+        double _t113 = _t60 * Math.sinWithCos(_t110);
+        double _t114 = _t60 * Math.cosWithSin(_t110);
+        double _t119, _t120, _t121, _t122;
+        if (_t106 > 0.0) {
+            _t119 = _t108 * _t100;
+            _t120 = _t108 * _t97;
+            _t121 = _t108 * _t99;
+            _t122 = _t108 * _t98;
+        } else {
+            _t119 = _t47;
+            _t120 = _t45;
+            _t121 = _t50;
+            _t122 = _t51;
+        }
+        if (_t36 * _t37 > 0.0) {
+            if (_t63 < 0.0) {
+                if (((_t81) * (_t81) + (((_t82) * (_t82) + (((_t83) * (_t83) + (_t84 * _t84)))))) <= 5.048709793414476E-29) {
+                    dest.putDouble(destOffset, ((_t113) * (_t50) + (_t114 * _t47)) * _t25_inv);
+                    dest.putDouble(destOffset + 8, ((_t113) * (_t47) + (_t114 * _t49)) * _t25_inv);
+                    dest.putDouble(destOffset + 16, ((_t113) * (_t51) + (_t114 * _t45)) * _t25_inv);
+                    dest.putDouble(destOffset + 24, ((_t113) * (_t45) + (_t114 * _t43)) * _t25_inv);
+                } else {
+                    dest.putDouble(destOffset, ((_t113) * (_t121) + (_t114 * _t47)) * _t25_inv);
+                    dest.putDouble(destOffset + 8, ((_t113) * (_t119) + (_t114 * _t49)) * _t25_inv);
+                    dest.putDouble(destOffset + 16, ((_t113) * (_t122) + (_t114 * _t45)) * _t25_inv);
+                    dest.putDouble(destOffset + 24, ((_t113) * (_t120) + (_t114 * _t43)) * _t25_inv);
+                }
+            } else {
+                dest.putDouble(destOffset, ((_t113) * (_t121) + (_t114 * _t47)) * _t25_inv);
+                dest.putDouble(destOffset + 8, ((_t113) * (_t119) + (_t114 * _t49)) * _t25_inv);
+                dest.putDouble(destOffset + 16, ((_t113) * (_t122) + (_t114 * _t45)) * _t25_inv);
+                dest.putDouble(destOffset + 24, ((_t113) * (_t120) + (_t114 * _t43)) * _t25_inv);
+            }
+        } else {
+            dest.putDouble(destOffset, ((t) * (_otherx - _selfx) + (_selfx)));
+            dest.putDouble(destOffset + 8, ((t) * (_othery - _selfy) + (_selfy)));
+            dest.putDouble(destOffset + 16, ((t) * (_otherz - _selfz) + (_selfz)));
+            dest.putDouble(destOffset + 24, ((t) * (_otherw - _selfw) + (_selfw)));
+        }
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer slerp_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t, double epsilon) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.slerp_unsafe(_destBase, _srcBase, otherX, otherY, otherZ, otherW, t, epsilon);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer slerp_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t, double epsilon) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return slerp_api_fma(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t, epsilon);
+        return slerp_api_mulAdd(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t, epsilon);
+    }
+
+    /** {@code slerp_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t, double epsilon) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t9 = java.lang.Math.fma(_selfw, _selfw, java.lang.Math.fma(_selfz, _selfz, java.lang.Math.fma(_selfx, _selfx, _selfy * _selfy)));
+        if (!(_t9 > 2.2250738585072014E-308 && _t9 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t, epsilon);
+        double _t10 = java.lang.Math.fma(otherW, otherW, java.lang.Math.fma(otherZ, otherZ, java.lang.Math.fma(otherX, otherX, otherY * otherY)));
+        if (!(_t10 > 2.2250738585072014E-308 && _t10 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t, epsilon);
+        double _t11 = (1.0 / java.lang.Math.sqrt(_t9));
+        double _t14 = (1.0 / java.lang.Math.sqrt(_t10));
+        double _t16 = _selfx * _t11;
+        double _t19 = _selfw * _t11;
+        double _t21 = _selfz * _t11;
+        double _t24 = _selfy * _t11;
+        return slerp_api_fma_sb6416081_1(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t, epsilon, _t14, _t16, _t19, _t21, _t24, t * java.lang.Math.sqrt(_t10) + (1.0 - t) * java.lang.Math.sqrt(_t9), java.lang.Math.fma(otherW * _t14, _t19, java.lang.Math.fma(otherZ * _t14, _t21, java.lang.Math.fma(otherX * _t14, _t16, otherY * _t14 * _t24))));
+    }
+
+    /** Piece 2 of {@code slerp_api_fma}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_fma_sb6416081_1(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t, double epsilon, double _t14, double _t16, double _t19, double _t21, double _t24, double _t28, double _t31) {
+        double _t40 = java.lang.Math.fma(otherW, _t14, -(_t31 * _t19));
+        double _t41 = java.lang.Math.fma(otherZ, _t14, -(_t31 * _t21));
+        double _t42 = java.lang.Math.fma(otherX, _t14, -(_t31 * _t16));
+        double _t43 = java.lang.Math.fma(otherY, _t14, -(_t31 * _t24));
+        double _t48 = -java.lang.Math.fma(_t40, _t19, java.lang.Math.fma(_t41, _t21, java.lang.Math.fma(_t42, _t16, _t43 * _t24)));
+        double _t49 = java.lang.Math.fma(_t48, _t19, _t40);
+        double _t50 = java.lang.Math.fma(_t48, _t21, _t41);
+        double _t51 = java.lang.Math.fma(_t48, _t16, _t42);
+        double _t52 = java.lang.Math.fma(_t48, _t24, _t43);
+        double _t57 = java.lang.Math.fma(_t49, _t49, java.lang.Math.fma(_t50, _t50, java.lang.Math.fma(_t51, _t51, _t52 * _t52)));
+        if (!(_t57 > epsilon && _t57 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t, epsilon);
+        double _t61 = t * Math.atan2(java.lang.Math.sqrt(_t57), _t31);
+        double _t64 = _t28 * Math.cosWithSin(_t61);
+        double _sp0 = _t28 * Math.sinWithCos(_t61) * (1.0 / java.lang.Math.sqrt(_t57));
+        dest.putDouble(destOffset, java.lang.Math.fma(_t16, _t64, _sp0 * _t51));
+        return slerp_api_fma_sb6416081_2(dest, destOffset, _t19, _t21, _t24, _t49, _t50, _t52, _t64, _sp0);
+    }
+
+    /** Piece 3 of {@code slerp_api_fma}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_fma_sb6416081_2(java.nio.ByteBuffer dest, int destOffset, double _t19, double _t21, double _t24, double _t49, double _t50, double _t52, double _t64, double _sp0) {
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(_t24, _t64, _sp0 * _t52));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_t21, _t64, _sp0 * _t50));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(_t19, _t64, _sp0 * _t49));
+        return dest;
+    }
+
+    /** {@code slerp_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t, double epsilon) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t9 = ((_selfw) * (_selfw) + (((_selfz) * (_selfz) + (((_selfx) * (_selfx) + (_selfy * _selfy))))));
+        if (!(_t9 > 2.2250738585072014E-308 && _t9 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t, epsilon);
+        double _t10 = ((otherW) * (otherW) + (((otherZ) * (otherZ) + (((otherX) * (otherX) + (otherY * otherY))))));
+        if (!(_t10 > 2.2250738585072014E-308 && _t10 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t, epsilon);
+        double _t11 = (1.0 / java.lang.Math.sqrt(_t9));
+        double _t14 = (1.0 / java.lang.Math.sqrt(_t10));
+        double _t16 = _selfx * _t11;
+        double _t19 = _selfw * _t11;
+        double _t21 = _selfz * _t11;
+        double _t24 = _selfy * _t11;
+        double _t31 = ((otherW * _t14) * (_t19) + (((otherZ * _t14) * (_t21) + (((otherX * _t14) * (_t16) + (otherY * _t14 * _t24))))));
+        return slerp_api_mulAdd_sbe33536c_1(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t, epsilon, _t14, _t16, _t19, _t21, _t24, t * java.lang.Math.sqrt(_t10) + (1.0 - t) * java.lang.Math.sqrt(_t9), _t31, ((otherW) * (_t14) - (_t31 * _t19)));
+    }
+
+    /** Piece 2 of {@code slerp_api_mulAdd}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_mulAdd_sbe33536c_1(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t, double epsilon, double _t14, double _t16, double _t19, double _t21, double _t24, double _t28, double _t31, double _t40) {
+        double _t41 = ((otherZ) * (_t14) - (_t31 * _t21));
+        double _t42 = ((otherX) * (_t14) - (_t31 * _t16));
+        double _t43 = ((otherY) * (_t14) - (_t31 * _t24));
+        double _t48 = -((_t40) * (_t19) + (((_t41) * (_t21) + (((_t42) * (_t16) + (_t43 * _t24))))));
+        double _t49 = ((_t48) * (_t19) + (_t40));
+        double _t50 = ((_t48) * (_t21) + (_t41));
+        double _t51 = ((_t48) * (_t16) + (_t42));
+        double _t52 = ((_t48) * (_t24) + (_t43));
+        double _t57 = ((_t49) * (_t49) + (((_t50) * (_t50) + (((_t51) * (_t51) + (_t52 * _t52))))));
+        if (!(_t57 > epsilon && _t57 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t, epsilon);
+        double _t61 = t * Math.atan2(java.lang.Math.sqrt(_t57), _t31);
+        double _t64 = _t28 * Math.cosWithSin(_t61);
+        double _sp0 = _t28 * Math.sinWithCos(_t61) * (1.0 / java.lang.Math.sqrt(_t57));
+        dest.putDouble(destOffset, ((_t16) * (_t64) + (_sp0 * _t51)));
+        dest.putDouble(destOffset + 8, ((_t24) * (_t64) + (_sp0 * _t52)));
+        dest.putDouble(destOffset + 16, ((_t21) * (_t64) + (_sp0 * _t50)));
+        dest.putDouble(destOffset + 24, ((_t19) * (_t64) + (_sp0 * _t49)));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer slerp_degenerate(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t, double epsilon) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.slerp_degenerate_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t, epsilon);
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return slerp_degenerate_api_fma(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t, epsilon);
+        return slerp_degenerate_api_mulAdd(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t, epsilon);
+    }
+
+    public static java.nio.ByteBuffer slerp_degenerate_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t, double epsilon) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.slerp_degenerate_unsafe(_destBase, _srcBase, otherX, otherY, otherZ, otherW, t, epsilon);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer slerp_degenerate_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t, double epsilon) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return slerp_degenerate_api_fma(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t, epsilon);
+        return slerp_degenerate_api_mulAdd(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t, epsilon);
+    }
+
+    /** {@code slerp_degenerate_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer slerp_degenerate_api_fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t, double epsilon) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t7 = unitScale(otherZ, otherW, Math.max(java.lang.Math.abs(otherX), java.lang.Math.abs(otherY)));
+        double _t8 = unitScale(_selfz, _selfw, Math.max(java.lang.Math.abs(_selfx), java.lang.Math.abs(_selfy)));
+        double _t17 = otherW * _t7;
+        double _t18 = otherZ * _t7;
+        double _t19 = otherX * _t7;
+        double _t20 = otherY * _t7;
+        double _t21 = _selfw * _t8;
+        double _t22 = _selfz * _t8;
+        double _t23 = _selfx * _t8;
+        double _t24 = _selfy * _t8;
+        double _t25 = Math.min(_t8, _t7);
+        double _t25_inv = 1.0 / _t25;
+        double _t36 = java.lang.Math.fma(_t17, _t17, java.lang.Math.fma(_t18, _t18, java.lang.Math.fma(_t19, _t19, _t20 * _t20)));
+        double _t37 = java.lang.Math.fma(_t21, _t21, java.lang.Math.fma(_t22, _t22, java.lang.Math.fma(_t23, _t23, _t24 * _t24)));
+        double _t40 = (1.0 / java.lang.Math.sqrt(_t36));
+        double _t41 = (1.0 / java.lang.Math.sqrt(_t37));
+        double _t43 = _t41 * _t21;
+        double _t45 = _t41 * _t22;
+        double _t47 = _t41 * _t23;
+        double _t49 = _t41 * _t24;
+        double _t50 = -_t49;
+        double _t51 = -_t43;
+        double _t60 = t * java.lang.Math.sqrt(_t36) * (_t25 / _t7) + (1.0 - t) * java.lang.Math.sqrt(_t37) * (_t25 / _t8);
+        double _t63 = java.lang.Math.fma(_t40 * _t17, _t43, java.lang.Math.fma(_t40 * _t18, _t45, java.lang.Math.fma(_t40 * _t19, _t47, _t40 * _t20 * _t49)));
+        double _t72 = java.lang.Math.fma(_t40, _t17, -(_t63 * _t43));
+        double _t73 = java.lang.Math.fma(_t40, _t18, -(_t63 * _t45));
+        double _t74 = java.lang.Math.fma(_t40, _t19, -(_t63 * _t47));
+        double _t75 = java.lang.Math.fma(_t40, _t20, -(_t63 * _t49));
+        double _t80 = -java.lang.Math.fma(_t72, _t43, java.lang.Math.fma(_t73, _t45, java.lang.Math.fma(_t74, _t47, _t75 * _t49)));
+        double _t81 = java.lang.Math.fma(_t80, _t43, _t72);
+        double _t82 = java.lang.Math.fma(_t80, _t45, _t73);
+        double _t83 = java.lang.Math.fma(_t80, _t47, _t74);
+        double _t84 = java.lang.Math.fma(_t80, _t49, _t75);
+        double _t90 = unitScale(_t82, _t81, Math.max(java.lang.Math.abs(_t83), java.lang.Math.abs(_t84)));
+        double _t97 = _t81 * _t90;
+        double _t98 = _t82 * _t90;
+        double _t99 = _t83 * _t90;
+        double _t100 = _t84 * _t90;
+        double _t106 = java.lang.Math.fma(_t97, _t97, java.lang.Math.fma(_t98, _t98, java.lang.Math.fma(_t99, _t99, _t100 * _t100)));
+        double _t108 = (1.0 / java.lang.Math.sqrt(_t106));
+        double _t110 = t * Math.atan2(java.lang.Math.sqrt(_t106), _t63 * _t90);
+        double _t113 = _t60 * Math.sinWithCos(_t110);
+        double _t114 = _t60 * Math.cosWithSin(_t110);
+        double _t119, _t120, _t121, _t122;
+        if (_t106 > 0.0) {
+            _t119 = _t108 * _t100;
+            _t120 = _t108 * _t97;
+            _t121 = _t108 * _t99;
+            _t122 = _t108 * _t98;
+        } else {
+            _t119 = _t47;
+            _t120 = _t45;
+            _t121 = _t50;
+            _t122 = _t51;
+        }
+        if (_t36 * _t37 > 0.0) {
+            if (_t63 < 0.0) {
+                if (java.lang.Math.fma(_t81, _t81, java.lang.Math.fma(_t82, _t82, java.lang.Math.fma(_t83, _t83, _t84 * _t84))) <= epsilon) {
+                    dest.putDouble(destOffset, java.lang.Math.fma(_t113, _t50, _t114 * _t47) * _t25_inv);
+                    dest.putDouble(destOffset + 8, java.lang.Math.fma(_t113, _t47, _t114 * _t49) * _t25_inv);
+                    dest.putDouble(destOffset + 16, java.lang.Math.fma(_t113, _t51, _t114 * _t45) * _t25_inv);
+                    dest.putDouble(destOffset + 24, java.lang.Math.fma(_t113, _t45, _t114 * _t43) * _t25_inv);
+                } else {
+                    dest.putDouble(destOffset, java.lang.Math.fma(_t113, _t121, _t114 * _t47) * _t25_inv);
+                    dest.putDouble(destOffset + 8, java.lang.Math.fma(_t113, _t119, _t114 * _t49) * _t25_inv);
+                    dest.putDouble(destOffset + 16, java.lang.Math.fma(_t113, _t122, _t114 * _t45) * _t25_inv);
+                    dest.putDouble(destOffset + 24, java.lang.Math.fma(_t113, _t120, _t114 * _t43) * _t25_inv);
+                }
+            } else {
+                dest.putDouble(destOffset, java.lang.Math.fma(_t113, _t121, _t114 * _t47) * _t25_inv);
+                dest.putDouble(destOffset + 8, java.lang.Math.fma(_t113, _t119, _t114 * _t49) * _t25_inv);
+                dest.putDouble(destOffset + 16, java.lang.Math.fma(_t113, _t122, _t114 * _t45) * _t25_inv);
+                dest.putDouble(destOffset + 24, java.lang.Math.fma(_t113, _t120, _t114 * _t43) * _t25_inv);
+            }
+        } else {
+            dest.putDouble(destOffset, java.lang.Math.fma(t, otherX - _selfx, _selfx));
+            dest.putDouble(destOffset + 8, java.lang.Math.fma(t, otherY - _selfy, _selfy));
+            dest.putDouble(destOffset + 16, java.lang.Math.fma(t, otherZ - _selfz, _selfz));
+            dest.putDouble(destOffset + 24, java.lang.Math.fma(t, otherW - _selfw, _selfw));
+        }
+        return dest;
+    }
+
+    /** {@code slerp_degenerate_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer slerp_degenerate_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t, double epsilon) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t7 = unitScale(otherZ, otherW, Math.max(java.lang.Math.abs(otherX), java.lang.Math.abs(otherY)));
+        double _t8 = unitScale(_selfz, _selfw, Math.max(java.lang.Math.abs(_selfx), java.lang.Math.abs(_selfy)));
+        double _t17 = otherW * _t7;
+        double _t18 = otherZ * _t7;
+        double _t19 = otherX * _t7;
+        double _t20 = otherY * _t7;
+        double _t21 = _selfw * _t8;
+        double _t22 = _selfz * _t8;
+        double _t23 = _selfx * _t8;
+        double _t24 = _selfy * _t8;
+        double _t25 = Math.min(_t8, _t7);
+        double _t25_inv = 1.0 / _t25;
+        double _t36 = ((_t17) * (_t17) + (((_t18) * (_t18) + (((_t19) * (_t19) + (_t20 * _t20))))));
+        double _t37 = ((_t21) * (_t21) + (((_t22) * (_t22) + (((_t23) * (_t23) + (_t24 * _t24))))));
+        double _t40 = (1.0 / java.lang.Math.sqrt(_t36));
+        double _t41 = (1.0 / java.lang.Math.sqrt(_t37));
+        double _t43 = _t41 * _t21;
+        double _t45 = _t41 * _t22;
+        double _t47 = _t41 * _t23;
+        double _t49 = _t41 * _t24;
+        double _t50 = -_t49;
+        double _t51 = -_t43;
+        double _t60 = t * java.lang.Math.sqrt(_t36) * (_t25 / _t7) + (1.0 - t) * java.lang.Math.sqrt(_t37) * (_t25 / _t8);
+        double _t63 = ((_t40 * _t17) * (_t43) + (((_t40 * _t18) * (_t45) + (((_t40 * _t19) * (_t47) + (_t40 * _t20 * _t49))))));
+        double _t72 = ((_t40) * (_t17) - (_t63 * _t43));
+        double _t73 = ((_t40) * (_t18) - (_t63 * _t45));
+        double _t74 = ((_t40) * (_t19) - (_t63 * _t47));
+        double _t75 = ((_t40) * (_t20) - (_t63 * _t49));
+        double _t80 = -((_t72) * (_t43) + (((_t73) * (_t45) + (((_t74) * (_t47) + (_t75 * _t49))))));
+        double _t81 = ((_t80) * (_t43) + (_t72));
+        double _t82 = ((_t80) * (_t45) + (_t73));
+        double _t83 = ((_t80) * (_t47) + (_t74));
+        double _t84 = ((_t80) * (_t49) + (_t75));
+        double _t90 = unitScale(_t82, _t81, Math.max(java.lang.Math.abs(_t83), java.lang.Math.abs(_t84)));
+        double _t97 = _t81 * _t90;
+        double _t98 = _t82 * _t90;
+        double _t99 = _t83 * _t90;
+        double _t100 = _t84 * _t90;
+        double _t106 = ((_t97) * (_t97) + (((_t98) * (_t98) + (((_t99) * (_t99) + (_t100 * _t100))))));
+        double _t108 = (1.0 / java.lang.Math.sqrt(_t106));
+        double _t110 = t * Math.atan2(java.lang.Math.sqrt(_t106), _t63 * _t90);
+        double _t113 = _t60 * Math.sinWithCos(_t110);
+        double _t114 = _t60 * Math.cosWithSin(_t110);
+        double _t119, _t120, _t121, _t122;
+        if (_t106 > 0.0) {
+            _t119 = _t108 * _t100;
+            _t120 = _t108 * _t97;
+            _t121 = _t108 * _t99;
+            _t122 = _t108 * _t98;
+        } else {
+            _t119 = _t47;
+            _t120 = _t45;
+            _t121 = _t50;
+            _t122 = _t51;
+        }
+        if (_t36 * _t37 > 0.0) {
+            if (_t63 < 0.0) {
+                if (((_t81) * (_t81) + (((_t82) * (_t82) + (((_t83) * (_t83) + (_t84 * _t84)))))) <= epsilon) {
+                    dest.putDouble(destOffset, ((_t113) * (_t50) + (_t114 * _t47)) * _t25_inv);
+                    dest.putDouble(destOffset + 8, ((_t113) * (_t47) + (_t114 * _t49)) * _t25_inv);
+                    dest.putDouble(destOffset + 16, ((_t113) * (_t51) + (_t114 * _t45)) * _t25_inv);
+                    dest.putDouble(destOffset + 24, ((_t113) * (_t45) + (_t114 * _t43)) * _t25_inv);
+                } else {
+                    dest.putDouble(destOffset, ((_t113) * (_t121) + (_t114 * _t47)) * _t25_inv);
+                    dest.putDouble(destOffset + 8, ((_t113) * (_t119) + (_t114 * _t49)) * _t25_inv);
+                    dest.putDouble(destOffset + 16, ((_t113) * (_t122) + (_t114 * _t45)) * _t25_inv);
+                    dest.putDouble(destOffset + 24, ((_t113) * (_t120) + (_t114 * _t43)) * _t25_inv);
+                }
+            } else {
+                dest.putDouble(destOffset, ((_t113) * (_t121) + (_t114 * _t47)) * _t25_inv);
+                dest.putDouble(destOffset + 8, ((_t113) * (_t119) + (_t114 * _t49)) * _t25_inv);
+                dest.putDouble(destOffset + 16, ((_t113) * (_t122) + (_t114 * _t45)) * _t25_inv);
+                dest.putDouble(destOffset + 24, ((_t113) * (_t120) + (_t114 * _t43)) * _t25_inv);
+            }
+        } else {
+            dest.putDouble(destOffset, ((t) * (otherX - _selfx) + (_selfx)));
+            dest.putDouble(destOffset + 8, ((t) * (otherY - _selfy) + (_selfy)));
+            dest.putDouble(destOffset + 16, ((t) * (otherZ - _selfz) + (_selfz)));
+            dest.putDouble(destOffset + 24, ((t) * (otherW - _selfw) + (_selfw)));
+        }
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer slerp_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t, double epsilon) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _otherBase = UnsafeOpsHolder.U.getLong(other, UnsafeCopy.BB_ADDRESS_OFFSET) + otherOffset;
+        Double4OpsKernelsAddress.slerp_unsafe(_destBase, _srcBase, _otherBase, t, epsilon);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer slerp_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t, double epsilon) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return slerp_api_fma(dest, destOffset, src, srcOffset, other, otherOffset, t, epsilon);
+        return slerp_api_mulAdd(dest, destOffset, src, srcOffset, other, otherOffset, t, epsilon);
+    }
+
+    /** {@code slerp_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t, double epsilon) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        double _t9 = java.lang.Math.fma(_selfw, _selfw, java.lang.Math.fma(_selfz, _selfz, java.lang.Math.fma(_selfx, _selfx, _selfy * _selfy)));
+        if (!(_t9 > 2.2250738585072014E-308 && _t9 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, other, otherOffset, t, epsilon);
+        double _t10 = java.lang.Math.fma(_otherw, _otherw, java.lang.Math.fma(_otherz, _otherz, java.lang.Math.fma(_otherx, _otherx, _othery * _othery)));
+        if (!(_t10 > 2.2250738585072014E-308 && _t10 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, other, otherOffset, t, epsilon);
+        double _t11 = (1.0 / java.lang.Math.sqrt(_t9));
+        return slerp_api_fma_sf924b385_1(dest, destOffset, src, srcOffset, other, otherOffset, t, epsilon, _otherx, _othery, _otherz, _otherw, (1.0 / java.lang.Math.sqrt(_t10)), _selfx * _t11, _selfw * _t11, _selfz * _t11, _selfy * _t11, t * java.lang.Math.sqrt(_t10) + (1.0 - t) * java.lang.Math.sqrt(_t9));
+    }
+
+    /** Piece 2 of {@code slerp_api_fma}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_fma_sf924b385_1(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t, double epsilon, double _otherx, double _othery, double _otherz, double _otherw, double _t14, double _t16, double _t19, double _t21, double _t24, double _t28) {
+        double _t31 = java.lang.Math.fma(_otherw * _t14, _t19, java.lang.Math.fma(_otherz * _t14, _t21, java.lang.Math.fma(_otherx * _t14, _t16, _othery * _t14 * _t24)));
+        double _t40 = java.lang.Math.fma(_otherw, _t14, -(_t31 * _t19));
+        double _t41 = java.lang.Math.fma(_otherz, _t14, -(_t31 * _t21));
+        double _t42 = java.lang.Math.fma(_otherx, _t14, -(_t31 * _t16));
+        double _t43 = java.lang.Math.fma(_othery, _t14, -(_t31 * _t24));
+        double _t48 = -java.lang.Math.fma(_t40, _t19, java.lang.Math.fma(_t41, _t21, java.lang.Math.fma(_t42, _t16, _t43 * _t24)));
+        double _t49 = java.lang.Math.fma(_t48, _t19, _t40);
+        double _t50 = java.lang.Math.fma(_t48, _t21, _t41);
+        double _t51 = java.lang.Math.fma(_t48, _t16, _t42);
+        double _t52 = java.lang.Math.fma(_t48, _t24, _t43);
+        double _t57 = java.lang.Math.fma(_t49, _t49, java.lang.Math.fma(_t50, _t50, java.lang.Math.fma(_t51, _t51, _t52 * _t52)));
+        if (!(_t57 > epsilon && _t57 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, other, otherOffset, t, epsilon);
+        double _t61 = t * Math.atan2(java.lang.Math.sqrt(_t57), _t31);
+        return slerp_api_fma_sf924b385_2(dest, destOffset, _t16, _t19, _t21, _t24, _t49, _t50, _t51, _t52, _t28 * Math.cosWithSin(_t61), _t28 * Math.sinWithCos(_t61) * (1.0 / java.lang.Math.sqrt(_t57)));
+    }
+
+    /** Piece 3 of {@code slerp_api_fma}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_fma_sf924b385_2(java.nio.ByteBuffer dest, int destOffset, double _t16, double _t19, double _t21, double _t24, double _t49, double _t50, double _t51, double _t52, double _t64, double _sp0) {
+        dest.putDouble(destOffset, java.lang.Math.fma(_t16, _t64, _sp0 * _t51));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(_t24, _t64, _sp0 * _t52));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_t21, _t64, _sp0 * _t50));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(_t19, _t64, _sp0 * _t49));
+        return dest;
+    }
+
+    /** {@code slerp_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t, double epsilon) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        double _t9 = ((_selfw) * (_selfw) + (((_selfz) * (_selfz) + (((_selfx) * (_selfx) + (_selfy * _selfy))))));
+        if (!(_t9 > 2.2250738585072014E-308 && _t9 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, other, otherOffset, t, epsilon);
+        double _t10 = ((_otherw) * (_otherw) + (((_otherz) * (_otherz) + (((_otherx) * (_otherx) + (_othery * _othery))))));
+        if (!(_t10 > 2.2250738585072014E-308 && _t10 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, other, otherOffset, t, epsilon);
+        double _t11 = (1.0 / java.lang.Math.sqrt(_t9));
+        return slerp_api_mulAdd_s5e8d1080_1(dest, destOffset, src, srcOffset, other, otherOffset, t, epsilon, _otherx, _othery, _otherz, _otherw, (1.0 / java.lang.Math.sqrt(_t10)), _selfx * _t11, _selfw * _t11, _selfz * _t11, _selfy * _t11, t * java.lang.Math.sqrt(_t10) + (1.0 - t) * java.lang.Math.sqrt(_t9));
+    }
+
+    /** Piece 2 of {@code slerp_api_mulAdd}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_mulAdd_s5e8d1080_1(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t, double epsilon, double _otherx, double _othery, double _otherz, double _otherw, double _t14, double _t16, double _t19, double _t21, double _t24, double _t28) {
+        double _t31 = ((_otherw * _t14) * (_t19) + (((_otherz * _t14) * (_t21) + (((_otherx * _t14) * (_t16) + (_othery * _t14 * _t24))))));
+        double _t40 = ((_otherw) * (_t14) - (_t31 * _t19));
+        double _t41 = ((_otherz) * (_t14) - (_t31 * _t21));
+        double _t42 = ((_otherx) * (_t14) - (_t31 * _t16));
+        double _t43 = ((_othery) * (_t14) - (_t31 * _t24));
+        double _t48 = -((_t40) * (_t19) + (((_t41) * (_t21) + (((_t42) * (_t16) + (_t43 * _t24))))));
+        double _t49 = ((_t48) * (_t19) + (_t40));
+        double _t50 = ((_t48) * (_t21) + (_t41));
+        double _t51 = ((_t48) * (_t16) + (_t42));
+        double _t52 = ((_t48) * (_t24) + (_t43));
+        double _t57 = ((_t49) * (_t49) + (((_t50) * (_t50) + (((_t51) * (_t51) + (_t52 * _t52))))));
+        if (!(_t57 > epsilon && _t57 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.slerp_degenerate(dest, destOffset, src, srcOffset, other, otherOffset, t, epsilon);
+        double _t61 = t * Math.atan2(java.lang.Math.sqrt(_t57), _t31);
+        double _t64 = _t28 * Math.cosWithSin(_t61);
+        double _sp0 = _t28 * Math.sinWithCos(_t61) * (1.0 / java.lang.Math.sqrt(_t57));
+        dest.putDouble(destOffset, ((_t16) * (_t64) + (_sp0 * _t51)));
+        return slerp_api_mulAdd_s5e8d1080_2(dest, destOffset, _t19, _t21, _t24, _t49, _t50, _t52, _t64, _sp0);
+    }
+
+    /** Piece 3 of {@code slerp_api_mulAdd}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer slerp_api_mulAdd_s5e8d1080_2(java.nio.ByteBuffer dest, int destOffset, double _t19, double _t21, double _t24, double _t49, double _t50, double _t52, double _t64, double _sp0) {
+        dest.putDouble(destOffset + 8, ((_t24) * (_t64) + (_sp0 * _t52)));
+        dest.putDouble(destOffset + 16, ((_t21) * (_t64) + (_sp0 * _t50)));
+        dest.putDouble(destOffset + 24, ((_t19) * (_t64) + (_sp0 * _t49)));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer slerp_degenerate(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t, double epsilon) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.slerp_degenerate_unsafe(dest, destOffset, src, srcOffset, other, otherOffset, t, epsilon);
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return slerp_degenerate_api_fma(dest, destOffset, src, srcOffset, other, otherOffset, t, epsilon);
+        return slerp_degenerate_api_mulAdd(dest, destOffset, src, srcOffset, other, otherOffset, t, epsilon);
+    }
+
+    public static java.nio.ByteBuffer slerp_degenerate_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t, double epsilon) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _otherBase = UnsafeOpsHolder.U.getLong(other, UnsafeCopy.BB_ADDRESS_OFFSET) + otherOffset;
+        Double4OpsKernelsAddress.slerp_degenerate_unsafe(_destBase, _srcBase, _otherBase, t, epsilon);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer slerp_degenerate_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t, double epsilon) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return slerp_degenerate_api_fma(dest, destOffset, src, srcOffset, other, otherOffset, t, epsilon);
+        return slerp_degenerate_api_mulAdd(dest, destOffset, src, srcOffset, other, otherOffset, t, epsilon);
+    }
+
+    /** {@code slerp_degenerate_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer slerp_degenerate_api_fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t, double epsilon) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        double _t7 = unitScale(_otherz, _otherw, Math.max(java.lang.Math.abs(_otherx), java.lang.Math.abs(_othery)));
+        double _t8 = unitScale(_selfz, _selfw, Math.max(java.lang.Math.abs(_selfx), java.lang.Math.abs(_selfy)));
+        double _t17 = _otherw * _t7;
+        double _t18 = _otherz * _t7;
+        double _t19 = _otherx * _t7;
+        double _t20 = _othery * _t7;
+        double _t21 = _selfw * _t8;
+        double _t22 = _selfz * _t8;
+        double _t23 = _selfx * _t8;
+        double _t24 = _selfy * _t8;
+        double _t25 = Math.min(_t8, _t7);
+        double _t25_inv = 1.0 / _t25;
+        double _t36 = java.lang.Math.fma(_t17, _t17, java.lang.Math.fma(_t18, _t18, java.lang.Math.fma(_t19, _t19, _t20 * _t20)));
+        double _t37 = java.lang.Math.fma(_t21, _t21, java.lang.Math.fma(_t22, _t22, java.lang.Math.fma(_t23, _t23, _t24 * _t24)));
+        double _t40 = (1.0 / java.lang.Math.sqrt(_t36));
+        double _t41 = (1.0 / java.lang.Math.sqrt(_t37));
+        double _t43 = _t41 * _t21;
+        double _t45 = _t41 * _t22;
+        double _t47 = _t41 * _t23;
+        double _t49 = _t41 * _t24;
+        double _t50 = -_t49;
+        double _t51 = -_t43;
+        double _t60 = t * java.lang.Math.sqrt(_t36) * (_t25 / _t7) + (1.0 - t) * java.lang.Math.sqrt(_t37) * (_t25 / _t8);
+        double _t63 = java.lang.Math.fma(_t40 * _t17, _t43, java.lang.Math.fma(_t40 * _t18, _t45, java.lang.Math.fma(_t40 * _t19, _t47, _t40 * _t20 * _t49)));
+        double _t72 = java.lang.Math.fma(_t40, _t17, -(_t63 * _t43));
+        double _t73 = java.lang.Math.fma(_t40, _t18, -(_t63 * _t45));
+        double _t74 = java.lang.Math.fma(_t40, _t19, -(_t63 * _t47));
+        double _t75 = java.lang.Math.fma(_t40, _t20, -(_t63 * _t49));
+        double _t80 = -java.lang.Math.fma(_t72, _t43, java.lang.Math.fma(_t73, _t45, java.lang.Math.fma(_t74, _t47, _t75 * _t49)));
+        double _t81 = java.lang.Math.fma(_t80, _t43, _t72);
+        double _t82 = java.lang.Math.fma(_t80, _t45, _t73);
+        double _t83 = java.lang.Math.fma(_t80, _t47, _t74);
+        double _t84 = java.lang.Math.fma(_t80, _t49, _t75);
+        double _t90 = unitScale(_t82, _t81, Math.max(java.lang.Math.abs(_t83), java.lang.Math.abs(_t84)));
+        double _t97 = _t81 * _t90;
+        double _t98 = _t82 * _t90;
+        double _t99 = _t83 * _t90;
+        double _t100 = _t84 * _t90;
+        double _t106 = java.lang.Math.fma(_t97, _t97, java.lang.Math.fma(_t98, _t98, java.lang.Math.fma(_t99, _t99, _t100 * _t100)));
+        double _t108 = (1.0 / java.lang.Math.sqrt(_t106));
+        double _t110 = t * Math.atan2(java.lang.Math.sqrt(_t106), _t63 * _t90);
+        double _t113 = _t60 * Math.sinWithCos(_t110);
+        double _t114 = _t60 * Math.cosWithSin(_t110);
+        double _t119, _t120, _t121, _t122;
+        if (_t106 > 0.0) {
+            _t119 = _t108 * _t100;
+            _t120 = _t108 * _t97;
+            _t121 = _t108 * _t99;
+            _t122 = _t108 * _t98;
+        } else {
+            _t119 = _t47;
+            _t120 = _t45;
+            _t121 = _t50;
+            _t122 = _t51;
+        }
+        if (_t36 * _t37 > 0.0) {
+            if (_t63 < 0.0) {
+                if (java.lang.Math.fma(_t81, _t81, java.lang.Math.fma(_t82, _t82, java.lang.Math.fma(_t83, _t83, _t84 * _t84))) <= epsilon) {
+                    dest.putDouble(destOffset, java.lang.Math.fma(_t113, _t50, _t114 * _t47) * _t25_inv);
+                    dest.putDouble(destOffset + 8, java.lang.Math.fma(_t113, _t47, _t114 * _t49) * _t25_inv);
+                    dest.putDouble(destOffset + 16, java.lang.Math.fma(_t113, _t51, _t114 * _t45) * _t25_inv);
+                    dest.putDouble(destOffset + 24, java.lang.Math.fma(_t113, _t45, _t114 * _t43) * _t25_inv);
+                } else {
+                    dest.putDouble(destOffset, java.lang.Math.fma(_t113, _t121, _t114 * _t47) * _t25_inv);
+                    dest.putDouble(destOffset + 8, java.lang.Math.fma(_t113, _t119, _t114 * _t49) * _t25_inv);
+                    dest.putDouble(destOffset + 16, java.lang.Math.fma(_t113, _t122, _t114 * _t45) * _t25_inv);
+                    dest.putDouble(destOffset + 24, java.lang.Math.fma(_t113, _t120, _t114 * _t43) * _t25_inv);
+                }
+            } else {
+                dest.putDouble(destOffset, java.lang.Math.fma(_t113, _t121, _t114 * _t47) * _t25_inv);
+                dest.putDouble(destOffset + 8, java.lang.Math.fma(_t113, _t119, _t114 * _t49) * _t25_inv);
+                dest.putDouble(destOffset + 16, java.lang.Math.fma(_t113, _t122, _t114 * _t45) * _t25_inv);
+                dest.putDouble(destOffset + 24, java.lang.Math.fma(_t113, _t120, _t114 * _t43) * _t25_inv);
+            }
+        } else {
+            dest.putDouble(destOffset, java.lang.Math.fma(t, _otherx - _selfx, _selfx));
+            dest.putDouble(destOffset + 8, java.lang.Math.fma(t, _othery - _selfy, _selfy));
+            dest.putDouble(destOffset + 16, java.lang.Math.fma(t, _otherz - _selfz, _selfz));
+            dest.putDouble(destOffset + 24, java.lang.Math.fma(t, _otherw - _selfw, _selfw));
+        }
+        return dest;
+    }
+
+    /** {@code slerp_degenerate_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer slerp_degenerate_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t, double epsilon) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        double _t7 = unitScale(_otherz, _otherw, Math.max(java.lang.Math.abs(_otherx), java.lang.Math.abs(_othery)));
+        double _t8 = unitScale(_selfz, _selfw, Math.max(java.lang.Math.abs(_selfx), java.lang.Math.abs(_selfy)));
+        double _t17 = _otherw * _t7;
+        double _t18 = _otherz * _t7;
+        double _t19 = _otherx * _t7;
+        double _t20 = _othery * _t7;
+        double _t21 = _selfw * _t8;
+        double _t22 = _selfz * _t8;
+        double _t23 = _selfx * _t8;
+        double _t24 = _selfy * _t8;
+        double _t25 = Math.min(_t8, _t7);
+        double _t25_inv = 1.0 / _t25;
+        double _t36 = ((_t17) * (_t17) + (((_t18) * (_t18) + (((_t19) * (_t19) + (_t20 * _t20))))));
+        double _t37 = ((_t21) * (_t21) + (((_t22) * (_t22) + (((_t23) * (_t23) + (_t24 * _t24))))));
+        double _t40 = (1.0 / java.lang.Math.sqrt(_t36));
+        double _t41 = (1.0 / java.lang.Math.sqrt(_t37));
+        double _t43 = _t41 * _t21;
+        double _t45 = _t41 * _t22;
+        double _t47 = _t41 * _t23;
+        double _t49 = _t41 * _t24;
+        double _t50 = -_t49;
+        double _t51 = -_t43;
+        double _t60 = t * java.lang.Math.sqrt(_t36) * (_t25 / _t7) + (1.0 - t) * java.lang.Math.sqrt(_t37) * (_t25 / _t8);
+        double _t63 = ((_t40 * _t17) * (_t43) + (((_t40 * _t18) * (_t45) + (((_t40 * _t19) * (_t47) + (_t40 * _t20 * _t49))))));
+        double _t72 = ((_t40) * (_t17) - (_t63 * _t43));
+        double _t73 = ((_t40) * (_t18) - (_t63 * _t45));
+        double _t74 = ((_t40) * (_t19) - (_t63 * _t47));
+        double _t75 = ((_t40) * (_t20) - (_t63 * _t49));
+        double _t80 = -((_t72) * (_t43) + (((_t73) * (_t45) + (((_t74) * (_t47) + (_t75 * _t49))))));
+        double _t81 = ((_t80) * (_t43) + (_t72));
+        double _t82 = ((_t80) * (_t45) + (_t73));
+        double _t83 = ((_t80) * (_t47) + (_t74));
+        double _t84 = ((_t80) * (_t49) + (_t75));
+        double _t90 = unitScale(_t82, _t81, Math.max(java.lang.Math.abs(_t83), java.lang.Math.abs(_t84)));
+        double _t97 = _t81 * _t90;
+        double _t98 = _t82 * _t90;
+        double _t99 = _t83 * _t90;
+        double _t100 = _t84 * _t90;
+        double _t106 = ((_t97) * (_t97) + (((_t98) * (_t98) + (((_t99) * (_t99) + (_t100 * _t100))))));
+        double _t108 = (1.0 / java.lang.Math.sqrt(_t106));
+        double _t110 = t * Math.atan2(java.lang.Math.sqrt(_t106), _t63 * _t90);
+        double _t113 = _t60 * Math.sinWithCos(_t110);
+        double _t114 = _t60 * Math.cosWithSin(_t110);
+        double _t119, _t120, _t121, _t122;
+        if (_t106 > 0.0) {
+            _t119 = _t108 * _t100;
+            _t120 = _t108 * _t97;
+            _t121 = _t108 * _t99;
+            _t122 = _t108 * _t98;
+        } else {
+            _t119 = _t47;
+            _t120 = _t45;
+            _t121 = _t50;
+            _t122 = _t51;
+        }
+        if (_t36 * _t37 > 0.0) {
+            if (_t63 < 0.0) {
+                if (((_t81) * (_t81) + (((_t82) * (_t82) + (((_t83) * (_t83) + (_t84 * _t84)))))) <= epsilon) {
+                    dest.putDouble(destOffset, ((_t113) * (_t50) + (_t114 * _t47)) * _t25_inv);
+                    dest.putDouble(destOffset + 8, ((_t113) * (_t47) + (_t114 * _t49)) * _t25_inv);
+                    dest.putDouble(destOffset + 16, ((_t113) * (_t51) + (_t114 * _t45)) * _t25_inv);
+                    dest.putDouble(destOffset + 24, ((_t113) * (_t45) + (_t114 * _t43)) * _t25_inv);
+                } else {
+                    dest.putDouble(destOffset, ((_t113) * (_t121) + (_t114 * _t47)) * _t25_inv);
+                    dest.putDouble(destOffset + 8, ((_t113) * (_t119) + (_t114 * _t49)) * _t25_inv);
+                    dest.putDouble(destOffset + 16, ((_t113) * (_t122) + (_t114 * _t45)) * _t25_inv);
+                    dest.putDouble(destOffset + 24, ((_t113) * (_t120) + (_t114 * _t43)) * _t25_inv);
+                }
+            } else {
+                dest.putDouble(destOffset, ((_t113) * (_t121) + (_t114 * _t47)) * _t25_inv);
+                dest.putDouble(destOffset + 8, ((_t113) * (_t119) + (_t114 * _t49)) * _t25_inv);
+                dest.putDouble(destOffset + 16, ((_t113) * (_t122) + (_t114 * _t45)) * _t25_inv);
+                dest.putDouble(destOffset + 24, ((_t113) * (_t120) + (_t114 * _t43)) * _t25_inv);
+            }
+        } else {
+            dest.putDouble(destOffset, ((t) * (_otherx - _selfx) + (_selfx)));
+            dest.putDouble(destOffset + 8, ((t) * (_othery - _selfy) + (_selfy)));
+            dest.putDouble(destOffset + 16, ((t) * (_otherz - _selfz) + (_selfz)));
+            dest.putDouble(destOffset + 24, ((t) * (_otherw - _selfw) + (_selfw)));
+        }
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer absolute_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.absolute_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer absolute_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, java.lang.Math.abs(_selfx));
+        dest.putDouble(destOffset + 8, java.lang.Math.abs(_selfy));
+        dest.putDouble(destOffset + 16, java.lang.Math.abs(_selfz));
+        dest.putDouble(destOffset + 24, java.lang.Math.abs(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer acos_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.acos_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer acos_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.acos(_selfx));
+        dest.putDouble(destOffset + 8, Math.acos(_selfy));
+        dest.putDouble(destOffset + 16, Math.acos(_selfz));
+        dest.putDouble(destOffset + 24, Math.acos(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer addScaled_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double bX, double bY, double bZ, double bW, double scalar) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.addScaled_unsafe(_destBase, _srcBase, bX, bY, bZ, bW, scalar);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer addScaled_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double bX, double bY, double bZ, double bW, double scalar) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            dest.putDouble(destOffset, java.lang.Math.fma(scalar, bX, _selfx));
+            dest.putDouble(destOffset + 8, java.lang.Math.fma(scalar, bY, _selfy));
+            dest.putDouble(destOffset + 16, java.lang.Math.fma(scalar, bZ, _selfz));
+            dest.putDouble(destOffset + 24, java.lang.Math.fma(scalar, bW, _selfw));
+            return dest;
+        } else {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            dest.putDouble(destOffset, ((scalar) * (bX) + (_selfx)));
+            dest.putDouble(destOffset + 8, ((scalar) * (bY) + (_selfy)));
+            dest.putDouble(destOffset + 16, ((scalar) * (bZ) + (_selfz)));
+            dest.putDouble(destOffset + 24, ((scalar) * (bW) + (_selfw)));
+            return dest;
+        }
+    }
+
+    public static java.nio.ByteBuffer addScaled_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer b, int bOffset, double scalar) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _bBase = UnsafeOpsHolder.U.getLong(b, UnsafeCopy.BB_ADDRESS_OFFSET) + bOffset;
+        Double4OpsKernelsAddress.addScaled_unsafe(_destBase, _srcBase, _bBase, scalar);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer addScaled_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer b, int bOffset, double scalar) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            double _bx = b.getDouble(bOffset);
+            double _by = b.getDouble(bOffset + 8);
+            double _bz = b.getDouble(bOffset + 16);
+            double _bw = b.getDouble(bOffset + 24);
+            dest.putDouble(destOffset, java.lang.Math.fma(scalar, _bx, _selfx));
+            dest.putDouble(destOffset + 8, java.lang.Math.fma(scalar, _by, _selfy));
+            dest.putDouble(destOffset + 16, java.lang.Math.fma(scalar, _bz, _selfz));
+            dest.putDouble(destOffset + 24, java.lang.Math.fma(scalar, _bw, _selfw));
+            return dest;
+        } else {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            double _bx = b.getDouble(bOffset);
+            double _by = b.getDouble(bOffset + 8);
+            double _bz = b.getDouble(bOffset + 16);
+            double _bw = b.getDouble(bOffset + 24);
+            dest.putDouble(destOffset, ((scalar) * (_bx) + (_selfx)));
+            dest.putDouble(destOffset + 8, ((scalar) * (_by) + (_selfy)));
+            dest.putDouble(destOffset + 16, ((scalar) * (_bz) + (_selfz)));
+            dest.putDouble(destOffset + 24, ((scalar) * (_bw) + (_selfw)));
+            return dest;
+        }
+    }
+
+    public static java.nio.ByteBuffer addScaled_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double bX, double bY, double bZ, double bW, double cX, double cY, double cZ, double cW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.addScaled_unsafe(_destBase, _srcBase, bX, bY, bZ, bW, cX, cY, cZ, cW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer addScaled_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double bX, double bY, double bZ, double bW, double cX, double cY, double cZ, double cW) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            dest.putDouble(destOffset, java.lang.Math.fma(bX, cX, _selfx));
+            dest.putDouble(destOffset + 8, java.lang.Math.fma(bY, cY, _selfy));
+            dest.putDouble(destOffset + 16, java.lang.Math.fma(bZ, cZ, _selfz));
+            dest.putDouble(destOffset + 24, java.lang.Math.fma(bW, cW, _selfw));
+            return dest;
+        } else {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            dest.putDouble(destOffset, ((bX) * (cX) + (_selfx)));
+            dest.putDouble(destOffset + 8, ((bY) * (cY) + (_selfy)));
+            dest.putDouble(destOffset + 16, ((bZ) * (cZ) + (_selfz)));
+            dest.putDouble(destOffset + 24, ((bW) * (cW) + (_selfw)));
+            return dest;
+        }
+    }
+
+    public static java.nio.ByteBuffer addScaled_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer b, int bOffset, java.nio.ByteBuffer c, int cOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _bBase = UnsafeOpsHolder.U.getLong(b, UnsafeCopy.BB_ADDRESS_OFFSET) + bOffset;
+        long _cBase = UnsafeOpsHolder.U.getLong(c, UnsafeCopy.BB_ADDRESS_OFFSET) + cOffset;
+        Double4OpsKernelsAddress.addScaled_unsafe(_destBase, _srcBase, _bBase, _cBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer addScaled_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer b, int bOffset, java.nio.ByteBuffer c, int cOffset) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return addScaled_api_mulAdd(dest, destOffset, src, srcOffset, b, bOffset, c, cOffset);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _bx = b.getDouble(bOffset);
+        double _by = b.getDouble(bOffset + 8);
+        double _bz = b.getDouble(bOffset + 16);
+        double _bw = b.getDouble(bOffset + 24);
+        double _cx = c.getDouble(cOffset);
+        double _cy = c.getDouble(cOffset + 8);
+        double _cz = c.getDouble(cOffset + 16);
+        double _cw = c.getDouble(cOffset + 24);
+        dest.putDouble(destOffset, java.lang.Math.fma(_bx, _cx, _selfx));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(_by, _cy, _selfy));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_bz, _cz, _selfz));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(_bw, _cw, _selfw));
+        return dest;
+    }
+
+    /** {@code addScaled_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer addScaled_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer b, int bOffset, java.nio.ByteBuffer c, int cOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _bx = b.getDouble(bOffset);
+        double _by = b.getDouble(bOffset + 8);
+        double _bz = b.getDouble(bOffset + 16);
+        double _bw = b.getDouble(bOffset + 24);
+        double _cx = c.getDouble(cOffset);
+        double _cy = c.getDouble(cOffset + 8);
+        double _cz = c.getDouble(cOffset + 16);
+        double _cw = c.getDouble(cOffset + 24);
+        dest.putDouble(destOffset, ((_bx) * (_cx) + (_selfx)));
+        dest.putDouble(destOffset + 8, ((_by) * (_cy) + (_selfy)));
+        dest.putDouble(destOffset + 16, ((_bz) * (_cz) + (_selfz)));
+        dest.putDouble(destOffset + 24, ((_bw) * (_cw) + (_selfw)));
+        return dest;
+    }
+
+    public static double angleBetween_unsafe(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        return Double4OpsKernelsAddress.angleBetween_unsafe(_srcBase, otherX, otherY, otherZ, otherW);
+    }
+
+    public static double angleBetween_api(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return angleBetween_api_fma(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return angleBetween_api_mulAdd(src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@code angleBetween_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static double angleBetween_api_fma(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t6 = otherZ * -_selfw;
+        double _t7 = otherY * -_selfw;
+        double _t8 = -(otherY * _selfz);
+        double _t9 = -otherX * _selfw;
+        double _t10 = -otherX * _selfy;
+        double _t11 = -otherX * _selfz;
+        double _t24 = java.lang.Math.fma(otherW, _selfz, _t6) - java.lang.Math.fma(otherZ, _selfw, _t6);
+        double _t25 = java.lang.Math.fma(otherW, _selfy, _t7) - java.lang.Math.fma(otherY, _selfw, _t7);
+        double _t26 = java.lang.Math.fma(otherZ, _selfy, _t8) - java.lang.Math.fma(otherY, _selfz, _t8);
+        double _t27 = java.lang.Math.fma(otherW, _selfx, _t9) - java.lang.Math.fma(otherX, _selfw, _t9);
+        double _t28 = java.lang.Math.fma(otherY, _selfx, _t10) - java.lang.Math.fma(otherX, _selfy, _t10);
+        double _t29 = java.lang.Math.fma(otherZ, _selfx, _t11) - java.lang.Math.fma(otherX, _selfz, _t11);
+        return angleBetween_api_fma_s3007315c_1(src, srcOffset, otherX, otherY, otherZ, otherW, _selfx, _selfy, _selfz, _selfw, java.lang.Math.fma(_t24, _t24, java.lang.Math.fma(_t25, _t25, java.lang.Math.fma(_t26, _t26, java.lang.Math.fma(_t27, _t27, java.lang.Math.fma(_t28, _t28, _t29 * _t29))))));
+    }
+
+    /** Piece 2 of {@code angleBetween_api_fma}, split to fit the inline budget; reached only through it. */
+    private static double angleBetween_api_fma_s3007315c_1(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double _selfx, double _selfy, double _selfz, double _selfw, double _ct0) {
+        if (!(_ct0 > 2.2250738585072014E-308 && _ct0 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.angleBetween_degenerate(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Math.atan2(java.lang.Math.sqrt(_ct0), java.lang.Math.fma(otherW, _selfw, java.lang.Math.fma(otherZ, _selfz, java.lang.Math.fma(otherX, _selfx, otherY * _selfy))));
+    }
+
+    /** {@code angleBetween_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static double angleBetween_api_mulAdd(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t6 = otherZ * -_selfw;
+        double _t7 = otherY * -_selfw;
+        double _t8 = -(otherY * _selfz);
+        double _t9 = -otherX * _selfw;
+        double _t10 = -otherX * _selfy;
+        double _t11 = -otherX * _selfz;
+        double _t24 = ((otherW) * (_selfz) + (_t6)) - ((otherZ) * (_selfw) + (_t6));
+        double _t25 = ((otherW) * (_selfy) + (_t7)) - ((otherY) * (_selfw) + (_t7));
+        double _t26 = ((otherZ) * (_selfy) + (_t8)) - ((otherY) * (_selfz) + (_t8));
+        double _t27 = ((otherW) * (_selfx) + (_t9)) - ((otherX) * (_selfw) + (_t9));
+        double _t28 = ((otherY) * (_selfx) + (_t10)) - ((otherX) * (_selfy) + (_t10));
+        double _t29 = ((otherZ) * (_selfx) + (_t11)) - ((otherX) * (_selfz) + (_t11));
+        double _ct0 = ((_t24) * (_t24) + (((_t25) * (_t25) + (((_t26) * (_t26) + (((_t27) * (_t27) + (((_t28) * (_t28) + (_t29 * _t29))))))))));
+        if (!(_ct0 > 2.2250738585072014E-308 && _ct0 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.angleBetween_degenerate(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Math.atan2(java.lang.Math.sqrt(_ct0), ((otherW) * (_selfw) + (((otherZ) * (_selfz) + (((otherX) * (_selfx) + (otherY * _selfy)))))));
+    }
+
+    public static double angleBetween_degenerate(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.angleBetween_degenerate_unsafe(src, srcOffset, otherX, otherY, otherZ, otherW);
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return angleBetween_degenerate_api_fma(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return angleBetween_degenerate_api_mulAdd(src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    public static double angleBetween_degenerate_unsafe(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        return Double4OpsKernelsAddress.angleBetween_degenerate_unsafe(_srcBase, otherX, otherY, otherZ, otherW);
+    }
+
+    public static double angleBetween_degenerate_api(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return angleBetween_degenerate_api_fma(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return angleBetween_degenerate_api_mulAdd(src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@code angleBetween_degenerate_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static double angleBetween_degenerate_api_fma(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t6 = unitScale(otherZ, otherW, Math.max(java.lang.Math.abs(otherX), java.lang.Math.abs(otherY)));
+        double _t7 = unitScale(_selfz, _selfw, Math.max(java.lang.Math.abs(_selfx), java.lang.Math.abs(_selfy)));
+        double _t16 = otherW * _t6;
+        double _t17 = _selfz * _t7;
+        double _t18 = otherZ * _t6;
+        double _t19 = _selfw * _t7;
+        double _t20 = otherY * _t6;
+        double _t21 = _selfx * _t7;
+        double _t22 = otherX * _t6;
+        double _t23 = _selfy * _t7;
+        double _t30 = _t18 * -_t19;
+        double _t31 = -_t22 * _t23;
+        double _t32 = -_t22 * _t17;
+        double _t33 = _t22 * -_t19;
+        double _t34 = -(_t20 * _t17);
+        return angleBetween_degenerate_api_fma_sc4ec90b7_1(_t16, _t17, _t18, _t19, _t20, _t21, _t22, _t23, _t20 * -_t19, java.lang.Math.fma(_t16, _t17, _t30) - java.lang.Math.fma(_t18, _t19, _t30), java.lang.Math.fma(_t20, _t21, _t31) - java.lang.Math.fma(_t22, _t23, _t31), java.lang.Math.fma(_t18, _t21, _t32) - java.lang.Math.fma(_t22, _t17, _t32), java.lang.Math.fma(_t16, _t21, _t33) - java.lang.Math.fma(_t22, _t19, _t33), java.lang.Math.fma(_t18, _t23, _t34) - java.lang.Math.fma(_t20, _t17, _t34));
+    }
+
+    /** Piece 2 of {@code angleBetween_degenerate_api_fma}, split to fit the inline budget; reached only through it. */
+    private static double angleBetween_degenerate_api_fma_sc4ec90b7_1(double _t16, double _t17, double _t18, double _t19, double _t20, double _t21, double _t22, double _t23, double _t35, double _t48, double _t49, double _t50, double _t51, double _t52) {
+        double _t53 = java.lang.Math.fma(_t16, _t23, _t35) - java.lang.Math.fma(_t20, _t19, _t35);
+        double _t63 = unitScale(Math.max(java.lang.Math.abs(_t49), java.lang.Math.abs(_t50)), Math.max(java.lang.Math.abs(_t51), java.lang.Math.abs(_t52)), Math.max(java.lang.Math.abs(_t53), java.lang.Math.abs(_t48)));
+        double _t70 = _t48 * _t63;
+        double _t71 = _t53 * _t63;
+        double _t72 = _t52 * _t63;
+        double _t73 = _t51 * _t63;
+        double _t74 = _t49 * _t63;
+        double _t75 = _t50 * _t63;
+        return Math.atan2(java.lang.Math.sqrt(java.lang.Math.fma(_t70, _t70, java.lang.Math.fma(_t71, _t71, java.lang.Math.fma(_t72, _t72, java.lang.Math.fma(_t73, _t73, java.lang.Math.fma(_t74, _t74, _t75 * _t75)))))), java.lang.Math.fma(_t16, _t19, java.lang.Math.fma(_t18, _t17, java.lang.Math.fma(_t22, _t21, _t20 * _t23))) * _t63);
+    }
+
+    /** {@code angleBetween_degenerate_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static double angleBetween_degenerate_api_mulAdd(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t6 = unitScale(otherZ, otherW, Math.max(java.lang.Math.abs(otherX), java.lang.Math.abs(otherY)));
+        double _t7 = unitScale(_selfz, _selfw, Math.max(java.lang.Math.abs(_selfx), java.lang.Math.abs(_selfy)));
+        double _t16 = otherW * _t6;
+        double _t17 = _selfz * _t7;
+        double _t18 = otherZ * _t6;
+        double _t19 = _selfw * _t7;
+        double _t20 = otherY * _t6;
+        double _t21 = _selfx * _t7;
+        double _t22 = otherX * _t6;
+        double _t23 = _selfy * _t7;
+        double _t30 = _t18 * -_t19;
+        double _t31 = -_t22 * _t23;
+        double _t32 = -_t22 * _t17;
+        double _t33 = _t22 * -_t19;
+        double _t34 = -(_t20 * _t17);
+        double _t35 = _t20 * -_t19;
+        return angleBetween_degenerate_api_mulAdd_s207d1b7e_1(_t16, _t17, _t18, _t19, _t20, _t21, _t22, _t23, ((_t16) * (_t17) + (_t30)) - ((_t18) * (_t19) + (_t30)), ((_t20) * (_t21) + (_t31)) - ((_t22) * (_t23) + (_t31)), ((_t18) * (_t21) + (_t32)) - ((_t22) * (_t17) + (_t32)), ((_t16) * (_t21) + (_t33)) - ((_t22) * (_t19) + (_t33)), ((_t18) * (_t23) + (_t34)) - ((_t20) * (_t17) + (_t34)), ((_t16) * (_t23) + (_t35)) - ((_t20) * (_t19) + (_t35)));
+    }
+
+    /** Piece 2 of {@code angleBetween_degenerate_api_mulAdd}, split to fit the inline budget; reached only through it. */
+    private static double angleBetween_degenerate_api_mulAdd_s207d1b7e_1(double _t16, double _t17, double _t18, double _t19, double _t20, double _t21, double _t22, double _t23, double _t48, double _t49, double _t50, double _t51, double _t52, double _t53) {
+        double _t63 = unitScale(Math.max(java.lang.Math.abs(_t49), java.lang.Math.abs(_t50)), Math.max(java.lang.Math.abs(_t51), java.lang.Math.abs(_t52)), Math.max(java.lang.Math.abs(_t53), java.lang.Math.abs(_t48)));
+        double _t70 = _t48 * _t63;
+        double _t71 = _t53 * _t63;
+        double _t72 = _t52 * _t63;
+        double _t73 = _t51 * _t63;
+        double _t74 = _t49 * _t63;
+        double _t75 = _t50 * _t63;
+        return Math.atan2(java.lang.Math.sqrt(((_t70) * (_t70) + (((_t71) * (_t71) + (((_t72) * (_t72) + (((_t73) * (_t73) + (((_t74) * (_t74) + (_t75 * _t75))))))))))), ((_t16) * (_t19) + (((_t18) * (_t17) + (((_t22) * (_t21) + (_t20 * _t23)))))) * _t63);
+    }
+
+    public static double angleBetween_unsafe(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _otherBase = UnsafeOpsHolder.U.getLong(other, UnsafeCopy.BB_ADDRESS_OFFSET) + otherOffset;
+        return Double4OpsKernelsAddress.angleBetween_unsafe(_srcBase, _otherBase);
+    }
+
+    public static double angleBetween_api(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return angleBetween_api_fma(src, srcOffset, other, otherOffset);
+        return angleBetween_api_mulAdd(src, srcOffset, other, otherOffset);
+    }
+
+    /** {@code angleBetween_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static double angleBetween_api_fma(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        double _t6 = _otherz * -_selfw;
+        double _t7 = _othery * -_selfw;
+        double _t8 = -(_othery * _selfz);
+        double _t9 = -_otherx * _selfw;
+        double _t10 = -_otherx * _selfy;
+        double _t11 = -_otherx * _selfz;
+        return angleBetween_api_fma_sd9f688b8_1(src, srcOffset, other, otherOffset, _selfx, _selfy, _selfz, _selfw, _otherx, _othery, _otherz, _otherw, java.lang.Math.fma(_otherw, _selfz, _t6) - java.lang.Math.fma(_otherz, _selfw, _t6), java.lang.Math.fma(_otherw, _selfy, _t7) - java.lang.Math.fma(_othery, _selfw, _t7), java.lang.Math.fma(_otherz, _selfy, _t8) - java.lang.Math.fma(_othery, _selfz, _t8), java.lang.Math.fma(_otherw, _selfx, _t9) - java.lang.Math.fma(_otherx, _selfw, _t9), java.lang.Math.fma(_othery, _selfx, _t10) - java.lang.Math.fma(_otherx, _selfy, _t10), java.lang.Math.fma(_otherz, _selfx, _t11) - java.lang.Math.fma(_otherx, _selfz, _t11));
+    }
+
+    /** Piece 2 of {@code angleBetween_api_fma}, split to fit the inline budget; reached only through it. */
+    private static double angleBetween_api_fma_sd9f688b8_1(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double _selfx, double _selfy, double _selfz, double _selfw, double _otherx, double _othery, double _otherz, double _otherw, double _t24, double _t25, double _t26, double _t27, double _t28, double _t29) {
+        double _ct0 = java.lang.Math.fma(_t24, _t24, java.lang.Math.fma(_t25, _t25, java.lang.Math.fma(_t26, _t26, java.lang.Math.fma(_t27, _t27, java.lang.Math.fma(_t28, _t28, _t29 * _t29)))));
+        if (!(_ct0 > 2.2250738585072014E-308 && _ct0 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.angleBetween_degenerate(src, srcOffset, other, otherOffset);
+        return Math.atan2(java.lang.Math.sqrt(_ct0), java.lang.Math.fma(_otherw, _selfw, java.lang.Math.fma(_otherz, _selfz, java.lang.Math.fma(_otherx, _selfx, _othery * _selfy))));
+    }
+
+    /** {@code angleBetween_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static double angleBetween_api_mulAdd(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        double _t6 = _otherz * -_selfw;
+        double _t7 = _othery * -_selfw;
+        double _t8 = -(_othery * _selfz);
+        double _t9 = -_otherx * _selfw;
+        double _t10 = -_otherx * _selfy;
+        double _t11 = -_otherx * _selfz;
+        double _t24 = ((_otherw) * (_selfz) + (_t6)) - ((_otherz) * (_selfw) + (_t6));
+        double _t25 = ((_otherw) * (_selfy) + (_t7)) - ((_othery) * (_selfw) + (_t7));
+        double _t26 = ((_otherz) * (_selfy) + (_t8)) - ((_othery) * (_selfz) + (_t8));
+        double _t27 = ((_otherw) * (_selfx) + (_t9)) - ((_otherx) * (_selfw) + (_t9));
+        double _t28 = ((_othery) * (_selfx) + (_t10)) - ((_otherx) * (_selfy) + (_t10));
+        double _t29 = ((_otherz) * (_selfx) + (_t11)) - ((_otherx) * (_selfz) + (_t11));
+        return angleBetween_api_mulAdd_s2f1d0eaf_1(src, srcOffset, other, otherOffset, _selfx, _selfy, _selfz, _selfw, _otherx, _othery, _otherz, _otherw, ((_t24) * (_t24) + (((_t25) * (_t25) + (((_t26) * (_t26) + (((_t27) * (_t27) + (((_t28) * (_t28) + (_t29 * _t29)))))))))));
+    }
+
+    /** Piece 2 of {@code angleBetween_api_mulAdd}, split to fit the inline budget; reached only through it. */
+    private static double angleBetween_api_mulAdd_s2f1d0eaf_1(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double _selfx, double _selfy, double _selfz, double _selfw, double _otherx, double _othery, double _otherz, double _otherw, double _ct0) {
+        if (!(_ct0 > 2.2250738585072014E-308 && _ct0 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsByteBuffer.angleBetween_degenerate(src, srcOffset, other, otherOffset);
+        return Math.atan2(java.lang.Math.sqrt(_ct0), ((_otherw) * (_selfw) + (((_otherz) * (_selfz) + (((_otherx) * (_selfx) + (_othery * _selfy)))))));
+    }
+
+    public static double angleBetween_degenerate(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.angleBetween_degenerate_unsafe(src, srcOffset, other, otherOffset);
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return angleBetween_degenerate_api_fma(src, srcOffset, other, otherOffset);
+        return angleBetween_degenerate_api_mulAdd(src, srcOffset, other, otherOffset);
+    }
+
+    public static double angleBetween_degenerate_unsafe(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _otherBase = UnsafeOpsHolder.U.getLong(other, UnsafeCopy.BB_ADDRESS_OFFSET) + otherOffset;
+        return Double4OpsKernelsAddress.angleBetween_degenerate_unsafe(_srcBase, _otherBase);
+    }
+
+    public static double angleBetween_degenerate_api(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return angleBetween_degenerate_api_fma(src, srcOffset, other, otherOffset);
+        return angleBetween_degenerate_api_mulAdd(src, srcOffset, other, otherOffset);
+    }
+
+    /** {@code angleBetween_degenerate_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static double angleBetween_degenerate_api_fma(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        double _t6 = unitScale(_otherz, _otherw, Math.max(java.lang.Math.abs(_otherx), java.lang.Math.abs(_othery)));
+        double _t7 = unitScale(_selfz, _selfw, Math.max(java.lang.Math.abs(_selfx), java.lang.Math.abs(_selfy)));
+        double _t16 = _otherw * _t6;
+        double _t17 = _selfz * _t7;
+        double _t18 = _otherz * _t6;
+        double _t19 = _selfw * _t7;
+        double _t20 = _othery * _t6;
+        double _t21 = _selfx * _t7;
+        double _t22 = _otherx * _t6;
+        double _t23 = _selfy * _t7;
+        double _t30 = _t18 * -_t19;
+        double _t31 = -_t22 * _t23;
+        double _t32 = -_t22 * _t17;
+        return angleBetween_degenerate_api_fma_s2d620173_1(_t16, _t17, _t18, _t19, _t20, _t21, _t22, _t23, _t22 * -_t19, -(_t20 * _t17), _t20 * -_t19, java.lang.Math.fma(_t16, _t17, _t30) - java.lang.Math.fma(_t18, _t19, _t30), java.lang.Math.fma(_t20, _t21, _t31) - java.lang.Math.fma(_t22, _t23, _t31), java.lang.Math.fma(_t18, _t21, _t32) - java.lang.Math.fma(_t22, _t17, _t32));
+    }
+
+    /** Piece 2 of {@code angleBetween_degenerate_api_fma}, split to fit the inline budget; reached only through it. */
+    private static double angleBetween_degenerate_api_fma_s2d620173_1(double _t16, double _t17, double _t18, double _t19, double _t20, double _t21, double _t22, double _t23, double _t33, double _t34, double _t35, double _t48, double _t49, double _t50) {
+        double _t51 = java.lang.Math.fma(_t16, _t21, _t33) - java.lang.Math.fma(_t22, _t19, _t33);
+        double _t52 = java.lang.Math.fma(_t18, _t23, _t34) - java.lang.Math.fma(_t20, _t17, _t34);
+        double _t53 = java.lang.Math.fma(_t16, _t23, _t35) - java.lang.Math.fma(_t20, _t19, _t35);
+        double _t63 = unitScale(Math.max(java.lang.Math.abs(_t49), java.lang.Math.abs(_t50)), Math.max(java.lang.Math.abs(_t51), java.lang.Math.abs(_t52)), Math.max(java.lang.Math.abs(_t53), java.lang.Math.abs(_t48)));
+        double _t70 = _t48 * _t63;
+        double _t71 = _t53 * _t63;
+        double _t72 = _t52 * _t63;
+        double _t73 = _t51 * _t63;
+        double _t74 = _t49 * _t63;
+        double _t75 = _t50 * _t63;
+        return Math.atan2(java.lang.Math.sqrt(java.lang.Math.fma(_t70, _t70, java.lang.Math.fma(_t71, _t71, java.lang.Math.fma(_t72, _t72, java.lang.Math.fma(_t73, _t73, java.lang.Math.fma(_t74, _t74, _t75 * _t75)))))), java.lang.Math.fma(_t16, _t19, java.lang.Math.fma(_t18, _t17, java.lang.Math.fma(_t22, _t21, _t20 * _t23))) * _t63);
+    }
+
+    /** {@code angleBetween_degenerate_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static double angleBetween_degenerate_api_mulAdd(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        double _t6 = unitScale(_otherz, _otherw, Math.max(java.lang.Math.abs(_otherx), java.lang.Math.abs(_othery)));
+        double _t7 = unitScale(_selfz, _selfw, Math.max(java.lang.Math.abs(_selfx), java.lang.Math.abs(_selfy)));
+        double _t16 = _otherw * _t6;
+        double _t17 = _selfz * _t7;
+        double _t18 = _otherz * _t6;
+        double _t19 = _selfw * _t7;
+        double _t20 = _othery * _t6;
+        double _t21 = _selfx * _t7;
+        double _t22 = _otherx * _t6;
+        double _t23 = _selfy * _t7;
+        double _t30 = _t18 * -_t19;
+        double _t31 = -_t22 * _t23;
+        double _t32 = -_t22 * _t17;
+        double _t33 = _t22 * -_t19;
+        return angleBetween_degenerate_api_mulAdd_sb6ed7882_1(_t16, _t17, _t18, _t19, _t20, _t21, _t22, _t23, -(_t20 * _t17), _t20 * -_t19, ((_t16) * (_t17) + (_t30)) - ((_t18) * (_t19) + (_t30)), ((_t20) * (_t21) + (_t31)) - ((_t22) * (_t23) + (_t31)), ((_t18) * (_t21) + (_t32)) - ((_t22) * (_t17) + (_t32)), ((_t16) * (_t21) + (_t33)) - ((_t22) * (_t19) + (_t33)));
+    }
+
+    /** Piece 2 of {@code angleBetween_degenerate_api_mulAdd}, split to fit the inline budget; reached only through it. */
+    private static double angleBetween_degenerate_api_mulAdd_sb6ed7882_1(double _t16, double _t17, double _t18, double _t19, double _t20, double _t21, double _t22, double _t23, double _t34, double _t35, double _t48, double _t49, double _t50, double _t51) {
+        double _t52 = ((_t18) * (_t23) + (_t34)) - ((_t20) * (_t17) + (_t34));
+        double _t53 = ((_t16) * (_t23) + (_t35)) - ((_t20) * (_t19) + (_t35));
+        double _t63 = unitScale(Math.max(java.lang.Math.abs(_t49), java.lang.Math.abs(_t50)), Math.max(java.lang.Math.abs(_t51), java.lang.Math.abs(_t52)), Math.max(java.lang.Math.abs(_t53), java.lang.Math.abs(_t48)));
+        double _t70 = _t48 * _t63;
+        double _t71 = _t53 * _t63;
+        double _t72 = _t52 * _t63;
+        double _t73 = _t51 * _t63;
+        double _t74 = _t49 * _t63;
+        double _t75 = _t50 * _t63;
+        return Math.atan2(java.lang.Math.sqrt(((_t70) * (_t70) + (((_t71) * (_t71) + (((_t72) * (_t72) + (((_t73) * (_t73) + (((_t74) * (_t74) + (_t75 * _t75))))))))))), ((_t16) * (_t19) + (((_t18) * (_t17) + (((_t22) * (_t21) + (_t20 * _t23)))))) * _t63);
+    }
+
+    public static java.nio.ByteBuffer asin_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.asin_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer asin_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.asin(_selfx));
+        dest.putDouble(destOffset + 8, Math.asin(_selfy));
+        dest.putDouble(destOffset + 16, Math.asin(_selfz));
+        dest.putDouble(destOffset + 24, Math.asin(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer atan_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.atan_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer atan_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.atan(_selfx));
+        dest.putDouble(destOffset + 8, Math.atan(_selfy));
+        dest.putDouble(destOffset + 16, Math.atan(_selfz));
+        dest.putDouble(destOffset + 24, Math.atan(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer atan2_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double x) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.atan2_unsafe(_destBase, _srcBase, x);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer atan2_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double x) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.atan2(_selfx, x));
+        dest.putDouble(destOffset + 8, Math.atan2(_selfy, x));
+        dest.putDouble(destOffset + 16, Math.atan2(_selfz, x));
+        dest.putDouble(destOffset + 24, Math.atan2(_selfw, x));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer atan2_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double xX, double xY, double xZ, double xW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.atan2_unsafe(_destBase, _srcBase, xX, xY, xZ, xW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer atan2_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double xX, double xY, double xZ, double xW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.atan2(_selfx, xX));
+        dest.putDouble(destOffset + 8, Math.atan2(_selfy, xY));
+        dest.putDouble(destOffset + 16, Math.atan2(_selfz, xZ));
+        dest.putDouble(destOffset + 24, Math.atan2(_selfw, xW));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer atan2_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer x, int xOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _xBase = UnsafeOpsHolder.U.getLong(x, UnsafeCopy.BB_ADDRESS_OFFSET) + xOffset;
+        Double4OpsKernelsAddress.atan2_unsafe(_destBase, _srcBase, _xBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer atan2_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer x, int xOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _xx = x.getDouble(xOffset);
+        double _xy = x.getDouble(xOffset + 8);
+        double _xz = x.getDouble(xOffset + 16);
+        double _xw = x.getDouble(xOffset + 24);
+        dest.putDouble(destOffset, Math.atan2(_selfx, _xx));
+        dest.putDouble(destOffset + 8, Math.atan2(_selfy, _xy));
+        dest.putDouble(destOffset + 16, Math.atan2(_selfz, _xz));
+        dest.putDouble(destOffset + 24, Math.atan2(_selfw, _xw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer cbrt_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.cbrt_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer cbrt_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.cbrt(_selfx));
+        dest.putDouble(destOffset + 8, Math.cbrt(_selfy));
+        dest.putDouble(destOffset + 16, Math.cbrt(_selfz));
+        dest.putDouble(destOffset + 24, Math.cbrt(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer ceil_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.ceil_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer ceil_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.ceil(_selfx));
+        dest.putDouble(destOffset + 8, Math.ceil(_selfy));
+        dest.putDouble(destOffset + 16, Math.ceil(_selfz));
+        dest.putDouble(destOffset + 24, Math.ceil(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer clamp_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double min, double max) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.clamp_unsafe(_destBase, _srcBase, min, max);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer clamp_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double min, double max) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.min(Math.max(_selfx, min), max));
+        dest.putDouble(destOffset + 8, Math.min(Math.max(_selfy, min), max));
+        dest.putDouble(destOffset + 16, Math.min(Math.max(_selfz, min), max));
+        dest.putDouble(destOffset + 24, Math.min(Math.max(_selfw, min), max));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer clamp_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double minX, double minY, double minZ, double minW, double maxX, double maxY, double maxZ, double maxW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.clamp_unsafe(_destBase, _srcBase, minX, minY, minZ, minW, maxX, maxY, maxZ, maxW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer clamp_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double minX, double minY, double minZ, double minW, double maxX, double maxY, double maxZ, double maxW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.min(Math.max(_selfx, minX), maxX));
+        dest.putDouble(destOffset + 8, Math.min(Math.max(_selfy, minY), maxY));
+        dest.putDouble(destOffset + 16, Math.min(Math.max(_selfz, minZ), maxZ));
+        dest.putDouble(destOffset + 24, Math.min(Math.max(_selfw, minW), maxW));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer clamp_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer min, int minOffset, java.nio.ByteBuffer max, int maxOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _minBase = UnsafeOpsHolder.U.getLong(min, UnsafeCopy.BB_ADDRESS_OFFSET) + minOffset;
+        long _maxBase = UnsafeOpsHolder.U.getLong(max, UnsafeCopy.BB_ADDRESS_OFFSET) + maxOffset;
+        Double4OpsKernelsAddress.clamp_unsafe(_destBase, _srcBase, _minBase, _maxBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer clamp_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer min, int minOffset, java.nio.ByteBuffer max, int maxOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _minx = min.getDouble(minOffset);
+        double _miny = min.getDouble(minOffset + 8);
+        double _minz = min.getDouble(minOffset + 16);
+        double _minw = min.getDouble(minOffset + 24);
+        double _maxx = max.getDouble(maxOffset);
+        double _maxy = max.getDouble(maxOffset + 8);
+        double _maxz = max.getDouble(maxOffset + 16);
+        double _maxw = max.getDouble(maxOffset + 24);
+        dest.putDouble(destOffset, Math.min(Math.max(_selfx, _minx), _maxx));
+        dest.putDouble(destOffset + 8, Math.min(Math.max(_selfy, _miny), _maxy));
+        dest.putDouble(destOffset + 16, Math.min(Math.max(_selfz, _minz), _maxz));
+        dest.putDouble(destOffset + 24, Math.min(Math.max(_selfw, _minw), _maxw));
+        return dest;
+    }
+
+    public static double compAdd_unsafe(java.nio.ByteBuffer src, int srcOffset) {
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        return Double4OpsKernelsAddress.compAdd_unsafe(_srcBase);
+    }
+
+    public static double compAdd_api(java.nio.ByteBuffer src, int srcOffset) {
+        return src.getDouble(srcOffset + 24) + (src.getDouble(srcOffset + 16) + (src.getDouble(srcOffset) + src.getDouble(srcOffset + 8)));
+    }
+
+    public static double compMax_unsafe(java.nio.ByteBuffer src, int srcOffset) {
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        return Double4OpsKernelsAddress.compMax_unsafe(_srcBase);
+    }
+
+    public static double compMax_api(java.nio.ByteBuffer src, int srcOffset) {
+        return Math.max(Math.max(Math.max(src.getDouble(srcOffset), src.getDouble(srcOffset + 8)), src.getDouble(srcOffset + 16)), src.getDouble(srcOffset + 24));
+    }
+
+    public static double compMin_unsafe(java.nio.ByteBuffer src, int srcOffset) {
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        return Double4OpsKernelsAddress.compMin_unsafe(_srcBase);
+    }
+
+    public static double compMin_api(java.nio.ByteBuffer src, int srcOffset) {
+        return Math.min(Math.min(Math.min(src.getDouble(srcOffset), src.getDouble(srcOffset + 8)), src.getDouble(srcOffset + 16)), src.getDouble(srcOffset + 24));
+    }
+
+    public static double compMul_unsafe(java.nio.ByteBuffer src, int srcOffset) {
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        return Double4OpsKernelsAddress.compMul_unsafe(_srcBase);
+    }
+
+    public static double compMul_api(java.nio.ByteBuffer src, int srcOffset) {
+        return src.getDouble(srcOffset + 24) * src.getDouble(srcOffset + 16) * src.getDouble(srcOffset) * src.getDouble(srcOffset + 8);
+    }
+
+    public static java.nio.ByteBuffer copySign_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double sign) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.copySign_unsafe(_destBase, _srcBase, sign);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer copySign_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double sign) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.copySign(_selfx, sign));
+        dest.putDouble(destOffset + 8, Math.copySign(_selfy, sign));
+        dest.putDouble(destOffset + 16, Math.copySign(_selfz, sign));
+        dest.putDouble(destOffset + 24, Math.copySign(_selfw, sign));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer copySign_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double signX, double signY, double signZ, double signW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.copySign_unsafe(_destBase, _srcBase, signX, signY, signZ, signW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer copySign_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double signX, double signY, double signZ, double signW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.copySign(_selfx, signX));
+        dest.putDouble(destOffset + 8, Math.copySign(_selfy, signY));
+        dest.putDouble(destOffset + 16, Math.copySign(_selfz, signZ));
+        dest.putDouble(destOffset + 24, Math.copySign(_selfw, signW));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer copySign_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer sign, int signOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _signBase = UnsafeOpsHolder.U.getLong(sign, UnsafeCopy.BB_ADDRESS_OFFSET) + signOffset;
+        Double4OpsKernelsAddress.copySign_unsafe(_destBase, _srcBase, _signBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer copySign_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer sign, int signOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _signx = sign.getDouble(signOffset);
+        double _signy = sign.getDouble(signOffset + 8);
+        double _signz = sign.getDouble(signOffset + 16);
+        double _signw = sign.getDouble(signOffset + 24);
+        dest.putDouble(destOffset, Math.copySign(_selfx, _signx));
+        dest.putDouble(destOffset + 8, Math.copySign(_selfy, _signy));
+        dest.putDouble(destOffset + 16, Math.copySign(_selfz, _signz));
+        dest.putDouble(destOffset + 24, Math.copySign(_selfw, _signw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer cos_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.cos_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer cos_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.cos(_selfx));
+        dest.putDouble(destOffset + 8, Math.cos(_selfy));
+        dest.putDouble(destOffset + 16, Math.cos(_selfz));
+        dest.putDouble(destOffset + 24, Math.cos(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer cosh_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.cosh_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer cosh_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.cosh(_selfx));
+        dest.putDouble(destOffset + 8, Math.cosh(_selfy));
+        dest.putDouble(destOffset + 16, Math.cosh(_selfz));
+        dest.putDouble(destOffset + 24, Math.cosh(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer cross_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double vX, double vY, double vZ, double vW, double wX, double wY, double wZ, double wW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.cross_unsafe(_destBase, _srcBase, vX, vY, vZ, vW, wX, wY, wZ, wW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer cross_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double vX, double vY, double vZ, double vW, double wX, double wY, double wZ, double wW) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return cross_api_fma(dest, destOffset, src, srcOffset, vX, vY, vZ, vW, wX, wY, wZ, wW);
+        return cross_api_mulAdd(dest, destOffset, src, srcOffset, vX, vY, vZ, vW, wX, wY, wZ, wW);
+    }
+
+    /** {@code cross_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer cross_api_fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double vX, double vY, double vZ, double vW, double wX, double wY, double wZ, double wW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t6 = -vZ * wY;
+        double _t7 = -vW * wZ;
+        double _t8 = -vW * wY;
+        double _t9 = -vZ * wX;
+        double _t10 = -vW * wX;
+        double _t11 = -(vY * wX);
+        double _t24 = java.lang.Math.fma(vY, wZ, _t6) - java.lang.Math.fma(vZ, wY, _t6);
+        double _t25 = java.lang.Math.fma(vZ, wW, _t7) - java.lang.Math.fma(vW, wZ, _t7);
+        double _t26 = java.lang.Math.fma(vY, wW, _t8) - java.lang.Math.fma(vW, wY, _t8);
+        double _t27 = java.lang.Math.fma(vX, wZ, _t9) - java.lang.Math.fma(vZ, wX, _t9);
+        double _t28 = java.lang.Math.fma(vX, wW, _t10) - java.lang.Math.fma(vW, wX, _t10);
+        dest.putDouble(destOffset, java.lang.Math.fma(_selfw, _t24, java.lang.Math.fma(_selfy, _t25, -_selfz * _t26)));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(-_selfw, _t27, java.lang.Math.fma(_selfz, _t28, -_selfx * _t25)));
+        return cross_api_fma_sdd33fdb3_1(dest, destOffset, _selfx, _selfy, _selfz, _selfw, _t24, _t26, _t27, _t28, java.lang.Math.fma(vX, wY, _t11) - java.lang.Math.fma(vY, wX, _t11));
+    }
+
+    /** Piece 2 of {@code cross_api_fma}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer cross_api_fma_sdd33fdb3_1(java.nio.ByteBuffer dest, int destOffset, double _selfx, double _selfy, double _selfz, double _selfw, double _t24, double _t26, double _t27, double _t28, double _t29) {
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_selfw, _t29, java.lang.Math.fma(_selfx, _t26, -(_selfy * _t28))));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(-_selfz, _t29, java.lang.Math.fma(_selfy, _t27, -_selfx * _t24)));
+        return dest;
+    }
+
+    /** {@code cross_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer cross_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double vX, double vY, double vZ, double vW, double wX, double wY, double wZ, double wW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t6 = -vZ * wY;
+        double _t7 = -vW * wZ;
+        double _t8 = -vW * wY;
+        double _t9 = -vZ * wX;
+        double _t10 = -vW * wX;
+        double _t11 = -(vY * wX);
+        double _t24 = ((vY) * (wZ) + (_t6)) - ((vZ) * (wY) + (_t6));
+        double _t25 = ((vZ) * (wW) + (_t7)) - ((vW) * (wZ) + (_t7));
+        double _t26 = ((vY) * (wW) + (_t8)) - ((vW) * (wY) + (_t8));
+        double _t27 = ((vX) * (wZ) + (_t9)) - ((vZ) * (wX) + (_t9));
+        double _t28 = ((vX) * (wW) + (_t10)) - ((vW) * (wX) + (_t10));
+        double _t29 = ((vX) * (wY) + (_t11)) - ((vY) * (wX) + (_t11));
+        dest.putDouble(destOffset, ((_selfw) * (_t24) + (((_selfy) * (_t25) - (_selfz * _t26)))));
+        dest.putDouble(destOffset + 8, ((((_selfz) * (_t28) - (_selfx * _t25))) - (_selfw) * (_t27)));
+        dest.putDouble(destOffset + 16, ((_selfw) * (_t29) + (((_selfx) * (_t26) - (_selfy * _t28)))));
+        dest.putDouble(destOffset + 24, ((((_selfy) * (_t27) - (_selfx * _t24))) - (_selfz) * (_t29)));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer cross_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer v, int vOffset, java.nio.ByteBuffer w, int wOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _vBase = UnsafeOpsHolder.U.getLong(v, UnsafeCopy.BB_ADDRESS_OFFSET) + vOffset;
+        long _wBase = UnsafeOpsHolder.U.getLong(w, UnsafeCopy.BB_ADDRESS_OFFSET) + wOffset;
+        Double4OpsKernelsAddress.cross_unsafe(_destBase, _srcBase, _vBase, _wBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer cross_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer v, int vOffset, java.nio.ByteBuffer w, int wOffset) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return cross_api_fma(dest, destOffset, src, srcOffset, v, vOffset, w, wOffset);
+        return cross_api_mulAdd(dest, destOffset, src, srcOffset, v, vOffset, w, wOffset);
+    }
+
+    /** {@code cross_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer cross_api_fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer v, int vOffset, java.nio.ByteBuffer w, int wOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _vx = v.getDouble(vOffset);
+        double _vy = v.getDouble(vOffset + 8);
+        double _vz = v.getDouble(vOffset + 16);
+        double _vw = v.getDouble(vOffset + 24);
+        double _wx = w.getDouble(wOffset);
+        double _wy = w.getDouble(wOffset + 8);
+        double _wz = w.getDouble(wOffset + 16);
+        double _ww = w.getDouble(wOffset + 24);
+        double _t6 = -_vz * _wy;
+        double _t7 = -_vw * _wz;
+        double _t8 = -_vw * _wy;
+        double _t9 = -_vz * _wx;
+        double _t10 = -_vw * _wx;
+        double _t11 = -(_vy * _wx);
+        return cross_api_fma_sfe69b601_1(dest, destOffset, _selfx, _selfy, _selfz, _selfw, java.lang.Math.fma(_vy, _wz, _t6) - java.lang.Math.fma(_vz, _wy, _t6), java.lang.Math.fma(_vz, _ww, _t7) - java.lang.Math.fma(_vw, _wz, _t7), java.lang.Math.fma(_vy, _ww, _t8) - java.lang.Math.fma(_vw, _wy, _t8), java.lang.Math.fma(_vx, _wz, _t9) - java.lang.Math.fma(_vz, _wx, _t9), java.lang.Math.fma(_vx, _ww, _t10) - java.lang.Math.fma(_vw, _wx, _t10), java.lang.Math.fma(_vx, _wy, _t11) - java.lang.Math.fma(_vy, _wx, _t11));
+    }
+
+    /** Piece 2 of {@code cross_api_fma}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer cross_api_fma_sfe69b601_1(java.nio.ByteBuffer dest, int destOffset, double _selfx, double _selfy, double _selfz, double _selfw, double _t24, double _t25, double _t26, double _t27, double _t28, double _t29) {
+        dest.putDouble(destOffset, java.lang.Math.fma(_selfw, _t24, java.lang.Math.fma(_selfy, _t25, -_selfz * _t26)));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(-_selfw, _t27, java.lang.Math.fma(_selfz, _t28, -_selfx * _t25)));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_selfw, _t29, java.lang.Math.fma(_selfx, _t26, -(_selfy * _t28))));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(-_selfz, _t29, java.lang.Math.fma(_selfy, _t27, -_selfx * _t24)));
+        return dest;
+    }
+
+    /** {@code cross_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer cross_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer v, int vOffset, java.nio.ByteBuffer w, int wOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _vx = v.getDouble(vOffset);
+        double _vy = v.getDouble(vOffset + 8);
+        double _vz = v.getDouble(vOffset + 16);
+        double _vw = v.getDouble(vOffset + 24);
+        double _wx = w.getDouble(wOffset);
+        double _wy = w.getDouble(wOffset + 8);
+        double _wz = w.getDouble(wOffset + 16);
+        double _ww = w.getDouble(wOffset + 24);
+        double _t6 = -_vz * _wy;
+        double _t7 = -_vw * _wz;
+        double _t8 = -_vw * _wy;
+        double _t9 = -_vz * _wx;
+        double _t10 = -_vw * _wx;
+        double _t11 = -(_vy * _wx);
+        return cross_api_mulAdd_s7536b094_1(dest, destOffset, _selfx, _selfy, _selfz, _selfw, ((_vy) * (_wz) + (_t6)) - ((_vz) * (_wy) + (_t6)), ((_vz) * (_ww) + (_t7)) - ((_vw) * (_wz) + (_t7)), ((_vy) * (_ww) + (_t8)) - ((_vw) * (_wy) + (_t8)), ((_vx) * (_wz) + (_t9)) - ((_vz) * (_wx) + (_t9)), ((_vx) * (_ww) + (_t10)) - ((_vw) * (_wx) + (_t10)), ((_vx) * (_wy) + (_t11)) - ((_vy) * (_wx) + (_t11)));
+    }
+
+    /** Piece 2 of {@code cross_api_mulAdd}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer cross_api_mulAdd_s7536b094_1(java.nio.ByteBuffer dest, int destOffset, double _selfx, double _selfy, double _selfz, double _selfw, double _t24, double _t25, double _t26, double _t27, double _t28, double _t29) {
+        dest.putDouble(destOffset, ((_selfw) * (_t24) + (((_selfy) * (_t25) - (_selfz * _t26)))));
+        dest.putDouble(destOffset + 8, ((((_selfz) * (_t28) - (_selfx * _t25))) - (_selfw) * (_t27)));
+        dest.putDouble(destOffset + 16, ((_selfw) * (_t29) + (((_selfx) * (_t26) - (_selfy * _t28)))));
+        dest.putDouble(destOffset + 24, ((((_selfy) * (_t27) - (_selfx * _t24))) - (_selfz) * (_t29)));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer degrees_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.degrees_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer degrees_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.toDegrees(_selfx));
+        dest.putDouble(destOffset + 8, Math.toDegrees(_selfy));
+        dest.putDouble(destOffset + 16, Math.toDegrees(_selfz));
+        dest.putDouble(destOffset + 24, Math.toDegrees(_selfw));
+        return dest;
+    }
+
+    public static double distance_unsafe(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        return Double4OpsKernelsAddress.distance_unsafe(_srcBase, otherX, otherY, otherZ, otherW);
+    }
+
+    public static double distance_api(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _t0 = src.getDouble(srcOffset + 24) - otherW;
+            double _t1 = src.getDouble(srcOffset + 16) - otherZ;
+            double _t2 = src.getDouble(srcOffset) - otherX;
+            double _t3 = src.getDouble(srcOffset + 8) - otherY;
+            return java.lang.Math.sqrt(java.lang.Math.fma(_t0, _t0, java.lang.Math.fma(_t1, _t1, java.lang.Math.fma(_t2, _t2, _t3 * _t3))));
+        } else {
+            double _t0 = src.getDouble(srcOffset + 24) - otherW;
+            double _t1 = src.getDouble(srcOffset + 16) - otherZ;
+            double _t2 = src.getDouble(srcOffset) - otherX;
+            double _t3 = src.getDouble(srcOffset + 8) - otherY;
+            return java.lang.Math.sqrt(((_t0) * (_t0) + (((_t1) * (_t1) + (((_t2) * (_t2) + (_t3 * _t3)))))));
+        }
+    }
+
+    public static double distance_unsafe(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _otherBase = UnsafeOpsHolder.U.getLong(other, UnsafeCopy.BB_ADDRESS_OFFSET) + otherOffset;
+        return Double4OpsKernelsAddress.distance_unsafe(_srcBase, _otherBase);
+    }
+
+    public static double distance_api(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _t0 = src.getDouble(srcOffset + 24) - other.getDouble(otherOffset + 24);
+            double _t1 = src.getDouble(srcOffset + 16) - other.getDouble(otherOffset + 16);
+            double _t2 = src.getDouble(srcOffset) - other.getDouble(otherOffset);
+            double _t3 = src.getDouble(srcOffset + 8) - other.getDouble(otherOffset + 8);
+            return java.lang.Math.sqrt(java.lang.Math.fma(_t0, _t0, java.lang.Math.fma(_t1, _t1, java.lang.Math.fma(_t2, _t2, _t3 * _t3))));
+        } else {
+            double _t0 = src.getDouble(srcOffset + 24) - other.getDouble(otherOffset + 24);
+            double _t1 = src.getDouble(srcOffset + 16) - other.getDouble(otherOffset + 16);
+            double _t2 = src.getDouble(srcOffset) - other.getDouble(otherOffset);
+            double _t3 = src.getDouble(srcOffset + 8) - other.getDouble(otherOffset + 8);
+            return java.lang.Math.sqrt(((_t0) * (_t0) + (((_t1) * (_t1) + (((_t2) * (_t2) + (_t3 * _t3)))))));
+        }
+    }
+
+    public static double distanceSquared_unsafe(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        return Double4OpsKernelsAddress.distanceSquared_unsafe(_srcBase, otherX, otherY, otherZ, otherW);
+    }
+
+    public static double distanceSquared_api(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _t0 = src.getDouble(srcOffset + 24) - otherW;
+            double _t1 = src.getDouble(srcOffset + 16) - otherZ;
+            double _t2 = src.getDouble(srcOffset) - otherX;
+            double _t3 = src.getDouble(srcOffset + 8) - otherY;
+            return java.lang.Math.fma(_t0, _t0, java.lang.Math.fma(_t1, _t1, java.lang.Math.fma(_t2, _t2, _t3 * _t3)));
+        } else {
+            double _t0 = src.getDouble(srcOffset + 24) - otherW;
+            double _t1 = src.getDouble(srcOffset + 16) - otherZ;
+            double _t2 = src.getDouble(srcOffset) - otherX;
+            double _t3 = src.getDouble(srcOffset + 8) - otherY;
+            return ((_t0) * (_t0) + (((_t1) * (_t1) + (((_t2) * (_t2) + (_t3 * _t3))))));
+        }
+    }
+
+    public static double distanceSquared_unsafe(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _otherBase = UnsafeOpsHolder.U.getLong(other, UnsafeCopy.BB_ADDRESS_OFFSET) + otherOffset;
+        return Double4OpsKernelsAddress.distanceSquared_unsafe(_srcBase, _otherBase);
+    }
+
+    public static double distanceSquared_api(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _t0 = src.getDouble(srcOffset + 24) - other.getDouble(otherOffset + 24);
+            double _t1 = src.getDouble(srcOffset + 16) - other.getDouble(otherOffset + 16);
+            double _t2 = src.getDouble(srcOffset) - other.getDouble(otherOffset);
+            double _t3 = src.getDouble(srcOffset + 8) - other.getDouble(otherOffset + 8);
+            return java.lang.Math.fma(_t0, _t0, java.lang.Math.fma(_t1, _t1, java.lang.Math.fma(_t2, _t2, _t3 * _t3)));
+        } else {
+            double _t0 = src.getDouble(srcOffset + 24) - other.getDouble(otherOffset + 24);
+            double _t1 = src.getDouble(srcOffset + 16) - other.getDouble(otherOffset + 16);
+            double _t2 = src.getDouble(srcOffset) - other.getDouble(otherOffset);
+            double _t3 = src.getDouble(srcOffset + 8) - other.getDouble(otherOffset + 8);
+            return ((_t0) * (_t0) + (((_t1) * (_t1) + (((_t2) * (_t2) + (_t3 * _t3))))));
+        }
+    }
+
+    public static double dot_unsafe(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        return Double4OpsKernelsAddress.dot_unsafe(_srcBase, otherX, otherY, otherZ, otherW);
+    }
+
+    public static double dot_api(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            return java.lang.Math.fma(otherW, src.getDouble(srcOffset + 24), java.lang.Math.fma(otherZ, src.getDouble(srcOffset + 16), java.lang.Math.fma(otherX, src.getDouble(srcOffset), otherY * src.getDouble(srcOffset + 8))));
+        } else {
+            return ((otherW) * (src.getDouble(srcOffset + 24)) + (((otherZ) * (src.getDouble(srcOffset + 16)) + (((otherX) * (src.getDouble(srcOffset)) + (otherY * src.getDouble(srcOffset + 8)))))));
+        }
+    }
+
+    public static double dot_unsafe(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _otherBase = UnsafeOpsHolder.U.getLong(other, UnsafeCopy.BB_ADDRESS_OFFSET) + otherOffset;
+        return Double4OpsKernelsAddress.dot_unsafe(_srcBase, _otherBase);
+    }
+
+    public static double dot_api(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            return java.lang.Math.fma(other.getDouble(otherOffset + 24), src.getDouble(srcOffset + 24), java.lang.Math.fma(other.getDouble(otherOffset + 16), src.getDouble(srcOffset + 16), java.lang.Math.fma(other.getDouble(otherOffset), src.getDouble(srcOffset), other.getDouble(otherOffset + 8) * src.getDouble(srcOffset + 8))));
+        } else {
+            return ((other.getDouble(otherOffset + 24)) * (src.getDouble(srcOffset + 24)) + (((other.getDouble(otherOffset + 16)) * (src.getDouble(srcOffset + 16)) + (((other.getDouble(otherOffset)) * (src.getDouble(srcOffset)) + (other.getDouble(otherOffset + 8) * src.getDouble(srcOffset + 8)))))));
+        }
+    }
+
+    public static java.nio.ByteBuffer exp_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.exp_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer exp_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.exp(_selfx));
+        dest.putDouble(destOffset + 8, Math.exp(_selfy));
+        dest.putDouble(destOffset + 16, Math.exp(_selfz));
+        dest.putDouble(destOffset + 24, Math.exp(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer exp2_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.exp2_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer exp2_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.pow(2.0, _selfx));
+        dest.putDouble(destOffset + 8, Math.pow(2.0, _selfy));
+        dest.putDouble(destOffset + 16, Math.pow(2.0, _selfz));
+        dest.putDouble(destOffset + 24, Math.pow(2.0, _selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer expm1_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.expm1_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer expm1_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.expm1(_selfx));
+        dest.putDouble(destOffset + 8, Math.expm1(_selfy));
+        dest.putDouble(destOffset + 16, Math.expm1(_selfz));
+        dest.putDouble(destOffset + 24, Math.expm1(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer faceforward_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double IX, double IY, double IZ, double IW, double NrefX, double NrefY, double NrefZ, double NrefW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.faceforward_unsafe(_destBase, _srcBase, IX, IY, IZ, IW, NrefX, NrefY, NrefZ, NrefW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer faceforward_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double IX, double IY, double IZ, double IW, double NrefX, double NrefY, double NrefZ, double NrefW) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            double _t4 = java.lang.Math.fma(IW, NrefW, java.lang.Math.fma(IZ, NrefZ, java.lang.Math.fma(IX, NrefX, IY * NrefY))) < 0.0 ? 1.0 : -1.0;
+            dest.putDouble(destOffset, _selfx * _t4);
+            dest.putDouble(destOffset + 8, _selfy * _t4);
+            dest.putDouble(destOffset + 16, _selfz * _t4);
+            dest.putDouble(destOffset + 24, _selfw * _t4);
+            return dest;
+        } else {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            double _t4 = ((IW) * (NrefW) + (((IZ) * (NrefZ) + (((IX) * (NrefX) + (IY * NrefY)))))) < 0.0 ? 1.0 : -1.0;
+            dest.putDouble(destOffset, _selfx * _t4);
+            dest.putDouble(destOffset + 8, _selfy * _t4);
+            dest.putDouble(destOffset + 16, _selfz * _t4);
+            dest.putDouble(destOffset + 24, _selfw * _t4);
+            return dest;
+        }
+    }
+
+    public static java.nio.ByteBuffer faceforward_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer I, int IOffset, java.nio.ByteBuffer Nref, int NrefOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _IBase = UnsafeOpsHolder.U.getLong(I, UnsafeCopy.BB_ADDRESS_OFFSET) + IOffset;
+        long _NrefBase = UnsafeOpsHolder.U.getLong(Nref, UnsafeCopy.BB_ADDRESS_OFFSET) + NrefOffset;
+        Double4OpsKernelsAddress.faceforward_unsafe(_destBase, _srcBase, _IBase, _NrefBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer faceforward_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer I, int IOffset, java.nio.ByteBuffer Nref, int NrefOffset) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return faceforward_api_mulAdd(dest, destOffset, src, srcOffset, I, IOffset, Nref, NrefOffset);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t4 = java.lang.Math.fma(I.getDouble(IOffset + 24), Nref.getDouble(NrefOffset + 24), java.lang.Math.fma(I.getDouble(IOffset + 16), Nref.getDouble(NrefOffset + 16), java.lang.Math.fma(I.getDouble(IOffset), Nref.getDouble(NrefOffset), I.getDouble(IOffset + 8) * Nref.getDouble(NrefOffset + 8)))) < 0.0 ? 1.0 : -1.0;
+        dest.putDouble(destOffset, _selfx * _t4);
+        dest.putDouble(destOffset + 8, _selfy * _t4);
+        dest.putDouble(destOffset + 16, _selfz * _t4);
+        dest.putDouble(destOffset + 24, _selfw * _t4);
+        return dest;
+    }
+
+    /** {@code faceforward_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer faceforward_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer I, int IOffset, java.nio.ByteBuffer Nref, int NrefOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t4 = ((I.getDouble(IOffset + 24)) * (Nref.getDouble(NrefOffset + 24)) + (((I.getDouble(IOffset + 16)) * (Nref.getDouble(NrefOffset + 16)) + (((I.getDouble(IOffset)) * (Nref.getDouble(NrefOffset)) + (I.getDouble(IOffset + 8) * Nref.getDouble(NrefOffset + 8))))))) < 0.0 ? 1.0 : -1.0;
+        dest.putDouble(destOffset, _selfx * _t4);
+        dest.putDouble(destOffset + 8, _selfy * _t4);
+        dest.putDouble(destOffset + 16, _selfz * _t4);
+        dest.putDouble(destOffset + 24, _selfw * _t4);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer floor_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.floor_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer floor_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.floor(_selfx));
+        dest.putDouble(destOffset + 8, Math.floor(_selfy));
+        dest.putDouble(destOffset + 16, Math.floor(_selfz));
+        dest.putDouble(destOffset + 24, Math.floor(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer fract_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.fract_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer fract_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.min(_selfx - Math.floor(_selfx), 0.9999999999999999));
+        dest.putDouble(destOffset + 8, Math.min(_selfy - Math.floor(_selfy), 0.9999999999999999));
+        dest.putDouble(destOffset + 16, Math.min(_selfz - Math.floor(_selfz), 0.9999999999999999));
+        dest.putDouble(destOffset + 24, Math.min(_selfw - Math.floor(_selfw), 0.9999999999999999));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer hypot_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double y) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.hypot_unsafe(_destBase, _srcBase, y);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer hypot_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double y) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.hypot(_selfx, y));
+        dest.putDouble(destOffset + 8, Math.hypot(_selfy, y));
+        dest.putDouble(destOffset + 16, Math.hypot(_selfz, y));
+        dest.putDouble(destOffset + 24, Math.hypot(_selfw, y));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer hypot_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double yX, double yY, double yZ, double yW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.hypot_unsafe(_destBase, _srcBase, yX, yY, yZ, yW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer hypot_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double yX, double yY, double yZ, double yW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.hypot(_selfx, yX));
+        dest.putDouble(destOffset + 8, Math.hypot(_selfy, yY));
+        dest.putDouble(destOffset + 16, Math.hypot(_selfz, yZ));
+        dest.putDouble(destOffset + 24, Math.hypot(_selfw, yW));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer hypot_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer y, int yOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _yBase = UnsafeOpsHolder.U.getLong(y, UnsafeCopy.BB_ADDRESS_OFFSET) + yOffset;
+        Double4OpsKernelsAddress.hypot_unsafe(_destBase, _srcBase, _yBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer hypot_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer y, int yOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _yx = y.getDouble(yOffset);
+        double _yy = y.getDouble(yOffset + 8);
+        double _yz = y.getDouble(yOffset + 16);
+        double _yw = y.getDouble(yOffset + 24);
+        dest.putDouble(destOffset, Math.hypot(_selfx, _yx));
+        dest.putDouble(destOffset + 8, Math.hypot(_selfy, _yy));
+        dest.putDouble(destOffset + 16, Math.hypot(_selfz, _yz));
+        dest.putDouble(destOffset + 24, Math.hypot(_selfw, _yw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer inverse_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.inverse_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer inverse_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, 1.0 / _selfx);
+        dest.putDouble(destOffset + 8, 1.0 / _selfy);
+        dest.putDouble(destOffset + 16, 1.0 / _selfz);
+        dest.putDouble(destOffset + 24, 1.0 / _selfw);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer inverseSqrt_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.inverseSqrt_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer inverseSqrt_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, (1.0 / java.lang.Math.sqrt(_selfx)));
+        dest.putDouble(destOffset + 8, (1.0 / java.lang.Math.sqrt(_selfy)));
+        dest.putDouble(destOffset + 16, (1.0 / java.lang.Math.sqrt(_selfz)));
+        dest.putDouble(destOffset + 24, (1.0 / java.lang.Math.sqrt(_selfw)));
+        return dest;
+    }
+
+    public static double length_unsafe(java.nio.ByteBuffer src, int srcOffset) {
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        return Double4OpsKernelsAddress.length_unsafe(_srcBase);
+    }
+
+    public static double length_api(java.nio.ByteBuffer src, int srcOffset) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            return java.lang.Math.sqrt(java.lang.Math.fma(_selfw, _selfw, java.lang.Math.fma(_selfz, _selfz, java.lang.Math.fma(_selfx, _selfx, _selfy * _selfy))));
+        } else {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            return java.lang.Math.sqrt(((_selfw) * (_selfw) + (((_selfz) * (_selfz) + (((_selfx) * (_selfx) + (_selfy * _selfy)))))));
+        }
+    }
+
+    public static double lengthSquared_unsafe(java.nio.ByteBuffer src, int srcOffset) {
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        return Double4OpsKernelsAddress.lengthSquared_unsafe(_srcBase);
+    }
+
+    public static double lengthSquared_api(java.nio.ByteBuffer src, int srcOffset) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            return java.lang.Math.fma(_selfw, _selfw, java.lang.Math.fma(_selfz, _selfz, java.lang.Math.fma(_selfx, _selfx, _selfy * _selfy)));
+        } else {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            return ((_selfw) * (_selfw) + (((_selfz) * (_selfz) + (((_selfx) * (_selfx) + (_selfy * _selfy))))));
+        }
+    }
+
+    public static java.nio.ByteBuffer log_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.log_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer log_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.log(_selfx));
+        dest.putDouble(destOffset + 8, Math.log(_selfy));
+        dest.putDouble(destOffset + 16, Math.log(_selfz));
+        dest.putDouble(destOffset + 24, Math.log(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer log10_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.log10_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer log10_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.log10(_selfx));
+        dest.putDouble(destOffset + 8, Math.log10(_selfy));
+        dest.putDouble(destOffset + 16, Math.log10(_selfz));
+        dest.putDouble(destOffset + 24, Math.log10(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer log1p_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.log1p_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer log1p_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.log1p(_selfx));
+        dest.putDouble(destOffset + 8, Math.log1p(_selfy));
+        dest.putDouble(destOffset + 16, Math.log1p(_selfz));
+        dest.putDouble(destOffset + 24, Math.log1p(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer log2_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.log2_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer log2_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.log2(_selfx));
+        dest.putDouble(destOffset + 8, Math.log2(_selfy));
+        dest.putDouble(destOffset + 16, Math.log2(_selfz));
+        dest.putDouble(destOffset + 24, Math.log2(_selfw));
+        return dest;
+    }
+
+    public static double manhattanDistance_unsafe(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        return Double4OpsKernelsAddress.manhattanDistance_unsafe(_srcBase, otherX, otherY, otherZ, otherW);
+    }
+
+    public static double manhattanDistance_api(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        return java.lang.Math.abs(src.getDouble(srcOffset) - otherX) + java.lang.Math.abs(src.getDouble(srcOffset + 8) - otherY) + java.lang.Math.abs(src.getDouble(srcOffset + 16) - otherZ) + java.lang.Math.abs(src.getDouble(srcOffset + 24) - otherW);
+    }
+
+    public static double manhattanDistance_unsafe(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _otherBase = UnsafeOpsHolder.U.getLong(other, UnsafeCopy.BB_ADDRESS_OFFSET) + otherOffset;
+        return Double4OpsKernelsAddress.manhattanDistance_unsafe(_srcBase, _otherBase);
+    }
+
+    public static double manhattanDistance_api(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        return java.lang.Math.abs(src.getDouble(srcOffset) - other.getDouble(otherOffset)) + java.lang.Math.abs(src.getDouble(srcOffset + 8) - other.getDouble(otherOffset + 8)) + java.lang.Math.abs(src.getDouble(srcOffset + 16) - other.getDouble(otherOffset + 16)) + java.lang.Math.abs(src.getDouble(srcOffset + 24) - other.getDouble(otherOffset + 24));
+    }
+
+    public static double manhattanLength_unsafe(java.nio.ByteBuffer src, int srcOffset) {
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        return Double4OpsKernelsAddress.manhattanLength_unsafe(_srcBase);
+    }
+
+    public static double manhattanLength_api(java.nio.ByteBuffer src, int srcOffset) {
+        return java.lang.Math.abs(src.getDouble(srcOffset)) + java.lang.Math.abs(src.getDouble(srcOffset + 8)) + java.lang.Math.abs(src.getDouble(srcOffset + 16)) + java.lang.Math.abs(src.getDouble(srcOffset + 24));
+    }
+
+    public static java.nio.ByteBuffer max_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double scalar) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.max_unsafe(_destBase, _srcBase, scalar);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer max_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double scalar) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.max(_selfx, scalar));
+        dest.putDouble(destOffset + 8, Math.max(_selfy, scalar));
+        dest.putDouble(destOffset + 16, Math.max(_selfz, scalar));
+        dest.putDouble(destOffset + 24, Math.max(_selfw, scalar));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer max_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.max_unsafe(_destBase, _srcBase, otherX, otherY, otherZ, otherW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer max_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.max(_selfx, otherX));
+        dest.putDouble(destOffset + 8, Math.max(_selfy, otherY));
+        dest.putDouble(destOffset + 16, Math.max(_selfz, otherZ));
+        dest.putDouble(destOffset + 24, Math.max(_selfw, otherW));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer max_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _otherBase = UnsafeOpsHolder.U.getLong(other, UnsafeCopy.BB_ADDRESS_OFFSET) + otherOffset;
+        Double4OpsKernelsAddress.max_unsafe(_destBase, _srcBase, _otherBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer max_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        dest.putDouble(destOffset, Math.max(_selfx, _otherx));
+        dest.putDouble(destOffset + 8, Math.max(_selfy, _othery));
+        dest.putDouble(destOffset + 16, Math.max(_selfz, _otherz));
+        dest.putDouble(destOffset + 24, Math.max(_selfw, _otherw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer min_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double scalar) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.min_unsafe(_destBase, _srcBase, scalar);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer min_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double scalar) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.min(_selfx, scalar));
+        dest.putDouble(destOffset + 8, Math.min(_selfy, scalar));
+        dest.putDouble(destOffset + 16, Math.min(_selfz, scalar));
+        dest.putDouble(destOffset + 24, Math.min(_selfw, scalar));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer min_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.min_unsafe(_destBase, _srcBase, otherX, otherY, otherZ, otherW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer min_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.min(_selfx, otherX));
+        dest.putDouble(destOffset + 8, Math.min(_selfy, otherY));
+        dest.putDouble(destOffset + 16, Math.min(_selfz, otherZ));
+        dest.putDouble(destOffset + 24, Math.min(_selfw, otherW));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer min_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _otherBase = UnsafeOpsHolder.U.getLong(other, UnsafeCopy.BB_ADDRESS_OFFSET) + otherOffset;
+        Double4OpsKernelsAddress.min_unsafe(_destBase, _srcBase, _otherBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer min_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _otherx = other.getDouble(otherOffset);
+        double _othery = other.getDouble(otherOffset + 8);
+        double _otherz = other.getDouble(otherOffset + 16);
+        double _otherw = other.getDouble(otherOffset + 24);
+        dest.putDouble(destOffset, Math.min(_selfx, _otherx));
+        dest.putDouble(destOffset + 8, Math.min(_selfy, _othery));
+        dest.putDouble(destOffset + 16, Math.min(_selfz, _otherz));
+        dest.putDouble(destOffset + 24, Math.min(_selfw, _otherw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer mod_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double y) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.mod_unsafe(_destBase, _srcBase, y);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer mod_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double y) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, flooredMod(_selfx, y));
+        dest.putDouble(destOffset + 8, flooredMod(_selfy, y));
+        dest.putDouble(destOffset + 16, flooredMod(_selfz, y));
+        dest.putDouble(destOffset + 24, flooredMod(_selfw, y));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer mod_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double yX, double yY, double yZ, double yW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.mod_unsafe(_destBase, _srcBase, yX, yY, yZ, yW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer mod_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double yX, double yY, double yZ, double yW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, flooredMod(_selfx, yX));
+        dest.putDouble(destOffset + 8, flooredMod(_selfy, yY));
+        dest.putDouble(destOffset + 16, flooredMod(_selfz, yZ));
+        dest.putDouble(destOffset + 24, flooredMod(_selfw, yW));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer mod_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer y, int yOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _yBase = UnsafeOpsHolder.U.getLong(y, UnsafeCopy.BB_ADDRESS_OFFSET) + yOffset;
+        Double4OpsKernelsAddress.mod_unsafe(_destBase, _srcBase, _yBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer mod_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer y, int yOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _yx = y.getDouble(yOffset);
+        double _yy = y.getDouble(yOffset + 8);
+        double _yz = y.getDouble(yOffset + 16);
+        double _yw = y.getDouble(yOffset + 24);
+        dest.putDouble(destOffset, flooredMod(_selfx, _yx));
+        dest.putDouble(destOffset + 8, flooredMod(_selfy, _yy));
+        dest.putDouble(destOffset + 16, flooredMod(_selfz, _yz));
+        dest.putDouble(destOffset + 24, flooredMod(_selfw, _yw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer nextDown_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.nextDown_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer nextDown_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.nextDown(_selfx));
+        dest.putDouble(destOffset + 8, Math.nextDown(_selfy));
+        dest.putDouble(destOffset + 16, Math.nextDown(_selfz));
+        dest.putDouble(destOffset + 24, Math.nextDown(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer nextUp_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.nextUp_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer nextUp_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.nextUp(_selfx));
+        dest.putDouble(destOffset + 8, Math.nextUp(_selfy));
+        dest.putDouble(destOffset + 16, Math.nextUp(_selfz));
+        dest.putDouble(destOffset + 24, Math.nextUp(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer normalize_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.normalize_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer normalize_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return normalize_api_mulAdd(dest, destOffset, src, srcOffset);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t3 = java.lang.Math.fma(_selfw, _selfw, java.lang.Math.fma(_selfz, _selfz, java.lang.Math.fma(_selfx, _selfx, _selfy * _selfy)));
+        double _t4 = (1.0 / java.lang.Math.sqrt(_t3));
+        if (_t3 != 0.0) {
+            dest.putDouble(destOffset, _selfx * _t4);
+            dest.putDouble(destOffset + 8, _selfy * _t4);
+            dest.putDouble(destOffset + 16, _selfz * _t4);
+            dest.putDouble(destOffset + 24, _selfw * _t4);
+        } else {
+            dest.putDouble(destOffset, 0.0);
+            dest.putDouble(destOffset + 8, 0.0);
+            dest.putDouble(destOffset + 16, 0.0);
+            dest.putDouble(destOffset + 24, 0.0);
+        }
+        return dest;
+    }
+
+    /** {@code normalize_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer normalize_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t3 = ((_selfw) * (_selfw) + (((_selfz) * (_selfz) + (((_selfx) * (_selfx) + (_selfy * _selfy))))));
+        double _t4 = (1.0 / java.lang.Math.sqrt(_t3));
+        if (_t3 != 0.0) {
+            dest.putDouble(destOffset, _selfx * _t4);
+            dest.putDouble(destOffset + 8, _selfy * _t4);
+            dest.putDouble(destOffset + 16, _selfz * _t4);
+            dest.putDouble(destOffset + 24, _selfw * _t4);
+        } else {
+            dest.putDouble(destOffset, 0.0);
+            dest.putDouble(destOffset + 8, 0.0);
+            dest.putDouble(destOffset + 16, 0.0);
+            dest.putDouble(destOffset + 24, 0.0);
+        }
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer normalizeMul_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double length) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.normalizeMul_unsafe(_destBase, _srcBase, length);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer normalizeMul_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double length) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return normalizeMul_api_mulAdd(dest, destOffset, src, srcOffset, length);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t3 = java.lang.Math.fma(_selfw, _selfw, java.lang.Math.fma(_selfz, _selfz, java.lang.Math.fma(_selfx, _selfx, _selfy * _selfy)));
+        double _t5 = length * (1.0 / java.lang.Math.sqrt(_t3));
+        if (_t3 != 0.0) {
+            dest.putDouble(destOffset, _selfx * _t5);
+            dest.putDouble(destOffset + 8, _selfy * _t5);
+            dest.putDouble(destOffset + 16, _selfz * _t5);
+            dest.putDouble(destOffset + 24, _selfw * _t5);
+        } else {
+            dest.putDouble(destOffset, 0.0);
+            dest.putDouble(destOffset + 8, 0.0);
+            dest.putDouble(destOffset + 16, 0.0);
+            dest.putDouble(destOffset + 24, 0.0);
+        }
+        return dest;
+    }
+
+    /** {@code normalizeMul_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer normalizeMul_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double length) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t3 = ((_selfw) * (_selfw) + (((_selfz) * (_selfz) + (((_selfx) * (_selfx) + (_selfy * _selfy))))));
+        double _t5 = length * (1.0 / java.lang.Math.sqrt(_t3));
+        if (_t3 != 0.0) {
+            dest.putDouble(destOffset, _selfx * _t5);
+            dest.putDouble(destOffset + 8, _selfy * _t5);
+            dest.putDouble(destOffset + 16, _selfz * _t5);
+            dest.putDouble(destOffset + 24, _selfw * _t5);
+        } else {
+            dest.putDouble(destOffset, 0.0);
+            dest.putDouble(destOffset + 8, 0.0);
+            dest.putDouble(destOffset + 16, 0.0);
+            dest.putDouble(destOffset + 24, 0.0);
+        }
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer outerProduct_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double rowX, double rowY, double rowZ, double rowW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.outerProduct_unsafe(_destBase, _srcBase, rowX, rowY, rowZ, rowW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer outerProduct_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double rowX, double rowY, double rowZ, double rowW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, rowX * _selfx);
+        dest.putDouble(destOffset + 8, rowX * _selfy);
+        dest.putDouble(destOffset + 16, rowX * _selfz);
+        dest.putDouble(destOffset + 24, rowX * _selfw);
+        dest.putDouble(destOffset + 32, rowY * _selfx);
+        dest.putDouble(destOffset + 40, rowY * _selfy);
+        dest.putDouble(destOffset + 48, rowY * _selfz);
+        dest.putDouble(destOffset + 56, rowY * _selfw);
+        dest.putDouble(destOffset + 64, rowZ * _selfx);
+        dest.putDouble(destOffset + 72, rowZ * _selfy);
+        dest.putDouble(destOffset + 80, rowZ * _selfz);
+        dest.putDouble(destOffset + 88, rowZ * _selfw);
+        dest.putDouble(destOffset + 96, rowW * _selfx);
+        dest.putDouble(destOffset + 104, rowW * _selfy);
+        dest.putDouble(destOffset + 112, rowW * _selfz);
+        dest.putDouble(destOffset + 120, rowW * _selfw);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer outerProduct_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer row, int rowOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _rowBase = UnsafeOpsHolder.U.getLong(row, UnsafeCopy.BB_ADDRESS_OFFSET) + rowOffset;
+        Double4OpsKernelsAddress.outerProduct_unsafe(_destBase, _srcBase, _rowBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer outerProduct_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer row, int rowOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _rowx = row.getDouble(rowOffset);
+        double _rowy = row.getDouble(rowOffset + 8);
+        double _rowz = row.getDouble(rowOffset + 16);
+        double _roww = row.getDouble(rowOffset + 24);
+        dest.putDouble(destOffset, _rowx * _selfx);
+        dest.putDouble(destOffset + 8, _rowx * _selfy);
+        dest.putDouble(destOffset + 16, _rowx * _selfz);
+        dest.putDouble(destOffset + 24, _rowx * _selfw);
+        dest.putDouble(destOffset + 32, _rowy * _selfx);
+        dest.putDouble(destOffset + 40, _rowy * _selfy);
+        dest.putDouble(destOffset + 48, _rowy * _selfz);
+        dest.putDouble(destOffset + 56, _rowy * _selfw);
+        dest.putDouble(destOffset + 64, _rowz * _selfx);
+        dest.putDouble(destOffset + 72, _rowz * _selfy);
+        dest.putDouble(destOffset + 80, _rowz * _selfz);
+        dest.putDouble(destOffset + 88, _rowz * _selfw);
+        dest.putDouble(destOffset + 96, _roww * _selfx);
+        dest.putDouble(destOffset + 104, _roww * _selfy);
+        dest.putDouble(destOffset + 112, _roww * _selfz);
+        dest.putDouble(destOffset + 120, _roww * _selfw);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer pow_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double exponent) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.pow_unsafe(_destBase, _srcBase, exponent);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer pow_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double exponent) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.pow(_selfx, exponent));
+        dest.putDouble(destOffset + 8, Math.pow(_selfy, exponent));
+        dest.putDouble(destOffset + 16, Math.pow(_selfz, exponent));
+        dest.putDouble(destOffset + 24, Math.pow(_selfw, exponent));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer pow_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double exponentX, double exponentY, double exponentZ, double exponentW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.pow_unsafe(_destBase, _srcBase, exponentX, exponentY, exponentZ, exponentW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer pow_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double exponentX, double exponentY, double exponentZ, double exponentW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.pow(_selfx, exponentX));
+        dest.putDouble(destOffset + 8, Math.pow(_selfy, exponentY));
+        dest.putDouble(destOffset + 16, Math.pow(_selfz, exponentZ));
+        dest.putDouble(destOffset + 24, Math.pow(_selfw, exponentW));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer pow_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer exponent, int exponentOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _exponentBase = UnsafeOpsHolder.U.getLong(exponent, UnsafeCopy.BB_ADDRESS_OFFSET) + exponentOffset;
+        Double4OpsKernelsAddress.pow_unsafe(_destBase, _srcBase, _exponentBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer pow_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer exponent, int exponentOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _exponentx = exponent.getDouble(exponentOffset);
+        double _exponenty = exponent.getDouble(exponentOffset + 8);
+        double _exponentz = exponent.getDouble(exponentOffset + 16);
+        double _exponentw = exponent.getDouble(exponentOffset + 24);
+        dest.putDouble(destOffset, Math.pow(_selfx, _exponentx));
+        dest.putDouble(destOffset + 8, Math.pow(_selfy, _exponenty));
+        dest.putDouble(destOffset + 16, Math.pow(_selfz, _exponentz));
+        dest.putDouble(destOffset + 24, Math.pow(_selfw, _exponentw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer project_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double ontoX, double ontoY, double ontoZ, double ontoW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.project_unsafe(_destBase, _srcBase, ontoX, ontoY, ontoZ, ontoW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer project_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double ontoX, double ontoY, double ontoZ, double ontoW) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _t9 = java.lang.Math.fma(ontoW, src.getDouble(srcOffset + 24), java.lang.Math.fma(ontoZ, src.getDouble(srcOffset + 16), java.lang.Math.fma(ontoX, src.getDouble(srcOffset), ontoY * src.getDouble(srcOffset + 8)))) / java.lang.Math.fma(ontoW, ontoW, java.lang.Math.fma(ontoZ, ontoZ, java.lang.Math.fma(ontoX, ontoX, ontoY * ontoY)));
+            dest.putDouble(destOffset, ontoX * _t9);
+            dest.putDouble(destOffset + 8, ontoY * _t9);
+            dest.putDouble(destOffset + 16, ontoZ * _t9);
+            dest.putDouble(destOffset + 24, ontoW * _t9);
+            return dest;
+        } else {
+            double _t9 = ((ontoW) * (src.getDouble(srcOffset + 24)) + (((ontoZ) * (src.getDouble(srcOffset + 16)) + (((ontoX) * (src.getDouble(srcOffset)) + (ontoY * src.getDouble(srcOffset + 8))))))) / ((ontoW) * (ontoW) + (((ontoZ) * (ontoZ) + (((ontoX) * (ontoX) + (ontoY * ontoY))))));
+            dest.putDouble(destOffset, ontoX * _t9);
+            dest.putDouble(destOffset + 8, ontoY * _t9);
+            dest.putDouble(destOffset + 16, ontoZ * _t9);
+            dest.putDouble(destOffset + 24, ontoW * _t9);
+            return dest;
+        }
+    }
+
+    public static java.nio.ByteBuffer project_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer onto, int ontoOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _ontoBase = UnsafeOpsHolder.U.getLong(onto, UnsafeCopy.BB_ADDRESS_OFFSET) + ontoOffset;
+        Double4OpsKernelsAddress.project_unsafe(_destBase, _srcBase, _ontoBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer project_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer onto, int ontoOffset) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return project_api_mulAdd(dest, destOffset, src, srcOffset, onto, ontoOffset);
+        double _ontox = onto.getDouble(ontoOffset);
+        double _ontoy = onto.getDouble(ontoOffset + 8);
+        double _ontoz = onto.getDouble(ontoOffset + 16);
+        double _ontow = onto.getDouble(ontoOffset + 24);
+        double _t9 = java.lang.Math.fma(_ontow, src.getDouble(srcOffset + 24), java.lang.Math.fma(_ontoz, src.getDouble(srcOffset + 16), java.lang.Math.fma(_ontox, src.getDouble(srcOffset), _ontoy * src.getDouble(srcOffset + 8)))) / java.lang.Math.fma(_ontow, _ontow, java.lang.Math.fma(_ontoz, _ontoz, java.lang.Math.fma(_ontox, _ontox, _ontoy * _ontoy)));
+        dest.putDouble(destOffset, _ontox * _t9);
+        dest.putDouble(destOffset + 8, _ontoy * _t9);
+        dest.putDouble(destOffset + 16, _ontoz * _t9);
+        dest.putDouble(destOffset + 24, _ontow * _t9);
+        return dest;
+    }
+
+    /** {@code project_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer project_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer onto, int ontoOffset) {
+        double _ontox = onto.getDouble(ontoOffset);
+        double _ontoy = onto.getDouble(ontoOffset + 8);
+        double _ontoz = onto.getDouble(ontoOffset + 16);
+        double _ontow = onto.getDouble(ontoOffset + 24);
+        double _t9 = ((_ontow) * (src.getDouble(srcOffset + 24)) + (((_ontoz) * (src.getDouble(srcOffset + 16)) + (((_ontox) * (src.getDouble(srcOffset)) + (_ontoy * src.getDouble(srcOffset + 8))))))) / ((_ontow) * (_ontow) + (((_ontoz) * (_ontoz) + (((_ontox) * (_ontox) + (_ontoy * _ontoy))))));
+        dest.putDouble(destOffset, _ontox * _t9);
+        dest.putDouble(destOffset + 8, _ontoy * _t9);
+        dest.putDouble(destOffset + 16, _ontoz * _t9);
+        dest.putDouble(destOffset + 24, _ontow * _t9);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer projectOnPlane_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double normalX, double normalY, double normalZ, double normalW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.projectOnPlane_unsafe(_destBase, _srcBase, normalX, normalY, normalZ, normalW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer projectOnPlane_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double normalX, double normalY, double normalZ, double normalW) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            double _t3 = java.lang.Math.fma(normalW, _selfw, java.lang.Math.fma(normalZ, _selfz, java.lang.Math.fma(normalX, _selfx, normalY * _selfy)));
+            dest.putDouble(destOffset, java.lang.Math.fma(-normalX, _t3, _selfx));
+            dest.putDouble(destOffset + 8, java.lang.Math.fma(-normalY, _t3, _selfy));
+            dest.putDouble(destOffset + 16, java.lang.Math.fma(-normalZ, _t3, _selfz));
+            dest.putDouble(destOffset + 24, java.lang.Math.fma(-normalW, _t3, _selfw));
+            return dest;
+        } else {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            double _t3 = ((normalW) * (_selfw) + (((normalZ) * (_selfz) + (((normalX) * (_selfx) + (normalY * _selfy))))));
+            dest.putDouble(destOffset, ((_selfx) - (normalX) * (_t3)));
+            dest.putDouble(destOffset + 8, ((_selfy) - (normalY) * (_t3)));
+            dest.putDouble(destOffset + 16, ((_selfz) - (normalZ) * (_t3)));
+            dest.putDouble(destOffset + 24, ((_selfw) - (normalW) * (_t3)));
+            return dest;
+        }
+    }
+
+    public static java.nio.ByteBuffer projectOnPlane_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer normal, int normalOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _normalBase = UnsafeOpsHolder.U.getLong(normal, UnsafeCopy.BB_ADDRESS_OFFSET) + normalOffset;
+        Double4OpsKernelsAddress.projectOnPlane_unsafe(_destBase, _srcBase, _normalBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer projectOnPlane_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer normal, int normalOffset) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return projectOnPlane_api_mulAdd(dest, destOffset, src, srcOffset, normal, normalOffset);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _normalx = normal.getDouble(normalOffset);
+        double _normaly = normal.getDouble(normalOffset + 8);
+        double _normalz = normal.getDouble(normalOffset + 16);
+        double _normalw = normal.getDouble(normalOffset + 24);
+        double _t3 = java.lang.Math.fma(_normalw, _selfw, java.lang.Math.fma(_normalz, _selfz, java.lang.Math.fma(_normalx, _selfx, _normaly * _selfy)));
+        dest.putDouble(destOffset, java.lang.Math.fma(-_normalx, _t3, _selfx));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(-_normaly, _t3, _selfy));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(-_normalz, _t3, _selfz));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(-_normalw, _t3, _selfw));
+        return dest;
+    }
+
+    /** {@code projectOnPlane_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer projectOnPlane_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer normal, int normalOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _normalx = normal.getDouble(normalOffset);
+        double _normaly = normal.getDouble(normalOffset + 8);
+        double _normalz = normal.getDouble(normalOffset + 16);
+        double _normalw = normal.getDouble(normalOffset + 24);
+        double _t3 = ((_normalw) * (_selfw) + (((_normalz) * (_selfz) + (((_normalx) * (_selfx) + (_normaly * _selfy))))));
+        dest.putDouble(destOffset, ((_selfx) - (_normalx) * (_t3)));
+        dest.putDouble(destOffset + 8, ((_selfy) - (_normaly) * (_t3)));
+        dest.putDouble(destOffset + 16, ((_selfz) - (_normalz) * (_t3)));
+        dest.putDouble(destOffset + 24, ((_selfw) - (_normalw) * (_t3)));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer radians_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.radians_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer radians_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.toRadians(_selfx));
+        dest.putDouble(destOffset + 8, Math.toRadians(_selfy));
+        dest.putDouble(destOffset + 16, Math.toRadians(_selfz));
+        dest.putDouble(destOffset + 24, Math.toRadians(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer reflect_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double normalX, double normalY, double normalZ, double normalW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.reflect_unsafe(_destBase, _srcBase, normalX, normalY, normalZ, normalW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer reflect_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double normalX, double normalY, double normalZ, double normalW) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            double _t4 = 2.0 * java.lang.Math.fma(normalW, _selfw, java.lang.Math.fma(normalZ, _selfz, java.lang.Math.fma(normalX, _selfx, normalY * _selfy)));
+            dest.putDouble(destOffset, java.lang.Math.fma(-normalX, _t4, _selfx));
+            dest.putDouble(destOffset + 8, java.lang.Math.fma(-normalY, _t4, _selfy));
+            dest.putDouble(destOffset + 16, java.lang.Math.fma(-normalZ, _t4, _selfz));
+            dest.putDouble(destOffset + 24, java.lang.Math.fma(-normalW, _t4, _selfw));
+            return dest;
+        } else {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            double _t4 = 2.0 * ((normalW) * (_selfw) + (((normalZ) * (_selfz) + (((normalX) * (_selfx) + (normalY * _selfy))))));
+            dest.putDouble(destOffset, ((_selfx) - (normalX) * (_t4)));
+            dest.putDouble(destOffset + 8, ((_selfy) - (normalY) * (_t4)));
+            dest.putDouble(destOffset + 16, ((_selfz) - (normalZ) * (_t4)));
+            dest.putDouble(destOffset + 24, ((_selfw) - (normalW) * (_t4)));
+            return dest;
+        }
+    }
+
+    public static java.nio.ByteBuffer reflect_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer normal, int normalOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _normalBase = UnsafeOpsHolder.U.getLong(normal, UnsafeCopy.BB_ADDRESS_OFFSET) + normalOffset;
+        Double4OpsKernelsAddress.reflect_unsafe(_destBase, _srcBase, _normalBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer reflect_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer normal, int normalOffset) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return reflect_api_mulAdd(dest, destOffset, src, srcOffset, normal, normalOffset);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _normalx = normal.getDouble(normalOffset);
+        double _normaly = normal.getDouble(normalOffset + 8);
+        double _normalz = normal.getDouble(normalOffset + 16);
+        double _normalw = normal.getDouble(normalOffset + 24);
+        double _t4 = 2.0 * java.lang.Math.fma(_normalw, _selfw, java.lang.Math.fma(_normalz, _selfz, java.lang.Math.fma(_normalx, _selfx, _normaly * _selfy)));
+        dest.putDouble(destOffset, java.lang.Math.fma(-_normalx, _t4, _selfx));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(-_normaly, _t4, _selfy));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(-_normalz, _t4, _selfz));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(-_normalw, _t4, _selfw));
+        return dest;
+    }
+
+    /** {@code reflect_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer reflect_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer normal, int normalOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _normalx = normal.getDouble(normalOffset);
+        double _normaly = normal.getDouble(normalOffset + 8);
+        double _normalz = normal.getDouble(normalOffset + 16);
+        double _normalw = normal.getDouble(normalOffset + 24);
+        double _t4 = 2.0 * ((_normalw) * (_selfw) + (((_normalz) * (_selfz) + (((_normalx) * (_selfx) + (_normaly * _selfy))))));
+        dest.putDouble(destOffset, ((_selfx) - (_normalx) * (_t4)));
+        dest.putDouble(destOffset + 8, ((_selfy) - (_normaly) * (_t4)));
+        dest.putDouble(destOffset + 16, ((_selfz) - (_normalz) * (_t4)));
+        dest.putDouble(destOffset + 24, ((_selfw) - (_normalw) * (_t4)));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer refract_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double normalX, double normalY, double normalZ, double normalW, double eta) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.refract_unsafe(_destBase, _srcBase, normalX, normalY, normalZ, normalW, eta);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer refract_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double normalX, double normalY, double normalZ, double normalW, double eta) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return refract_api_mulAdd(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW, eta);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t4 = java.lang.Math.fma(normalW, _selfw, java.lang.Math.fma(normalZ, _selfz, java.lang.Math.fma(normalX, _selfx, normalY * _selfy)));
+        double _t8 = java.lang.Math.fma(java.lang.Math.fma(_t4, _t4, -1.0), eta * eta, 1.0);
+        double _t11 = java.lang.Math.fma(eta, _t4, java.lang.Math.sqrt(Math.max(0.0, _t8)));
+        if (_t8 >= 0.0) {
+            dest.putDouble(destOffset, java.lang.Math.fma(eta, _selfx, -(normalX * _t11)));
+            dest.putDouble(destOffset + 8, java.lang.Math.fma(eta, _selfy, -(normalY * _t11)));
+            dest.putDouble(destOffset + 16, java.lang.Math.fma(eta, _selfz, -(normalZ * _t11)));
+            dest.putDouble(destOffset + 24, java.lang.Math.fma(eta, _selfw, -(normalW * _t11)));
+        } else {
+            dest.putDouble(destOffset, 0.0);
+            dest.putDouble(destOffset + 8, 0.0);
+            dest.putDouble(destOffset + 16, 0.0);
+            dest.putDouble(destOffset + 24, 0.0);
+        }
+        return dest;
+    }
+
+    /** {@code refract_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer refract_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double normalX, double normalY, double normalZ, double normalW, double eta) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t4 = ((normalW) * (_selfw) + (((normalZ) * (_selfz) + (((normalX) * (_selfx) + (normalY * _selfy))))));
+        double _t8 = ((((_t4) * (_t4) - (1.0))) * (eta * eta) + (1.0));
+        double _t11 = ((eta) * (_t4) + (java.lang.Math.sqrt(Math.max(0.0, _t8))));
+        if (_t8 >= 0.0) {
+            dest.putDouble(destOffset, ((eta) * (_selfx) - (normalX * _t11)));
+            dest.putDouble(destOffset + 8, ((eta) * (_selfy) - (normalY * _t11)));
+            dest.putDouble(destOffset + 16, ((eta) * (_selfz) - (normalZ * _t11)));
+            dest.putDouble(destOffset + 24, ((eta) * (_selfw) - (normalW * _t11)));
+        } else {
+            dest.putDouble(destOffset, 0.0);
+            dest.putDouble(destOffset + 8, 0.0);
+            dest.putDouble(destOffset + 16, 0.0);
+            dest.putDouble(destOffset + 24, 0.0);
+        }
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer refract_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer normal, int normalOffset, double eta) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _normalBase = UnsafeOpsHolder.U.getLong(normal, UnsafeCopy.BB_ADDRESS_OFFSET) + normalOffset;
+        Double4OpsKernelsAddress.refract_unsafe(_destBase, _srcBase, _normalBase, eta);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer refract_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer normal, int normalOffset, double eta) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return refract_api_mulAdd(dest, destOffset, src, srcOffset, normal, normalOffset, eta);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _normalx = normal.getDouble(normalOffset);
+        double _normaly = normal.getDouble(normalOffset + 8);
+        double _normalz = normal.getDouble(normalOffset + 16);
+        double _normalw = normal.getDouble(normalOffset + 24);
+        double _t4 = java.lang.Math.fma(_normalw, _selfw, java.lang.Math.fma(_normalz, _selfz, java.lang.Math.fma(_normalx, _selfx, _normaly * _selfy)));
+        double _t8 = java.lang.Math.fma(java.lang.Math.fma(_t4, _t4, -1.0), eta * eta, 1.0);
+        double _t11 = java.lang.Math.fma(eta, _t4, java.lang.Math.sqrt(Math.max(0.0, _t8)));
+        if (_t8 >= 0.0) {
+            dest.putDouble(destOffset, java.lang.Math.fma(eta, _selfx, -(_normalx * _t11)));
+            dest.putDouble(destOffset + 8, java.lang.Math.fma(eta, _selfy, -(_normaly * _t11)));
+            dest.putDouble(destOffset + 16, java.lang.Math.fma(eta, _selfz, -(_normalz * _t11)));
+            dest.putDouble(destOffset + 24, java.lang.Math.fma(eta, _selfw, -(_normalw * _t11)));
+        } else {
+            dest.putDouble(destOffset, 0.0);
+            dest.putDouble(destOffset + 8, 0.0);
+            dest.putDouble(destOffset + 16, 0.0);
+            dest.putDouble(destOffset + 24, 0.0);
+        }
+        return dest;
+    }
+
+    /** {@code refract_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer refract_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer normal, int normalOffset, double eta) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _normalx = normal.getDouble(normalOffset);
+        double _normaly = normal.getDouble(normalOffset + 8);
+        double _normalz = normal.getDouble(normalOffset + 16);
+        double _normalw = normal.getDouble(normalOffset + 24);
+        double _t4 = ((_normalw) * (_selfw) + (((_normalz) * (_selfz) + (((_normalx) * (_selfx) + (_normaly * _selfy))))));
+        double _t8 = ((((_t4) * (_t4) - (1.0))) * (eta * eta) + (1.0));
+        double _t11 = ((eta) * (_t4) + (java.lang.Math.sqrt(Math.max(0.0, _t8))));
+        if (_t8 >= 0.0) {
+            dest.putDouble(destOffset, ((eta) * (_selfx) - (_normalx * _t11)));
+            dest.putDouble(destOffset + 8, ((eta) * (_selfy) - (_normaly * _t11)));
+            dest.putDouble(destOffset + 16, ((eta) * (_selfz) - (_normalz * _t11)));
+            dest.putDouble(destOffset + 24, ((eta) * (_selfw) - (_normalw * _t11)));
+        } else {
+            dest.putDouble(destOffset, 0.0);
+            dest.putDouble(destOffset + 8, 0.0);
+            dest.putDouble(destOffset + 16, 0.0);
+            dest.putDouble(destOffset + 24, 0.0);
+        }
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer round_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.round_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer round_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.rint(_selfx));
+        dest.putDouble(destOffset + 8, Math.rint(_selfy));
+        dest.putDouble(destOffset + 16, Math.rint(_selfz));
+        dest.putDouble(destOffset + 24, Math.rint(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer sign_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.sign_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer sign_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.signum(_selfx));
+        dest.putDouble(destOffset + 8, Math.signum(_selfy));
+        dest.putDouble(destOffset + 16, Math.signum(_selfz));
+        dest.putDouble(destOffset + 24, Math.signum(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer sin_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.sin_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer sin_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.sin(_selfx));
+        dest.putDouble(destOffset + 8, Math.sin(_selfy));
+        dest.putDouble(destOffset + 16, Math.sin(_selfz));
+        dest.putDouble(destOffset + 24, Math.sin(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer sinh_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.sinh_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer sinh_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.sinh(_selfx));
+        dest.putDouble(destOffset + 8, Math.sinh(_selfy));
+        dest.putDouble(destOffset + 16, Math.sinh(_selfz));
+        dest.putDouble(destOffset + 24, Math.sinh(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer smoothstep_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double edge0, double edge1) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.smoothstep_unsafe(_destBase, _srcBase, edge0, edge1);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer smoothstep_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double edge0, double edge1) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return smoothstep_api_mulAdd(dest, destOffset, src, srcOffset, edge0, edge1);
+        double _t0_inv = 1.0 / (edge1 - edge0);
+        double _t13 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset) - edge0) * _t0_inv));
+        double _t14 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset + 8) - edge0) * _t0_inv));
+        double _t15 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset + 16) - edge0) * _t0_inv));
+        double _t16 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset + 24) - edge0) * _t0_inv));
+        dest.putDouble(destOffset, java.lang.Math.fma(-2.0, _t13, 3.0) * _t13 * _t13);
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(-2.0, _t14, 3.0) * _t14 * _t14);
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(-2.0, _t15, 3.0) * _t15 * _t15);
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(-2.0, _t16, 3.0) * _t16 * _t16);
+        return dest;
+    }
+
+    /** {@code smoothstep_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer smoothstep_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double edge0, double edge1) {
+        double _t0_inv = 1.0 / (edge1 - edge0);
+        double _t13 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset) - edge0) * _t0_inv));
+        double _t14 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset + 8) - edge0) * _t0_inv));
+        double _t15 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset + 16) - edge0) * _t0_inv));
+        double _t16 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset + 24) - edge0) * _t0_inv));
+        dest.putDouble(destOffset, ((3.0) - (2.0) * (_t13)) * _t13 * _t13);
+        dest.putDouble(destOffset + 8, ((3.0) - (2.0) * (_t14)) * _t14 * _t14);
+        dest.putDouble(destOffset + 16, ((3.0) - (2.0) * (_t15)) * _t15 * _t15);
+        dest.putDouble(destOffset + 24, ((3.0) - (2.0) * (_t16)) * _t16 * _t16);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer smoothstep_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double edge0X, double edge0Y, double edge0Z, double edge0W, double edge1X, double edge1Y, double edge1Z, double edge1W) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.smoothstep_unsafe(_destBase, _srcBase, edge0X, edge0Y, edge0Z, edge0W, edge1X, edge1Y, edge1Z, edge1W);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer smoothstep_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double edge0X, double edge0Y, double edge0Z, double edge0W, double edge1X, double edge1Y, double edge1Z, double edge1W) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return smoothstep_api_mulAdd(dest, destOffset, src, srcOffset, edge0X, edge0Y, edge0Z, edge0W, edge1X, edge1Y, edge1Z, edge1W);
+        double _t16 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset) - edge0X) / (edge1X - edge0X)));
+        double _t17 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset + 8) - edge0Y) / (edge1Y - edge0Y)));
+        double _t18 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset + 16) - edge0Z) / (edge1Z - edge0Z)));
+        double _t19 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset + 24) - edge0W) / (edge1W - edge0W)));
+        dest.putDouble(destOffset, java.lang.Math.fma(-2.0, _t16, 3.0) * _t16 * _t16);
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(-2.0, _t17, 3.0) * _t17 * _t17);
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(-2.0, _t18, 3.0) * _t18 * _t18);
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(-2.0, _t19, 3.0) * _t19 * _t19);
+        return dest;
+    }
+
+    /** {@code smoothstep_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer smoothstep_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double edge0X, double edge0Y, double edge0Z, double edge0W, double edge1X, double edge1Y, double edge1Z, double edge1W) {
+        double _t16 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset) - edge0X) / (edge1X - edge0X)));
+        double _t17 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset + 8) - edge0Y) / (edge1Y - edge0Y)));
+        double _t18 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset + 16) - edge0Z) / (edge1Z - edge0Z)));
+        double _t19 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset + 24) - edge0W) / (edge1W - edge0W)));
+        dest.putDouble(destOffset, ((3.0) - (2.0) * (_t16)) * _t16 * _t16);
+        dest.putDouble(destOffset + 8, ((3.0) - (2.0) * (_t17)) * _t17 * _t17);
+        dest.putDouble(destOffset + 16, ((3.0) - (2.0) * (_t18)) * _t18 * _t18);
+        dest.putDouble(destOffset + 24, ((3.0) - (2.0) * (_t19)) * _t19 * _t19);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer smoothstep_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer edge0, int edge0Offset, java.nio.ByteBuffer edge1, int edge1Offset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _edge0Base = UnsafeOpsHolder.U.getLong(edge0, UnsafeCopy.BB_ADDRESS_OFFSET) + edge0Offset;
+        long _edge1Base = UnsafeOpsHolder.U.getLong(edge1, UnsafeCopy.BB_ADDRESS_OFFSET) + edge1Offset;
+        Double4OpsKernelsAddress.smoothstep_unsafe(_destBase, _srcBase, _edge0Base, _edge1Base);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer smoothstep_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer edge0, int edge0Offset, java.nio.ByteBuffer edge1, int edge1Offset) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return smoothstep_api_fma(dest, destOffset, src, srcOffset, edge0, edge0Offset, edge1, edge1Offset);
+        return smoothstep_api_mulAdd(dest, destOffset, src, srcOffset, edge0, edge0Offset, edge1, edge1Offset);
+    }
+
+    /** {@code smoothstep_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer smoothstep_api_fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer edge0, int edge0Offset, java.nio.ByteBuffer edge1, int edge1Offset) {
+        double _edge0x = edge0.getDouble(edge0Offset);
+        double _edge0y = edge0.getDouble(edge0Offset + 8);
+        double _edge0z = edge0.getDouble(edge0Offset + 16);
+        double _edge0w = edge0.getDouble(edge0Offset + 24);
+        double _t16 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset) - _edge0x) / (edge1.getDouble(edge1Offset) - _edge0x)));
+        double _t17 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset + 8) - _edge0y) / (edge1.getDouble(edge1Offset + 8) - _edge0y)));
+        double _t18 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset + 16) - _edge0z) / (edge1.getDouble(edge1Offset + 16) - _edge0z)));
+        double _t19 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset + 24) - _edge0w) / (edge1.getDouble(edge1Offset + 24) - _edge0w)));
+        dest.putDouble(destOffset, java.lang.Math.fma(-2.0, _t16, 3.0) * _t16 * _t16);
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(-2.0, _t17, 3.0) * _t17 * _t17);
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(-2.0, _t18, 3.0) * _t18 * _t18);
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(-2.0, _t19, 3.0) * _t19 * _t19);
+        return dest;
+    }
+
+    /** {@code smoothstep_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer smoothstep_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer edge0, int edge0Offset, java.nio.ByteBuffer edge1, int edge1Offset) {
+        double _edge0x = edge0.getDouble(edge0Offset);
+        double _edge0y = edge0.getDouble(edge0Offset + 8);
+        double _edge0z = edge0.getDouble(edge0Offset + 16);
+        double _edge0w = edge0.getDouble(edge0Offset + 24);
+        double _t16 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset) - _edge0x) / (edge1.getDouble(edge1Offset) - _edge0x)));
+        double _t17 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset + 8) - _edge0y) / (edge1.getDouble(edge1Offset + 8) - _edge0y)));
+        double _t18 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset + 16) - _edge0z) / (edge1.getDouble(edge1Offset + 16) - _edge0z)));
+        double _t19 = Math.max(0.0, Math.min(1.0, (src.getDouble(srcOffset + 24) - _edge0w) / (edge1.getDouble(edge1Offset + 24) - _edge0w)));
+        dest.putDouble(destOffset, ((3.0) - (2.0) * (_t16)) * _t16 * _t16);
+        dest.putDouble(destOffset + 8, ((3.0) - (2.0) * (_t17)) * _t17 * _t17);
+        dest.putDouble(destOffset + 16, ((3.0) - (2.0) * (_t18)) * _t18 * _t18);
+        dest.putDouble(destOffset + 24, ((3.0) - (2.0) * (_t19)) * _t19 * _t19);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer sqrt_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.sqrt_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer sqrt_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, java.lang.Math.sqrt(_selfx));
+        dest.putDouble(destOffset + 8, java.lang.Math.sqrt(_selfy));
+        dest.putDouble(destOffset + 16, java.lang.Math.sqrt(_selfz));
+        dest.putDouble(destOffset + 24, java.lang.Math.sqrt(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer step_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double edge) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.step_unsafe(_destBase, _srcBase, edge);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer step_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double edge) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, _selfx < edge ? 0.0 : 1.0);
+        dest.putDouble(destOffset + 8, _selfy < edge ? 0.0 : 1.0);
+        dest.putDouble(destOffset + 16, _selfz < edge ? 0.0 : 1.0);
+        dest.putDouble(destOffset + 24, _selfw < edge ? 0.0 : 1.0);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer step_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double edgeX, double edgeY, double edgeZ, double edgeW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.step_unsafe(_destBase, _srcBase, edgeX, edgeY, edgeZ, edgeW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer step_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double edgeX, double edgeY, double edgeZ, double edgeW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, _selfx < edgeX ? 0.0 : 1.0);
+        dest.putDouble(destOffset + 8, _selfy < edgeY ? 0.0 : 1.0);
+        dest.putDouble(destOffset + 16, _selfz < edgeZ ? 0.0 : 1.0);
+        dest.putDouble(destOffset + 24, _selfw < edgeW ? 0.0 : 1.0);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer step_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer edge, int edgeOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _edgeBase = UnsafeOpsHolder.U.getLong(edge, UnsafeCopy.BB_ADDRESS_OFFSET) + edgeOffset;
+        Double4OpsKernelsAddress.step_unsafe(_destBase, _srcBase, _edgeBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer step_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer edge, int edgeOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _edgex = edge.getDouble(edgeOffset);
+        double _edgey = edge.getDouble(edgeOffset + 8);
+        double _edgez = edge.getDouble(edgeOffset + 16);
+        double _edgew = edge.getDouble(edgeOffset + 24);
+        dest.putDouble(destOffset, _selfx < _edgex ? 0.0 : 1.0);
+        dest.putDouble(destOffset + 8, _selfy < _edgey ? 0.0 : 1.0);
+        dest.putDouble(destOffset + 16, _selfz < _edgez ? 0.0 : 1.0);
+        dest.putDouble(destOffset + 24, _selfw < _edgew ? 0.0 : 1.0);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer tan_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.tan_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer tan_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.tan(_selfx));
+        dest.putDouble(destOffset + 8, Math.tan(_selfy));
+        dest.putDouble(destOffset + 16, Math.tan(_selfz));
+        dest.putDouble(destOffset + 24, Math.tan(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer tanh_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.tanh_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer tanh_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.tanh(_selfx));
+        dest.putDouble(destOffset + 8, Math.tanh(_selfy));
+        dest.putDouble(destOffset + 16, Math.tanh(_selfz));
+        dest.putDouble(destOffset + 24, Math.tanh(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer trunc_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.trunc_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer trunc_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, _selfx >= 0.0 ? Math.floor(_selfx) : Math.ceil(_selfx));
+        dest.putDouble(destOffset + 8, _selfy >= 0.0 ? Math.floor(_selfy) : Math.ceil(_selfy));
+        dest.putDouble(destOffset + 16, _selfz >= 0.0 ? Math.floor(_selfz) : Math.ceil(_selfz));
+        dest.putDouble(destOffset + 24, _selfw >= 0.0 ? Math.floor(_selfw) : Math.ceil(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer ulp_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.ulp_unsafe(_destBase, _srcBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer ulp_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        dest.putDouble(destOffset, Math.ulp(_selfx));
+        dest.putDouble(destOffset + 8, Math.ulp(_selfy));
+        dest.putDouble(destOffset + 16, Math.ulp(_selfz));
+        dest.putDouble(destOffset + 24, Math.ulp(_selfw));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer preMul_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer mat, int matOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _matBase = UnsafeOpsHolder.U.getLong(mat, UnsafeCopy.BB_ADDRESS_OFFSET) + matOffset;
+        Double4OpsKernelsAddress.preMul_unsafe(_destBase, _srcBase, _matBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer preMul_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer mat, int matOffset) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) return preMul_api_fma(dest, destOffset, src, srcOffset, mat, matOffset);
+        return preMul_api_mulAdd(dest, destOffset, src, srcOffset, mat, matOffset);
+    }
+
+    /** {@code preMul_api} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer preMul_api_fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer mat, int matOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _mat00 = mat.getDouble(matOffset);
+        double _mat10 = mat.getDouble(matOffset + 8);
+        double _mat20 = mat.getDouble(matOffset + 16);
+        double _mat30 = mat.getDouble(matOffset + 24);
+        double _mat01 = mat.getDouble(matOffset + 32);
+        double _mat11 = mat.getDouble(matOffset + 40);
+        double _mat21 = mat.getDouble(matOffset + 48);
+        double _mat31 = mat.getDouble(matOffset + 56);
+        double _mat02 = mat.getDouble(matOffset + 64);
+        double _mat12 = mat.getDouble(matOffset + 72);
+        double _mat22 = mat.getDouble(matOffset + 80);
+        double _mat32 = mat.getDouble(matOffset + 88);
+        double _mat03 = mat.getDouble(matOffset + 96);
+        double _mat13 = mat.getDouble(matOffset + 104);
+        double _mat23 = mat.getDouble(matOffset + 112);
+        double _mat33 = mat.getDouble(matOffset + 120);
+        dest.putDouble(destOffset, java.lang.Math.fma(_mat03, _selfw, java.lang.Math.fma(_mat02, _selfz, java.lang.Math.fma(_mat00, _selfx, _mat01 * _selfy))));
+        return preMul_api_fma_s42575f8a_1(dest, destOffset, _selfx, _selfy, _selfz, _selfw, _mat10, _mat20, _mat30, _mat11, _mat21, _mat31, _mat12, _mat22, _mat32, _mat13, _mat23, _mat33);
+    }
+
+    /** Piece 2 of {@code preMul_api_fma}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer preMul_api_fma_s42575f8a_1(java.nio.ByteBuffer dest, int destOffset, double _selfx, double _selfy, double _selfz, double _selfw, double _mat10, double _mat20, double _mat30, double _mat11, double _mat21, double _mat31, double _mat12, double _mat22, double _mat32, double _mat13, double _mat23, double _mat33) {
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(_mat13, _selfw, java.lang.Math.fma(_mat12, _selfz, java.lang.Math.fma(_mat10, _selfx, _mat11 * _selfy))));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_mat23, _selfw, java.lang.Math.fma(_mat22, _selfz, java.lang.Math.fma(_mat20, _selfx, _mat21 * _selfy))));
+        dest.putDouble(destOffset + 24, java.lang.Math.fma(_mat33, _selfw, java.lang.Math.fma(_mat32, _selfz, java.lang.Math.fma(_mat30, _selfx, _mat31 * _selfy))));
+        return dest;
+    }
+
+    /** {@code preMul_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer preMul_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer mat, int matOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _mat00 = mat.getDouble(matOffset);
+        double _mat10 = mat.getDouble(matOffset + 8);
+        double _mat20 = mat.getDouble(matOffset + 16);
+        double _mat30 = mat.getDouble(matOffset + 24);
+        double _mat01 = mat.getDouble(matOffset + 32);
+        double _mat11 = mat.getDouble(matOffset + 40);
+        double _mat21 = mat.getDouble(matOffset + 48);
+        double _mat31 = mat.getDouble(matOffset + 56);
+        double _mat02 = mat.getDouble(matOffset + 64);
+        double _mat12 = mat.getDouble(matOffset + 72);
+        double _mat22 = mat.getDouble(matOffset + 80);
+        double _mat32 = mat.getDouble(matOffset + 88);
+        double _mat03 = mat.getDouble(matOffset + 96);
+        double _mat13 = mat.getDouble(matOffset + 104);
+        double _mat23 = mat.getDouble(matOffset + 112);
+        double _mat33 = mat.getDouble(matOffset + 120);
+        dest.putDouble(destOffset, ((_mat03) * (_selfw) + (((_mat02) * (_selfz) + (((_mat00) * (_selfx) + (_mat01 * _selfy)))))));
+        return preMul_api_mulAdd_s2f4f743d_1(dest, destOffset, _selfx, _selfy, _selfz, _selfw, _mat10, _mat20, _mat30, _mat11, _mat21, _mat31, _mat12, _mat22, _mat32, _mat13, _mat23, _mat33);
+    }
+
+    /** Piece 2 of {@code preMul_api_mulAdd}, split to fit the inline budget; reached only through it. */
+    private static java.nio.ByteBuffer preMul_api_mulAdd_s2f4f743d_1(java.nio.ByteBuffer dest, int destOffset, double _selfx, double _selfy, double _selfz, double _selfw, double _mat10, double _mat20, double _mat30, double _mat11, double _mat21, double _mat31, double _mat12, double _mat22, double _mat32, double _mat13, double _mat23, double _mat33) {
+        dest.putDouble(destOffset + 8, ((_mat13) * (_selfw) + (((_mat12) * (_selfz) + (((_mat10) * (_selfx) + (_mat11 * _selfy)))))));
+        dest.putDouble(destOffset + 16, ((_mat23) * (_selfw) + (((_mat22) * (_selfz) + (((_mat20) * (_selfx) + (_mat21 * _selfy)))))));
+        dest.putDouble(destOffset + 24, ((_mat33) * (_selfw) + (((_mat32) * (_selfz) + (((_mat30) * (_selfx) + (_mat31 * _selfy)))))));
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer rotate_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double quatX, double quatY, double quatZ, double quatW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.rotate_unsafe(_destBase, _srcBase, quatX, quatY, quatZ, quatW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer rotate_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double quatX, double quatY, double quatZ, double quatW) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return rotate_api_mulAdd(dest, destOffset, src, srcOffset, quatX, quatY, quatZ, quatW);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t9 = 2.0 * java.lang.Math.fma(quatX, _selfy, -(quatY * _selfx));
+        double _t10 = 2.0 * java.lang.Math.fma(quatZ, _selfx, -(quatX * _selfz));
+        double _t11 = 2.0 * java.lang.Math.fma(quatY, _selfz, -(quatZ * _selfy));
+        dest.putDouble(destOffset, java.lang.Math.fma(quatY, _t9, java.lang.Math.fma(-quatZ, _t10, java.lang.Math.fma(quatW, _t11, _selfx))));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(quatZ, _t11, java.lang.Math.fma(-quatX, _t9, java.lang.Math.fma(quatW, _t10, _selfy))));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(quatX, _t10, java.lang.Math.fma(-quatY, _t11, java.lang.Math.fma(quatW, _t9, _selfz))));
+        dest.putDouble(destOffset + 24, _selfw);
+        return dest;
+    }
+
+    /** {@code rotate_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer rotate_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double quatX, double quatY, double quatZ, double quatW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t9 = 2.0 * ((quatX) * (_selfy) - (quatY * _selfx));
+        double _t10 = 2.0 * ((quatZ) * (_selfx) - (quatX * _selfz));
+        double _t11 = 2.0 * ((quatY) * (_selfz) - (quatZ * _selfy));
+        dest.putDouble(destOffset, ((quatY) * (_t9) + (((((quatW) * (_t11) + (_selfx))) - (quatZ) * (_t10)))));
+        dest.putDouble(destOffset + 8, ((quatZ) * (_t11) + (((((quatW) * (_t10) + (_selfy))) - (quatX) * (_t9)))));
+        dest.putDouble(destOffset + 16, ((quatX) * (_t10) + (((((quatW) * (_t9) + (_selfz))) - (quatY) * (_t11)))));
+        dest.putDouble(destOffset + 24, _selfw);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer rotate_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer quat, int quatOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _quatBase = UnsafeOpsHolder.U.getLong(quat, UnsafeCopy.BB_ADDRESS_OFFSET) + quatOffset;
+        Double4OpsKernelsAddress.rotate_unsafe(_destBase, _srcBase, _quatBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer rotate_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer quat, int quatOffset) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return rotate_api_mulAdd(dest, destOffset, src, srcOffset, quat, quatOffset);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _quatx = quat.getDouble(quatOffset);
+        double _quaty = quat.getDouble(quatOffset + 8);
+        double _quatz = quat.getDouble(quatOffset + 16);
+        double _quatw = quat.getDouble(quatOffset + 24);
+        double _t9 = 2.0 * java.lang.Math.fma(_quatx, _selfy, -(_quaty * _selfx));
+        double _t10 = 2.0 * java.lang.Math.fma(_quatz, _selfx, -(_quatx * _selfz));
+        double _t11 = 2.0 * java.lang.Math.fma(_quaty, _selfz, -(_quatz * _selfy));
+        dest.putDouble(destOffset, java.lang.Math.fma(_quaty, _t9, java.lang.Math.fma(-_quatz, _t10, java.lang.Math.fma(_quatw, _t11, _selfx))));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(_quatz, _t11, java.lang.Math.fma(-_quatx, _t9, java.lang.Math.fma(_quatw, _t10, _selfy))));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_quatx, _t10, java.lang.Math.fma(-_quaty, _t11, java.lang.Math.fma(_quatw, _t9, _selfz))));
+        dest.putDouble(destOffset + 24, _selfw);
+        return dest;
+    }
+
+    /** {@code rotate_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer rotate_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer quat, int quatOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _quatx = quat.getDouble(quatOffset);
+        double _quaty = quat.getDouble(quatOffset + 8);
+        double _quatz = quat.getDouble(quatOffset + 16);
+        double _quatw = quat.getDouble(quatOffset + 24);
+        double _t9 = 2.0 * ((_quatx) * (_selfy) - (_quaty * _selfx));
+        double _t10 = 2.0 * ((_quatz) * (_selfx) - (_quatx * _selfz));
+        double _t11 = 2.0 * ((_quaty) * (_selfz) - (_quatz * _selfy));
+        dest.putDouble(destOffset, ((_quaty) * (_t9) + (((((_quatw) * (_t11) + (_selfx))) - (_quatz) * (_t10)))));
+        dest.putDouble(destOffset + 8, ((_quatz) * (_t11) + (((((_quatw) * (_t10) + (_selfy))) - (_quatx) * (_t9)))));
+        dest.putDouble(destOffset + 16, ((_quatx) * (_t10) + (((((_quatw) * (_t9) + (_selfz))) - (_quaty) * (_t11)))));
+        dest.putDouble(destOffset + 24, _selfw);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer rotateAxis_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double angle, double axisX, double axisY, double axisZ) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.rotateAxis_unsafe(_destBase, _srcBase, angle, axisX, axisY, axisZ);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer rotateAxis_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double angle, double axisX, double axisY, double axisZ) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return rotateAxis_api_mulAdd(dest, destOffset, src, srcOffset, angle, axisX, axisY, axisZ);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t0 = Math.cosWithSin(angle);
+        double _t1 = Math.sinWithCos(angle);
+        double _t2 = 1.0 - _t0;
+        double _t5 = java.lang.Math.fma(axisZ, _selfz, java.lang.Math.fma(axisX, _selfx, axisY * _selfy));
+        dest.putDouble(destOffset, java.lang.Math.fma(_t2, axisX * _t5, java.lang.Math.fma(_selfx, _t0, java.lang.Math.fma(axisY, _selfz, -(axisZ * _selfy)) * _t1)));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(_t2, axisY * _t5, java.lang.Math.fma(_selfy, _t0, java.lang.Math.fma(axisZ, _selfx, -(axisX * _selfz)) * _t1)));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_t2, axisZ * _t5, java.lang.Math.fma(_selfz, _t0, java.lang.Math.fma(axisX, _selfy, -(axisY * _selfx)) * _t1)));
+        dest.putDouble(destOffset + 24, _selfw);
+        return dest;
+    }
+
+    /** {@code rotateAxis_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer rotateAxis_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double angle, double axisX, double axisY, double axisZ) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t0 = Math.cosWithSin(angle);
+        double _t1 = Math.sinWithCos(angle);
+        double _t2 = 1.0 - _t0;
+        double _t5 = ((axisZ) * (_selfz) + (((axisX) * (_selfx) + (axisY * _selfy))));
+        dest.putDouble(destOffset, ((_t2) * (axisX * _t5) + (((_selfx) * (_t0) + (((axisY) * (_selfz) - (axisZ * _selfy)) * _t1)))));
+        dest.putDouble(destOffset + 8, ((_t2) * (axisY * _t5) + (((_selfy) * (_t0) + (((axisZ) * (_selfx) - (axisX * _selfz)) * _t1)))));
+        dest.putDouble(destOffset + 16, ((_t2) * (axisZ * _t5) + (((_selfz) * (_t0) + (((axisX) * (_selfy) - (axisY * _selfx)) * _t1)))));
+        dest.putDouble(destOffset + 24, _selfw);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer rotateAxis_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer axis, int axisOffset, double angle) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _axisBase = UnsafeOpsHolder.U.getLong(axis, UnsafeCopy.BB_ADDRESS_OFFSET) + axisOffset;
+        Double4OpsKernelsAddress.rotateAxis_unsafe(_destBase, _srcBase, _axisBase, angle);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer rotateAxis_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer axis, int axisOffset, double angle) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return rotateAxis_api_mulAdd(dest, destOffset, src, srcOffset, axis, axisOffset, angle);
+        double _axisx = axis.getDouble(axisOffset);
+        double _axisy = axis.getDouble(axisOffset + 8);
+        double _axisz = axis.getDouble(axisOffset + 16);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t0 = Math.cosWithSin(angle);
+        double _t1 = Math.sinWithCos(angle);
+        double _t2 = 1.0 - _t0;
+        double _t5 = java.lang.Math.fma(_axisz, _selfz, java.lang.Math.fma(_axisx, _selfx, _axisy * _selfy));
+        dest.putDouble(destOffset, java.lang.Math.fma(_t2, _axisx * _t5, java.lang.Math.fma(_selfx, _t0, java.lang.Math.fma(_axisy, _selfz, -(_axisz * _selfy)) * _t1)));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(_t2, _axisy * _t5, java.lang.Math.fma(_selfy, _t0, java.lang.Math.fma(_axisz, _selfx, -(_axisx * _selfz)) * _t1)));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_t2, _axisz * _t5, java.lang.Math.fma(_selfz, _t0, java.lang.Math.fma(_axisx, _selfy, -(_axisy * _selfx)) * _t1)));
+        dest.putDouble(destOffset + 24, _selfw);
+        return dest;
+    }
+
+    /** {@code rotateAxis_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer rotateAxis_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer axis, int axisOffset, double angle) {
+        double _axisx = axis.getDouble(axisOffset);
+        double _axisy = axis.getDouble(axisOffset + 8);
+        double _axisz = axis.getDouble(axisOffset + 16);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t0 = Math.cosWithSin(angle);
+        double _t1 = Math.sinWithCos(angle);
+        double _t2 = 1.0 - _t0;
+        double _t5 = ((_axisz) * (_selfz) + (((_axisx) * (_selfx) + (_axisy * _selfy))));
+        dest.putDouble(destOffset, ((_t2) * (_axisx * _t5) + (((_selfx) * (_t0) + (((_axisy) * (_selfz) - (_axisz * _selfy)) * _t1)))));
+        dest.putDouble(destOffset + 8, ((_t2) * (_axisy * _t5) + (((_selfy) * (_t0) + (((_axisz) * (_selfx) - (_axisx * _selfz)) * _t1)))));
+        dest.putDouble(destOffset + 16, ((_t2) * (_axisz * _t5) + (((_selfz) * (_t0) + (((_axisx) * (_selfy) - (_axisy * _selfx)) * _t1)))));
+        dest.putDouble(destOffset + 24, _selfw);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer rotateInverse_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double quatX, double quatY, double quatZ, double quatW) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.rotateInverse_unsafe(_destBase, _srcBase, quatX, quatY, quatZ, quatW);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer rotateInverse_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double quatX, double quatY, double quatZ, double quatW) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return rotateInverse_api_mulAdd(dest, destOffset, src, srcOffset, quatX, quatY, quatZ, quatW);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t9 = 2.0 * java.lang.Math.fma(quatX, _selfz, -(quatZ * _selfx));
+        double _t10 = 2.0 * java.lang.Math.fma(quatY, _selfx, -(quatX * _selfy));
+        double _t11 = 2.0 * java.lang.Math.fma(quatZ, _selfy, -(quatY * _selfz));
+        dest.putDouble(destOffset, java.lang.Math.fma(quatZ, _t9, java.lang.Math.fma(-quatY, _t10, java.lang.Math.fma(quatW, _t11, _selfx))));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(quatX, _t10, java.lang.Math.fma(-quatZ, _t11, java.lang.Math.fma(quatW, _t9, _selfy))));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(quatY, _t11, java.lang.Math.fma(-quatX, _t9, java.lang.Math.fma(quatW, _t10, _selfz))));
+        dest.putDouble(destOffset + 24, _selfw);
+        return dest;
+    }
+
+    /** {@code rotateInverse_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer rotateInverse_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double quatX, double quatY, double quatZ, double quatW) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _t9 = 2.0 * ((quatX) * (_selfz) - (quatZ * _selfx));
+        double _t10 = 2.0 * ((quatY) * (_selfx) - (quatX * _selfy));
+        double _t11 = 2.0 * ((quatZ) * (_selfy) - (quatY * _selfz));
+        dest.putDouble(destOffset, ((quatZ) * (_t9) + (((((quatW) * (_t11) + (_selfx))) - (quatY) * (_t10)))));
+        dest.putDouble(destOffset + 8, ((quatX) * (_t10) + (((((quatW) * (_t9) + (_selfy))) - (quatZ) * (_t11)))));
+        dest.putDouble(destOffset + 16, ((quatY) * (_t11) + (((((quatW) * (_t10) + (_selfz))) - (quatX) * (_t9)))));
+        dest.putDouble(destOffset + 24, _selfw);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer rotateInverse_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer quat, int quatOffset) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        long _quatBase = UnsafeOpsHolder.U.getLong(quat, UnsafeCopy.BB_ADDRESS_OFFSET) + quatOffset;
+        Double4OpsKernelsAddress.rotateInverse_unsafe(_destBase, _srcBase, _quatBase);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer rotateInverse_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer quat, int quatOffset) {
+        if (!org.joml2.internal.kernels.FmaSwitch.ON) return rotateInverse_api_mulAdd(dest, destOffset, src, srcOffset, quat, quatOffset);
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _quatx = quat.getDouble(quatOffset);
+        double _quaty = quat.getDouble(quatOffset + 8);
+        double _quatz = quat.getDouble(quatOffset + 16);
+        double _quatw = quat.getDouble(quatOffset + 24);
+        double _t9 = 2.0 * java.lang.Math.fma(_quatx, _selfz, -(_quatz * _selfx));
+        double _t10 = 2.0 * java.lang.Math.fma(_quaty, _selfx, -(_quatx * _selfy));
+        double _t11 = 2.0 * java.lang.Math.fma(_quatz, _selfy, -(_quaty * _selfz));
+        dest.putDouble(destOffset, java.lang.Math.fma(_quatz, _t9, java.lang.Math.fma(-_quaty, _t10, java.lang.Math.fma(_quatw, _t11, _selfx))));
+        dest.putDouble(destOffset + 8, java.lang.Math.fma(_quatx, _t10, java.lang.Math.fma(-_quatz, _t11, java.lang.Math.fma(_quatw, _t9, _selfy))));
+        dest.putDouble(destOffset + 16, java.lang.Math.fma(_quaty, _t11, java.lang.Math.fma(-_quatx, _t9, java.lang.Math.fma(_quatw, _t10, _selfz))));
+        dest.putDouble(destOffset + 24, _selfw);
+        return dest;
+    }
+
+    /** {@code rotateInverse_api} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private static java.nio.ByteBuffer rotateInverse_api_mulAdd(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer quat, int quatOffset) {
+        double _selfx = src.getDouble(srcOffset);
+        double _selfy = src.getDouble(srcOffset + 8);
+        double _selfz = src.getDouble(srcOffset + 16);
+        double _selfw = src.getDouble(srcOffset + 24);
+        double _quatx = quat.getDouble(quatOffset);
+        double _quaty = quat.getDouble(quatOffset + 8);
+        double _quatz = quat.getDouble(quatOffset + 16);
+        double _quatw = quat.getDouble(quatOffset + 24);
+        double _t9 = 2.0 * ((_quatx) * (_selfz) - (_quatz * _selfx));
+        double _t10 = 2.0 * ((_quaty) * (_selfx) - (_quatx * _selfy));
+        double _t11 = 2.0 * ((_quatz) * (_selfy) - (_quaty * _selfz));
+        dest.putDouble(destOffset, ((_quatz) * (_t9) + (((((_quatw) * (_t11) + (_selfx))) - (_quaty) * (_t10)))));
+        dest.putDouble(destOffset + 8, ((_quatx) * (_t10) + (((((_quatw) * (_t9) + (_selfy))) - (_quatz) * (_t11)))));
+        dest.putDouble(destOffset + 16, ((_quaty) * (_t11) + (((((_quatw) * (_t10) + (_selfz))) - (_quatx) * (_t9)))));
+        dest.putDouble(destOffset + 24, _selfw);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer rotateX_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double angle) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.rotateX_unsafe(_destBase, _srcBase, angle);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer rotateX_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double angle) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            double _t0 = Math.cosWithSin(angle);
+            double _t1 = Math.sinWithCos(angle);
+            dest.putDouble(destOffset, _selfx);
+            dest.putDouble(destOffset + 8, java.lang.Math.fma(_selfy, _t0, -(_selfz * _t1)));
+            dest.putDouble(destOffset + 16, java.lang.Math.fma(_selfy, _t1, _selfz * _t0));
+            dest.putDouble(destOffset + 24, _selfw);
+            return dest;
+        } else {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            double _t0 = Math.cosWithSin(angle);
+            double _t1 = Math.sinWithCos(angle);
+            dest.putDouble(destOffset, _selfx);
+            dest.putDouble(destOffset + 8, ((_selfy) * (_t0) - (_selfz * _t1)));
+            dest.putDouble(destOffset + 16, ((_selfy) * (_t1) + (_selfz * _t0)));
+            dest.putDouble(destOffset + 24, _selfw);
+            return dest;
+        }
+    }
+
+    public static java.nio.ByteBuffer rotateY_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double angle) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.rotateY_unsafe(_destBase, _srcBase, angle);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer rotateY_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double angle) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            double _t0 = Math.cosWithSin(angle);
+            double _t1 = Math.sinWithCos(angle);
+            dest.putDouble(destOffset, java.lang.Math.fma(_selfx, _t0, _selfz * _t1));
+            dest.putDouble(destOffset + 8, _selfy);
+            dest.putDouble(destOffset + 16, java.lang.Math.fma(_selfz, _t0, -(_selfx * _t1)));
+            dest.putDouble(destOffset + 24, _selfw);
+            return dest;
+        } else {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            double _t0 = Math.cosWithSin(angle);
+            double _t1 = Math.sinWithCos(angle);
+            dest.putDouble(destOffset, ((_selfx) * (_t0) + (_selfz * _t1)));
+            dest.putDouble(destOffset + 8, _selfy);
+            dest.putDouble(destOffset + 16, ((_selfz) * (_t0) - (_selfx * _t1)));
+            dest.putDouble(destOffset + 24, _selfw);
+            return dest;
+        }
+    }
+
+    public static java.nio.ByteBuffer rotateZ_unsafe(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double angle) {
+        long _destBase = UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset;
+        long _srcBase = UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset;
+        Double4OpsKernelsAddress.rotateZ_unsafe(_destBase, _srcBase, angle);
+        return dest;
+    }
+
+    public static java.nio.ByteBuffer rotateZ_api(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double angle) {
+        if (org.joml2.internal.kernels.FmaSwitch.ON) {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            double _t0 = Math.cosWithSin(angle);
+            double _t1 = Math.sinWithCos(angle);
+            dest.putDouble(destOffset, java.lang.Math.fma(_selfx, _t0, -(_selfy * _t1)));
+            dest.putDouble(destOffset + 8, java.lang.Math.fma(_selfx, _t1, _selfy * _t0));
+            dest.putDouble(destOffset + 16, _selfz);
+            dest.putDouble(destOffset + 24, _selfw);
+            return dest;
+        } else {
+            double _selfx = src.getDouble(srcOffset);
+            double _selfy = src.getDouble(srcOffset + 8);
+            double _selfz = src.getDouble(srcOffset + 16);
+            double _selfw = src.getDouble(srcOffset + 24);
+            double _t0 = Math.cosWithSin(angle);
+            double _t1 = Math.sinWithCos(angle);
+            dest.putDouble(destOffset, ((_selfx) * (_t0) - (_selfy * _t1)));
+            dest.putDouble(destOffset + 8, ((_selfx) * (_t1) + (_selfy * _t0)));
+            dest.putDouble(destOffset + 16, _selfz);
+            dest.putDouble(destOffset + 24, _selfw);
+            return dest;
+        }
+    }
+
+    /**
+     * The power of two that brings max(|a|, |b|, |c|) into [1, 2), from the largest exponent
+     * field: multiplying by it is exact. Clamped to [2^-1022, 2^1022], so zero and subnormal
+     * values scale up without overflow and the largest doubles land in [2, 4).
+     */
+    private static double unitScale(double a, double b, double c) {
+        long e = java.lang.Math.max(java.lang.Math.max(Double.doubleToRawLongBits(a) & 0x7FF0000000000000L,
+                Double.doubleToRawLongBits(b) & 0x7FF0000000000000L), Double.doubleToRawLongBits(c) & 0x7FF0000000000000L);
+        return Double.longBitsToDouble(0x7FE0000000000000L
+                - java.lang.Math.min(java.lang.Math.max(e, 0x0010000000000000L), 0x7FD0000000000000L));
+    }
+
+    /**
+     * The floored remainder of x and y, exactly kotlin.Double.mod: q = floor(x / y) is off by
+     * at most one (too large) while it fits the mantissa, so x - y * q with one correction is
+     * the floored remainder - a zero one with the sign of x, like x % y; % (a runtime call) only
+     * when it does not fit or y is infinite.
+     */
+    private static double flooredMod(double x, double y) {
+        double q = Math.floor(x / y);
+        if (java.lang.Math.abs(q) < 0x1p53 && java.lang.Math.abs(y) <= Double.MAX_VALUE) {
+            double r = java.lang.Math.fma(-y, q, x);
+            if (r * java.lang.Math.signum(y) < 0) r = java.lang.Math.fma(-y, (q - 1.0), x);
+            return r == 0 ? java.lang.Math.copySign(r, x) : r;
+        }
+        double r = x % y;
+        return r * java.lang.Math.signum(y) < 0 ? r + y : r;
+    }
+}

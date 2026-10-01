@@ -1,0 +1,10262 @@
+// Copyright (c) 2015-2026 JOML
+// SPDX-License-Identifier: MIT
+package org.joml2;
+
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
+import java.nio.DoubleBuffer;
+import org.joml2.internal.unsafe.HeapSegments;
+import static org.joml2.internal.unsafe.UnsafeOpsHolder.U;
+import java.nio.ByteOrder;
+import org.joml2.internal.unsafe.UnsafeCopy;
+import static org.joml2.internal.unsafe.VirtualMemoryHolder.virtualMemory;
+
+/**
+ * Immutable quaternion of single-precision {@code float} components.
+ * <p>
+ * All operations leave the receiver unchanged and return their result as a value. An operation
+ * whose result equals one of its operands may return that operand instead of allocating a new
+ * instance.
+ * <p>
+ * A rotation is a unit quaternion. The operations that apply this quaternion as a rotation - the
+ * transforms, the matrix conversions, the Euler angles, {@code angleTo} and {@code rotateTowards} -
+ * assume unit length and do not divide it out. A value that has drifted from unit length (after
+ * many multiplications, say) gives wrong results rather than an error: {@code normalize} it first.
+ * <p>
+ * {@code equals} compares the components element-wise and bitwise, as by
+ * {@code Float.floatToIntBits}: {@code 0.0} and {@code -0.0} are not equal, and NaN is equal to
+ * NaN. {@code hashCode} is consistent with it (derived from the same bit patterns).
+ * <p>
+ * {@code equalsEpsilon} compares per component with a tolerance: an infinite component never
+ * compares equal to an equal infinity (the difference {@code Inf - Inf} is NaN), and to a finite
+ * one only under an infinite {@code epsilon}; a NaN component never compares equal to anything.
+ *
+ * @param x the {@code x} component
+ * @param y the {@code y} component
+ * @param z the {@code z} component
+ * @param w the {@code w} component
+ */
+public record FloatQuat(float x, float y, float z, float w) {
+    /** The number of bytes one instance occupies in the natural {@code store}/{@code load} layout. */
+    public static final int BYTES = 16;
+
+    /** The zero quaternion (all components 0). */
+    public static final FloatQuat ZERO = new FloatQuat(0, 0, 0, 0);
+
+    /** The identity quaternion. */
+    public static final FloatQuat IDENTITY = new FloatQuat();
+
+    /**
+     * Canonical constructor.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param x the {@code x} component
+     * @param y the {@code y} component
+     * @param z the {@code z} component
+     * @param w the {@code w} component
+     */
+    public FloatQuat(float x, float y, float z, float w) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.w = w;
+    }
+
+    /**
+     * Create a new instance initialized to the identity.
+     * <p>
+     * Valid input: the method reads no input.
+     */
+    public FloatQuat() {
+        this(0, 0, 0, 1);
+    }
+
+    /**
+     * Create an array of {@code length} elements, each {@link #ZERO}.
+     * <p>
+     * An ordinary array, filled: the value variant ({@code joml2-value}) hands out a flat one,
+     * elements stored inline, where the application allows it.
+     * <p>
+     * Valid input: {@code length} must not be negative.
+     *
+     * @param length the number of elements
+     * @return the new array
+     * @throws NegativeArraySizeException if {@code length} is negative
+     */
+    public static FloatQuat[] newArray(int length) {
+        FloatQuat[] a = new FloatQuat[length];
+        java.util.Arrays.fill(a, ZERO);
+        return a;
+    }
+
+    /**
+     * Create an array of {@code length} elements, each {@code init}.
+     * <p>
+     * An ordinary array, filled: the value variant ({@code joml2-value}) hands out a flat one,
+     * elements stored inline, where the application allows it.
+     * <p>
+     * Valid input: {@code length} must not be negative.
+     *
+     * @param length the number of elements
+     * @param init the value every element starts as
+     * @return the new array
+     * @throws NullPointerException if {@code init} is null
+     * @throws NegativeArraySizeException if {@code length} is negative
+     */
+    public static FloatQuat[] newArray(int length, FloatQuat init) {
+        java.util.Objects.requireNonNull(init, "init");
+        FloatQuat[] a = new FloatQuat[length];
+        java.util.Arrays.fill(a, init);
+        return a;
+    }
+
+    /** {@return the {@code x} component} <p>Valid input: any value, NaN and the infinities included. */
+    public float x() { return x; }
+
+    /** {@return the {@code y} component} <p>Valid input: any value, NaN and the infinities included. */
+    public float y() { return y; }
+
+    /** {@return the {@code z} component} <p>Valid input: any value, NaN and the infinities included. */
+    public float z() { return z; }
+
+    /** {@return the {@code w} component} <p>Valid input: any value, NaN and the infinities included. */
+    public float w() { return w; }
+
+    /**
+     * Create a rotation uniformly distributed over all rotations, drawing the 3 samples of
+     * {@code makeUniformRotation} from {@code rng}, each with {@code rng.nextFloat()}, in parameter
+     * order.
+     * <p>
+     * Valid input: any value.
+     *
+     * @param rng the random number generator to draw the 3 samples from
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRandomRotation(java.util.Random rng) {
+        return makeUniformRotation(rng.nextFloat(), rng.nextFloat(), rng.nextFloat());
+    }
+
+    /**
+     * Invert this quaternion, returning the result as a value.
+     * <p>
+     * Valid input: this quaternion must be non-zero.
+     *
+     * @return the resulting quaternion
+     */
+    public FloatQuat invert() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t3_inv = 1.0f / java.lang.Math.fma(this.w, this.w, java.lang.Math.fma(this.z, this.z, java.lang.Math.fma(this.x, this.x, this.y * this.y)));
+            return new FloatQuat(-(this.x * _t3_inv), -(this.y * _t3_inv), -(this.z * _t3_inv), this.w * _t3_inv);
+        } else {
+            float _t3_inv = 1.0f / ((this.w) * (this.w) + (((this.z) * (this.z) + (((this.x) * (this.x) + (this.y * this.y))))));
+            return new FloatQuat(-(this.x * _t3_inv), -(this.y * _t3_inv), -(this.z * _t3_inv), this.w * _t3_inv);
+        }
+    }
+
+    /**
+     * Compute the inverse of the product of this quaternion and {@code other}, i.e.
+     * {@code (this * other)^-1}, returning the result as a value.
+     * <p>
+     * Valid input: this quaternion must be non-zero; {@code other} must be non-zero.
+     *
+     * @param other the right factor of the product
+     * @return the resulting quaternion
+     */
+    public FloatQuat invertProduct(FloatQuat other) {
+        float otherX = other.x;
+        float otherY = other.y;
+        float otherZ = other.z;
+        float otherW = other.w;
+        if (!org.joml2.internal.FmaSwitch.ON) return invertProduct_mulAdd(otherX, otherY, otherZ, otherW);
+        float _t20 = java.lang.Math.fma(otherX, this.w, otherW * this.x) + java.lang.Math.fma(otherZ, this.y, -(otherY * this.z));
+        float _t21 = java.lang.Math.fma(otherW, this.w, -otherX * this.x) - java.lang.Math.fma(otherY, this.y, otherZ * this.z);
+        float _t22 = java.lang.Math.fma(otherY, this.x, otherZ * this.w) + java.lang.Math.fma(otherW, this.z, -otherX * this.y);
+        float _t23 = java.lang.Math.fma(otherX, this.z, otherW * this.y) + java.lang.Math.fma(otherY, this.w, -(otherZ * this.x));
+        float _t27_inv = 1.0f / java.lang.Math.fma(_t21, _t21, java.lang.Math.fma(_t22, _t22, java.lang.Math.fma(_t23, _t23, _t20 * _t20)));
+        return new FloatQuat(-(_t20 * _t27_inv), -(_t23 * _t27_inv), -(_t22 * _t27_inv), _t21 * _t27_inv);
+    }
+
+    /**
+     * Compute the inverse of the product of this quaternion and ({@code otherX}, {@code otherY},
+     * {@code otherZ}, {@code otherW}), returning the result as a value.
+     * <p>
+     * Valid input: this quaternion must be non-zero; {@code (otherX, otherY, otherZ, otherW)} must
+     * be non-zero.
+     *
+     * @param otherX the {@code x} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @return the resulting quaternion
+     */
+    public FloatQuat invertProduct(float otherX, float otherY, float otherZ, float otherW) {
+        if (!org.joml2.internal.FmaSwitch.ON) return invertProduct_mulAdd(otherX, otherY, otherZ, otherW);
+        float _t20 = java.lang.Math.fma(otherX, this.w, otherW * this.x) + java.lang.Math.fma(otherZ, this.y, -(otherY * this.z));
+        float _t21 = java.lang.Math.fma(otherW, this.w, -otherX * this.x) - java.lang.Math.fma(otherY, this.y, otherZ * this.z);
+        float _t22 = java.lang.Math.fma(otherY, this.x, otherZ * this.w) + java.lang.Math.fma(otherW, this.z, -otherX * this.y);
+        float _t23 = java.lang.Math.fma(otherX, this.z, otherW * this.y) + java.lang.Math.fma(otherY, this.w, -(otherZ * this.x));
+        float _t27_inv = 1.0f / java.lang.Math.fma(_t21, _t21, java.lang.Math.fma(_t22, _t22, java.lang.Math.fma(_t23, _t23, _t20 * _t20)));
+        return new FloatQuat(-(_t20 * _t27_inv), -(_t23 * _t27_inv), -(_t22 * _t27_inv), _t21 * _t27_inv);
+    }
+
+    /** {@code invertProduct} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private FloatQuat invertProduct_mulAdd(float otherX, float otherY, float otherZ, float otherW) {
+        float _t20 = ((otherX) * (this.w) + (otherW * this.x)) + ((otherZ) * (this.y) - (otherY * this.z));
+        float _t21 = ((otherW) * (this.w) - (otherX * this.x)) - ((otherY) * (this.y) + (otherZ * this.z));
+        float _t22 = ((otherY) * (this.x) + (otherZ * this.w)) + ((otherW) * (this.z) - (otherX * this.y));
+        float _t23 = ((otherX) * (this.z) + (otherW * this.y)) + ((otherY) * (this.w) - (otherZ * this.x));
+        float _t27_inv = 1.0f / ((_t21) * (_t21) + (((_t22) * (_t22) + (((_t23) * (_t23) + (_t20 * _t20))))));
+        return new FloatQuat(-(_t20 * _t27_inv), -(_t23 * _t27_inv), -(_t22 * _t27_inv), _t21 * _t27_inv);
+    }
+
+    /**
+     * Add {@code other} to this quaternion, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param other the quaternion to add
+     * @return the resulting quaternion
+     */
+    public FloatQuat add(FloatQuat other) {
+        float otherX = other.x;
+        float otherY = other.y;
+        float otherZ = other.z;
+        float otherW = other.w;
+        return new FloatQuat(otherX + this.x, otherY + this.y, otherZ + this.z, otherW + this.w);
+    }
+
+    /**
+     * Add ({@code otherX}, {@code otherY}, {@code otherZ}, {@code otherW}) to this quaternion,
+     * returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param otherX the {@code x} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @return the resulting quaternion
+     */
+    public FloatQuat add(float otherX, float otherY, float otherZ, float otherW) {
+        return new FloatQuat(otherX + this.x, otherY + this.y, otherZ + this.z, otherW + this.w);
+    }
+
+    /**
+     * Multiply each component of this quaternion by {@code scalar}, returning the result as a
+     * value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param scalar the factor to multiply each component by
+     * @return the resulting quaternion
+     */
+    public FloatQuat mul(float scalar) {
+        return new FloatQuat(scalar * this.x, scalar * this.y, scalar * this.z, scalar * this.w);
+    }
+
+    /**
+     * Negate this quaternion, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting quaternion
+     */
+    public FloatQuat negate() {
+        return new FloatQuat(-this.x, -this.y, -this.z, -this.w);
+    }
+
+    /**
+     * Subtract {@code other} from this quaternion, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param other the quaternion to subtract
+     * @return the resulting quaternion
+     */
+    public FloatQuat sub(FloatQuat other) {
+        float otherX = other.x;
+        float otherY = other.y;
+        float otherZ = other.z;
+        float otherW = other.w;
+        return new FloatQuat(this.x - otherX, this.y - otherY, this.z - otherZ, this.w - otherW);
+    }
+
+    /**
+     * Subtract ({@code otherX}, {@code otherY}, {@code otherZ}, {@code otherW}) from this
+     * quaternion, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param otherX the {@code x} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @return the resulting quaternion
+     */
+    public FloatQuat sub(float otherX, float otherY, float otherZ, float otherW) {
+        return new FloatQuat(this.x - otherX, this.y - otherY, this.z - otherZ, this.w - otherW);
+    }
+
+    /**
+     * Create the unit quaternion
+     * {@code (sqrt(1 - u1) sin(2 PI u2), sqrt(1 - u1) cos(2 PI u2), sqrt(u1) sin(2 PI u3), sqrt(u1) cos(2 PI u3))},
+     * Shoemake's construction: samples uniformly distributed in {@code [0, 1)} give a rotation
+     * uniformly distributed over all rotations ({@code makeRandomRotation} draws them from a
+     * {@link java.util.Random}).
+     * <p>
+     * Valid input: {@code u1} must lie in {@code [0, 1]}; {@code u2} must lie in {@code [0, 1]};
+     * {@code u3} must lie in {@code [0, 1]}.
+     *
+     * @param u1 the sample that splits the unit length between {@code (x, y)} and {@code (z, w)},
+     *        uniformly distributed in {@code [0, 1)} for a uniformly distributed rotation
+     * @param u2 the fraction of a full turn of {@code (x, y)}, uniformly distributed in
+     *        {@code [0, 1)} for a uniformly distributed rotation
+     * @param u3 the fraction of a full turn of {@code (z, w)}, uniformly distributed in
+     *        {@code [0, 1)} for a uniformly distributed rotation
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeUniformRotation(float u1, float u2, float u3) {
+        float _t0 = (float) java.lang.Math.sqrt(u1);
+        float _t1 = u2 * 6.2831855f;
+        float _t3 = u3 * 6.2831855f;
+        float _t4 = (float) java.lang.Math.sqrt(1.0f - u1);
+        return new FloatQuat(Math.sinWithCos(_t1) * _t4, Math.cosWithSin(_t1) * _t4, Math.sinWithCos(_t3) * _t0, Math.cosWithSin(_t3) * _t0);
+    }
+
+    /**
+     * Return a quaternion with the values of {@code v}: that quaternion itself (an immutable value
+     * needs no copy).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param v the quaternion to copy
+     * @return the resulting quaternion
+     */
+    public FloatQuat set(FloatQuat v) {
+        float vX = v.x;
+        float vY = v.y;
+        float vZ = v.z;
+        float vW = v.w;
+        return new FloatQuat(vX, vY, vZ, vW);
+    }
+
+    /**
+     * Create a new quaternion from the given values.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param vX the {@code x} component of the quaternion {@code (vX, vY, vZ, vW)}
+     * @param vY the {@code y} component of the quaternion {@code (vX, vY, vZ, vW)}
+     * @param vZ the {@code z} component of the quaternion {@code (vX, vY, vZ, vW)}
+     * @param vW the {@code w} component of the quaternion {@code (vX, vY, vZ, vW)}
+     * @return the resulting quaternion
+     */
+    public FloatQuat set(float vX, float vY, float vZ, float vW) {
+        return new FloatQuat(vX, vY, vZ, vW);
+    }
+
+    /**
+     * Convert this quaternion to {@code double} precision, returning the result as a new instance.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return a new {@code DoubleQuat} holding the result
+     */
+    public DoubleQuat toDouble() {
+        return new DoubleQuat(this.x, this.y, this.z, this.w);
+    }
+
+    /**
+     * Create the rotation (real) part of the unit dual quaternion {@code dq}.
+     * <p>
+     * Valid input: {@code dq} must be a unit dual quaternion.
+     *
+     * @param dq the dual quaternion to convert
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeFromDualQuat(FloatDualQuat dq) {
+        float dqRX = dq.rX();
+        float dqRY = dq.rY();
+        float dqRZ = dq.rZ();
+        float dqRW = dq.rW();
+        return new FloatQuat(dqRX, dqRY, dqRZ, dqRW);
+    }
+
+    /**
+     * Create the rotation (real) part of the unit dual quaternion ({@code dqRX}, {@code dqRY},
+     * {@code dqRZ}, {@code dqRW}, {@code dqDX}, {@code dqDY}, {@code dqDZ}, {@code dqDW}).
+     * <p>
+     * Valid input: {@code (dqRX, dqRY, dqRZ, dqRW, dqDX, dqDY, dqDZ, dqDW)} must be a unit dual
+     * quaternion.
+     *
+     * @param dqRX the {@code rX} component of the dual quaternion
+     *        {@code (dqRX, dqRY, dqRZ, dqRW, dqDX, dqDY, dqDZ, dqDW)}
+     * @param dqRY the {@code rY} component of the dual quaternion
+     *        {@code (dqRX, dqRY, dqRZ, dqRW, dqDX, dqDY, dqDZ, dqDW)}
+     * @param dqRZ the {@code rZ} component of the dual quaternion
+     *        {@code (dqRX, dqRY, dqRZ, dqRW, dqDX, dqDY, dqDZ, dqDW)}
+     * @param dqRW the {@code rW} component of the dual quaternion
+     *        {@code (dqRX, dqRY, dqRZ, dqRW, dqDX, dqDY, dqDZ, dqDW)}
+     * @param dqDX the {@code dX} component of the dual quaternion
+     *        {@code (dqRX, dqRY, dqRZ, dqRW, dqDX, dqDY, dqDZ, dqDW)}
+     * @param dqDY the {@code dY} component of the dual quaternion
+     *        {@code (dqRX, dqRY, dqRZ, dqRW, dqDX, dqDY, dqDZ, dqDW)}
+     * @param dqDZ the {@code dZ} component of the dual quaternion
+     *        {@code (dqRX, dqRY, dqRZ, dqRW, dqDX, dqDY, dqDZ, dqDW)}
+     * @param dqDW the {@code dW} component of the dual quaternion
+     *        {@code (dqRX, dqRY, dqRZ, dqRW, dqDX, dqDY, dqDZ, dqDW)}
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeFromDualQuat(float dqRX, float dqRY, float dqRZ, float dqRW, float dqDX, float dqDY, float dqDZ, float dqDW) {
+        return new FloatQuat(dqRX, dqRY, dqRZ, dqRW);
+    }
+
+    /** Private tail of {@code makeFromMatrix}; reached only through it. */
+    private static FloatQuat makeFromMatrix_s37cad23f_tail(float _t10, float _sp0, float _t1, Float3x3 m, float _t2, float _t15, float _sp1, float _t4, float _sp2, float _t6, float _t7, float _sp3, float _t16, float _t8, float _t9, float _t17, float _t14) {
+        float _sfx0, _sfx1, _sfx2;
+        if (_t10 > 0.0f) {
+            _sfx0 = _sp0 * _t1;
+            _sfx1 = _sp0 * _t7;
+            _sfx2 = _sp0 * _t9;
+        } else {
+            if (m.m00() > _t2) {
+                _sfx0 = 0.5f * (float) java.lang.Math.sqrt(_t15);
+                _sfx1 = _sp3 * _t4;
+                _sfx2 = _sp3 * _t6;
+            } else {
+                if (m.m11() > m.m22()) {
+                    _sfx0 = _sp1 * _t4;
+                    _sfx1 = 0.5f * (float) java.lang.Math.sqrt(_t16);
+                    _sfx2 = _sp1 * _t8;
+                } else {
+                    _sfx0 = _sp2 * _t6;
+                    _sfx1 = _sp2 * _t8;
+                    _sfx2 = 0.5f * (float) java.lang.Math.sqrt(_t17);
+                }
+            }
+        }
+        return makeFromMatrix_s37cad23f_tail2(_t10, _t14, m, _t2, _sp3, _t1, _sp1, _t7, _sp2, _t9, _sfx0, _sfx1, _sfx2);
+    }
+
+    /** Private tail of {@code makeFromMatrix}; reached only through it. */
+    private static FloatQuat makeFromMatrix_s37cad23f_tail2(float _t10, float _t14, Float3x3 m, float _t2, float _sp3, float _t1, float _sp1, float _t7, float _sp2, float _t9, float _sfx0, float _sfx1, float _sfx2) {
+        float _sfx3 = _t10 > 0.0f ? 0.5f * (float) java.lang.Math.sqrt(_t14) : m.m00() > _t2 ? _sp3 * _t1 : m.m11() > m.m22() ? _sp1 * _t7 : _sp2 * _t9;
+        return new FloatQuat(_sfx0, _sfx1, _sfx2, _sfx3);
+    }
+
+    /**
+     * Create the rotation represented by the given matrix (which must be a rotation: orthonormal,
+     * with determinant +1 - a scaled or sheared block gives a wrong quaternion, not a longer one;
+     * {@code getNormalizedRotation} strips scale first).
+     * <p>
+     * Valid input: {@code m} must be a rotation matrix.
+     *
+     * @param m the matrix to convert
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeFromMatrix(Float3x3 m) {
+        float _m_m00 = m.m00();
+        float _m_m11 = m.m11();
+        float _t0 = _m_m00 + _m_m11;
+        float _m_m22 = m.m22();
+        float _t10 = _m_m22 + _t0;
+        float _t14 = 1.0f + _t10;
+        float _t15 = 1.0f + (_m_m00 - (_m_m11 + _m_m22));
+        float _t16 = 1.0f + (_m_m11 - (_m_m00 + _m_m22));
+        float _t17 = 1.0f + (_m_m22 - _t0);
+        float _m_m21 = m.m21();
+        float _m_m12 = m.m12();
+        float _m_m01 = m.m01();
+        float _m_m10 = m.m10();
+        float _m_m02 = m.m02();
+        float _m_m20 = m.m20();
+        return makeFromMatrix_s37cad23f_tail(_t10, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t14)), _m_m21 - _m_m12, m, Math.max(_m_m11, _m_m22), _t15, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t16)), _m_m01 + _m_m10, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t17)), _m_m02 + _m_m20, _m_m02 - _m_m20, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t15)), _t16, _m_m12 + _m_m21, _m_m10 - _m_m01, _t17, _t14);
+    }
+
+    /** Private tail of {@code makeFromMatrix}; reached only through it. */
+    private static FloatQuat makeFromMatrix_s37cad600_tail(float _t10, float _sp0, float _t1, Float3x4 m, float _t2, float _t15, float _sp1, float _t4, float _sp2, float _t6, float _t7, float _sp3, float _t16, float _t8, float _t9, float _t17, float _t14) {
+        float _sfx0, _sfx1, _sfx2;
+        if (_t10 > 0.0f) {
+            _sfx0 = _sp0 * _t1;
+            _sfx1 = _sp0 * _t7;
+            _sfx2 = _sp0 * _t9;
+        } else {
+            if (m.m00() > _t2) {
+                _sfx0 = 0.5f * (float) java.lang.Math.sqrt(_t15);
+                _sfx1 = _sp3 * _t4;
+                _sfx2 = _sp3 * _t6;
+            } else {
+                if (m.m11() > m.m22()) {
+                    _sfx0 = _sp1 * _t4;
+                    _sfx1 = 0.5f * (float) java.lang.Math.sqrt(_t16);
+                    _sfx2 = _sp1 * _t8;
+                } else {
+                    _sfx0 = _sp2 * _t6;
+                    _sfx1 = _sp2 * _t8;
+                    _sfx2 = 0.5f * (float) java.lang.Math.sqrt(_t17);
+                }
+            }
+        }
+        return makeFromMatrix_s37cad600_tail2(_t10, _t14, m, _t2, _sp3, _t1, _sp1, _t7, _sp2, _t9, _sfx0, _sfx1, _sfx2);
+    }
+
+    /** Private tail of {@code makeFromMatrix}; reached only through it. */
+    private static FloatQuat makeFromMatrix_s37cad600_tail2(float _t10, float _t14, Float3x4 m, float _t2, float _sp3, float _t1, float _sp1, float _t7, float _sp2, float _t9, float _sfx0, float _sfx1, float _sfx2) {
+        float _sfx3 = _t10 > 0.0f ? 0.5f * (float) java.lang.Math.sqrt(_t14) : m.m00() > _t2 ? _sp3 * _t1 : m.m11() > m.m22() ? _sp1 * _t7 : _sp2 * _t9;
+        return new FloatQuat(_sfx0, _sfx1, _sfx2, _sfx3);
+    }
+
+    /**
+     * Create the rotation represented by the given matrix (which must be a rotation: orthonormal,
+     * with determinant +1 - a scaled or sheared block gives a wrong quaternion, not a longer one;
+     * {@code getNormalizedRotation} strips scale first).
+     * <p>
+     * Valid input: {@code m} must be a rigid transformation (a rotation with any translation).
+     *
+     * @param m the matrix to convert
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeFromMatrix(Float3x4 m) {
+        float _m_m00 = m.m00();
+        float _m_m11 = m.m11();
+        float _t0 = _m_m00 + _m_m11;
+        float _m_m22 = m.m22();
+        float _t10 = _m_m22 + _t0;
+        float _t14 = 1.0f + _t10;
+        float _t15 = 1.0f + (_m_m00 - (_m_m11 + _m_m22));
+        float _t16 = 1.0f + (_m_m11 - (_m_m00 + _m_m22));
+        float _t17 = 1.0f + (_m_m22 - _t0);
+        float _m_m21 = m.m21();
+        float _m_m12 = m.m12();
+        float _m_m01 = m.m01();
+        float _m_m10 = m.m10();
+        float _m_m02 = m.m02();
+        float _m_m20 = m.m20();
+        return makeFromMatrix_s37cad600_tail(_t10, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t14)), _m_m21 - _m_m12, m, Math.max(_m_m11, _m_m22), _t15, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t16)), _m_m01 + _m_m10, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t17)), _m_m02 + _m_m20, _m_m02 - _m_m20, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t15)), _t16, _m_m12 + _m_m21, _m_m10 - _m_m01, _t17, _t14);
+    }
+
+    /** Private tail of {@code makeFromMatrix}; reached only through it. */
+    private static FloatQuat makeFromMatrix_s37d8ed81_tail(float _t10, float _sp0, float _t1, Float4x4 m, float _t2, float _t15, float _sp1, float _t4, float _sp2, float _t6, float _t7, float _sp3, float _t16, float _t8, float _t9, float _t17, float _t14) {
+        float _sfx0, _sfx1, _sfx2;
+        if (_t10 > 0.0f) {
+            _sfx0 = _sp0 * _t1;
+            _sfx1 = _sp0 * _t7;
+            _sfx2 = _sp0 * _t9;
+        } else {
+            if (m.m00() > _t2) {
+                _sfx0 = 0.5f * (float) java.lang.Math.sqrt(_t15);
+                _sfx1 = _sp3 * _t4;
+                _sfx2 = _sp3 * _t6;
+            } else {
+                if (m.m11() > m.m22()) {
+                    _sfx0 = _sp1 * _t4;
+                    _sfx1 = 0.5f * (float) java.lang.Math.sqrt(_t16);
+                    _sfx2 = _sp1 * _t8;
+                } else {
+                    _sfx0 = _sp2 * _t6;
+                    _sfx1 = _sp2 * _t8;
+                    _sfx2 = 0.5f * (float) java.lang.Math.sqrt(_t17);
+                }
+            }
+        }
+        return makeFromMatrix_s37d8ed81_tail2(_t10, _t14, m, _t2, _sp3, _t1, _sp1, _t7, _sp2, _t9, _sfx0, _sfx1, _sfx2);
+    }
+
+    /** Private tail of {@code makeFromMatrix}; reached only through it. */
+    private static FloatQuat makeFromMatrix_s37d8ed81_tail2(float _t10, float _t14, Float4x4 m, float _t2, float _sp3, float _t1, float _sp1, float _t7, float _sp2, float _t9, float _sfx0, float _sfx1, float _sfx2) {
+        float _sfx3 = _t10 > 0.0f ? 0.5f * (float) java.lang.Math.sqrt(_t14) : m.m00() > _t2 ? _sp3 * _t1 : m.m11() > m.m22() ? _sp1 * _t7 : _sp2 * _t9;
+        return new FloatQuat(_sfx0, _sfx1, _sfx2, _sfx3);
+    }
+
+    /**
+     * Create the rotation represented by the given matrix (which must be a rotation: orthonormal,
+     * with determinant +1 - a scaled or sheared block gives a wrong quaternion, not a longer one;
+     * {@code getNormalizedRotation} strips scale first).
+     * <p>
+     * Valid input: {@code m} must be a rigid transformation (a rotation with any translation).
+     *
+     * @param m the matrix to convert
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeFromMatrix(Float4x4 m) {
+        float _m_m00 = m.m00();
+        float _m_m11 = m.m11();
+        float _t0 = _m_m00 + _m_m11;
+        float _m_m22 = m.m22();
+        float _t10 = _m_m22 + _t0;
+        float _t14 = 1.0f + _t10;
+        float _t15 = 1.0f + (_m_m00 - (_m_m11 + _m_m22));
+        float _t16 = 1.0f + (_m_m11 - (_m_m00 + _m_m22));
+        float _t17 = 1.0f + (_m_m22 - _t0);
+        float _m_m21 = m.m21();
+        float _m_m12 = m.m12();
+        float _m_m01 = m.m01();
+        float _m_m10 = m.m10();
+        float _m_m02 = m.m02();
+        float _m_m20 = m.m20();
+        return makeFromMatrix_s37d8ed81_tail(_t10, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t14)), _m_m21 - _m_m12, m, Math.max(_m_m11, _m_m22), _t15, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t16)), _m_m01 + _m_m10, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t17)), _m_m02 + _m_m20, _m_m02 - _m_m20, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t15)), _t16, _m_m12 + _m_m21, _m_m10 - _m_m01, _t17, _t14);
+    }
+
+    /**
+     * Convert this quaternion to a pure-rotation dual quaternion (zero dual part), returning the
+     * result as a value.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the resulting dual quaternion
+     */
+    public FloatDualQuat toDualQuat() {
+        return new FloatDualQuat(this.x, this.y, this.z, this.w, 0.0f, 0.0f, 0.0f, 0.0f);
+    }
+
+    /**
+     * Compute the matrix representation of this quaternion, returning the result as a value.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the resulting matrix
+     */
+    public Float4x4 toMatrix() {
+        if (!org.joml2.internal.FmaSwitch.ON) return toMatrix_mulAdd();
+        float _t0 = this.z * this.z;
+        float _t1 = this.z * this.w;
+        float _t2 = this.y * this.w;
+        return new Float4x4(java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.y, this.y, _t0), 1.0f), 2.0f * java.lang.Math.fma(this.x, this.y, -_t1), 2.0f * java.lang.Math.fma(this.x, this.z, _t2), 0.0f, 2.0f * java.lang.Math.fma(this.x, this.y, _t1), java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, _t0), 1.0f), 2.0f * java.lang.Math.fma(this.y, this.z, -(this.x * this.w)), 0.0f, 2.0f * java.lang.Math.fma(this.x, this.z, -_t2), 2.0f * java.lang.Math.fma(this.x, this.w, this.y * this.z), java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, this.y * this.y), 1.0f), 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, Joml.BIT_ORTHOGONAL);
+    }
+
+    /** {@code toMatrix} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private Float4x4 toMatrix_mulAdd() {
+        float _t0 = this.z * this.z;
+        float _t1 = this.z * this.w;
+        float _t2 = this.y * this.w;
+        return new Float4x4(((1.0f) - (2.0f) * (((this.y) * (this.y) + (_t0)))), 2.0f * ((this.x) * (this.y) - (_t1)), 2.0f * ((this.x) * (this.z) + (_t2)), 0.0f, 2.0f * ((this.x) * (this.y) + (_t1)), ((1.0f) - (2.0f) * (((this.x) * (this.x) + (_t0)))), 2.0f * ((this.y) * (this.z) - (this.x * this.w)), 0.0f, 2.0f * ((this.x) * (this.z) - (_t2)), 2.0f * ((this.x) * (this.w) + (this.y * this.z)), ((1.0f) - (2.0f) * (((this.x) * (this.x) + (this.y * this.y)))), 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Compute the 3x3 rotation matrix representation of this quaternion, returning the result as a
+     * value.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the resulting matrix
+     */
+    public Float3x3 toMatrix3x3() {
+        if (!org.joml2.internal.FmaSwitch.ON) return toMatrix3x3_mulAdd();
+        float _t0 = this.z * this.z;
+        float _t1 = this.z * this.w;
+        float _t2 = this.y * this.w;
+        return new Float3x3(java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.y, this.y, _t0), 1.0f), 2.0f * java.lang.Math.fma(this.x, this.y, -_t1), 2.0f * java.lang.Math.fma(this.x, this.z, _t2), 2.0f * java.lang.Math.fma(this.x, this.y, _t1), java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, _t0), 1.0f), 2.0f * java.lang.Math.fma(this.y, this.z, -(this.x * this.w)), 2.0f * java.lang.Math.fma(this.x, this.z, -_t2), 2.0f * java.lang.Math.fma(this.x, this.w, this.y * this.z), java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, this.y * this.y), 1.0f), 0);
+    }
+
+    /** {@code toMatrix3x3} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private Float3x3 toMatrix3x3_mulAdd() {
+        float _t0 = this.z * this.z;
+        float _t1 = this.z * this.w;
+        float _t2 = this.y * this.w;
+        return new Float3x3(((1.0f) - (2.0f) * (((this.y) * (this.y) + (_t0)))), 2.0f * ((this.x) * (this.y) - (_t1)), 2.0f * ((this.x) * (this.z) + (_t2)), 2.0f * ((this.x) * (this.y) + (_t1)), ((1.0f) - (2.0f) * (((this.x) * (this.x) + (_t0)))), 2.0f * ((this.y) * (this.z) - (this.x * this.w)), 2.0f * ((this.x) * (this.z) - (_t2)), 2.0f * ((this.x) * (this.w) + (this.y * this.z)), ((1.0f) - (2.0f) * (((this.x) * (this.x) + (this.y * this.y)))), 0);
+    }
+
+    /**
+     * Compute the 3x4 matrix representation of this quaternion (the omitted last row is implicitly
+     * {@code 0, 0, 0, 1}), returning the result as a value.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the resulting matrix
+     */
+    public Float3x4 toMatrix3x4() {
+        if (!org.joml2.internal.FmaSwitch.ON) return toMatrix3x4_mulAdd();
+        float _t0 = this.z * this.z;
+        float _t1 = this.z * this.w;
+        float _t2 = this.y * this.w;
+        return new Float3x4(java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.y, this.y, _t0), 1.0f), 2.0f * java.lang.Math.fma(this.x, this.y, -_t1), 2.0f * java.lang.Math.fma(this.x, this.z, _t2), 0.0f, 2.0f * java.lang.Math.fma(this.x, this.y, _t1), java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, _t0), 1.0f), 2.0f * java.lang.Math.fma(this.y, this.z, -(this.x * this.w)), 0.0f, 2.0f * java.lang.Math.fma(this.x, this.z, -_t2), 2.0f * java.lang.Math.fma(this.x, this.w, this.y * this.z), java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, this.y * this.y), 1.0f), 0.0f, Joml.BIT_ORTHOGONAL);
+    }
+
+    /** {@code toMatrix3x4} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private Float3x4 toMatrix3x4_mulAdd() {
+        float _t0 = this.z * this.z;
+        float _t1 = this.z * this.w;
+        float _t2 = this.y * this.w;
+        return new Float3x4(((1.0f) - (2.0f) * (((this.y) * (this.y) + (_t0)))), 2.0f * ((this.x) * (this.y) - (_t1)), 2.0f * ((this.x) * (this.z) + (_t2)), 0.0f, 2.0f * ((this.x) * (this.y) + (_t1)), ((1.0f) - (2.0f) * (((this.x) * (this.x) + (_t0)))), 2.0f * ((this.y) * (this.z) - (this.x * this.w)), 0.0f, 2.0f * ((this.x) * (this.z) - (_t2)), 2.0f * ((this.x) * (this.w) + (this.y * this.z)), ((1.0f) - (2.0f) * (((this.x) * (this.x) + (this.y * this.y)))), 0.0f, Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Result value of {@code decomposeSwingTwist}.
+     *
+     * @param swing the swing
+     * @param twist the twist
+     */
+    public record DecomposeSwingTwistResult(FloatQuat swing, FloatQuat twist) {
+        /**
+         * Canonical constructor.
+         * <p>
+         * Valid input: any value, NaN and the infinities included.
+         *
+         * @param swing the swing
+         * @param twist the twist
+         */
+        public DecomposeSwingTwistResult(FloatQuat swing, FloatQuat twist) {
+            this.swing = swing;
+            this.twist = twist;
+        }
+
+        /** {@return the {@code swing} component} <p>Valid input: any value, NaN and the infinities included. */
+        public FloatQuat swing() { return swing; }
+
+        /** {@return the {@code twist} component} <p>Valid input: any value, NaN and the infinities included. */
+        public FloatQuat twist() { return twist; }
+    }
+
+    /** Private tail of {@code decomposeSwingTwist}; reached only through it. */
+    private DecomposeSwingTwistResult decomposeSwingTwist_s3ccd94aa_tail_fma(float _t4, float _t5, Float3 axis, float _t7) {
+        float _t11, _t12, _t13, _t14;
+        if (_t4 > 1.0E-14f) {
+            _t11 = this.w * _t5;
+            _t12 = axis.x() * _t7;
+            _t13 = axis.y() * _t7;
+            _t14 = axis.z() * _t7;
+        } else {
+            _t11 = 1.0f;
+            _t12 = 0.0f;
+            _t13 = 0.0f;
+            _t14 = 0.0f;
+        }
+        return new DecomposeSwingTwistResult(new FloatQuat(java.lang.Math.fma(this.x, _t11, -this.w * _t12) + java.lang.Math.fma(this.z, _t13, -this.y * _t14), java.lang.Math.fma(this.x, _t14, -this.w * _t13) + java.lang.Math.fma(this.y, _t11, -this.z * _t12), java.lang.Math.fma(this.y, _t12, this.z * _t11) + java.lang.Math.fma(-this.x, _t13, -this.w * _t14), java.lang.Math.fma(this.x, _t12, this.w * _t11) - java.lang.Math.fma(-this.z, _t14, -this.y * _t13)), new FloatQuat(_t12, _t13, _t14, _t11));
+    }
+
+    /** Private tail of {@code decomposeSwingTwist}; reached only through it. */
+    private DecomposeSwingTwistResult decomposeSwingTwist_s3ccd94aa_tail_mulAdd(float _t4, float _t5, Float3 axis, float _t7) {
+        float _t11, _t12, _t13, _t14;
+        if (_t4 > 1.0E-14f) {
+            _t11 = this.w * _t5;
+            _t12 = axis.x() * _t7;
+            _t13 = axis.y() * _t7;
+            _t14 = axis.z() * _t7;
+        } else {
+            _t11 = 1.0f;
+            _t12 = 0.0f;
+            _t13 = 0.0f;
+            _t14 = 0.0f;
+        }
+        return new DecomposeSwingTwistResult(new FloatQuat(((this.x) * (_t11) - (this.w * _t12)) + ((this.z) * (_t13) - (this.y * _t14)), ((this.x) * (_t14) - (this.w * _t13)) + ((this.y) * (_t11) - (this.z * _t12)), ((this.y) * (_t12) + (this.z * _t11)) + ((-this.x) * (_t13) - (this.w * _t14)), ((this.x) * (_t12) + (this.w * _t11)) - ((-this.z) * (_t14) - (this.y * _t13))), new FloatQuat(_t12, _t13, _t14, _t11));
+    }
+
+    /**
+     * Decompose this quaternion into a twist about {@code axis} followed by a swing about an axis
+     * perpendicular to it, such that {@code swing * twist} is this rotation (the twist acts on a
+     * vector first).
+     * <p>
+     * Equivalent to calling {@code getSwing} and {@code getTwist} separately, but shares the work.
+     * The twist is the identity rotation ({@code IDENTITY} or its negation) when the rotation is a
+     * pure swing; in the 180-degree perpendicular case, where it is undefined, it is
+     * {@code IDENTITY}.
+     * <p>
+     * Valid input: {@code axis} must have unit length; this quaternion must have unit length.
+     *
+     * @param axis the rotation axis
+     * @return a new result value holding the swing and the twist
+     */
+    public DecomposeSwingTwistResult decomposeSwingTwist(Float3 axis) {
+        float _axis_z = axis.z();
+        float _axis_x = axis.x();
+        float _axis_y = axis.y();
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t2 = java.lang.Math.fma(_axis_z, this.z, java.lang.Math.fma(_axis_x, this.x, _axis_y * this.y));
+            float _t4 = java.lang.Math.fma(this.w, this.w, _t2 * _t2);
+            float _t5 = (1.0f / (float) java.lang.Math.sqrt(_t4));
+            return decomposeSwingTwist_s3ccd94aa_tail_fma(_t4, _t5, axis, _t2 * _t5);
+        } else {
+            float _t2 = ((_axis_z) * (this.z) + (((_axis_x) * (this.x) + (_axis_y * this.y))));
+            float _t4 = ((this.w) * (this.w) + (_t2 * _t2));
+            float _t5 = (1.0f / (float) java.lang.Math.sqrt(_t4));
+            return decomposeSwingTwist_s3ccd94aa_tail_mulAdd(_t4, _t5, axis, _t2 * _t5);
+        }
+    }
+
+    /**
+     * Extract the swing component of this quaternion: the rotation perpendicular to {@code axis} in
+     * the swing-twist decomposition, returning the result as a value.
+     * <p>
+     * The swing carries the rotation that tilts the axis itself; its own axis is perpendicular to
+     * the given one.
+     * <p>
+     * Valid input: {@code axis} must have unit length; this quaternion must have unit length.
+     *
+     * @param axis the rotation axis
+     * @return the resulting quaternion
+     */
+    public FloatQuat getSwing(Float3 axis) {
+        float axisX = axis.x();
+        float axisY = axis.y();
+        float axisZ = axis.z();
+        if (!org.joml2.internal.FmaSwitch.ON) return getSwing_mulAdd(axisX, axisY, axisZ);
+        float _t2 = java.lang.Math.fma(axisZ, this.z, java.lang.Math.fma(axisX, this.x, axisY * this.y));
+        float _t4 = java.lang.Math.fma(this.w, this.w, _t2 * _t2);
+        float _t5 = (1.0f / (float) java.lang.Math.sqrt(_t4));
+        float _t7 = _t2 * _t5;
+        float _t11, _t12, _t13, _t14;
+        if (_t4 > 1.0E-14f) {
+            _t11 = this.w * _t5;
+            _t12 = axisX * _t7;
+            _t13 = axisY * _t7;
+            _t14 = axisZ * _t7;
+        } else {
+            _t11 = 1.0f;
+            _t12 = 0.0f;
+            _t13 = 0.0f;
+            _t14 = 0.0f;
+        }
+        return new FloatQuat(java.lang.Math.fma(this.x, _t11, -this.w * _t12) + java.lang.Math.fma(this.z, _t13, -this.y * _t14), java.lang.Math.fma(this.x, _t14, -this.w * _t13) + java.lang.Math.fma(this.y, _t11, -this.z * _t12), java.lang.Math.fma(this.y, _t12, this.z * _t11) + java.lang.Math.fma(-this.x, _t13, -this.w * _t14), java.lang.Math.fma(this.x, _t12, this.w * _t11) - java.lang.Math.fma(-this.z, _t14, -this.y * _t13));
+    }
+
+    /**
+     * Extract the swing component of this quaternion: the rotation perpendicular to ({@code axisX},
+     * {@code axisY}, {@code axisZ}) in the swing-twist decomposition, returning the result as a
+     * value.
+     * <p>
+     * The swing carries the rotation that tilts the axis itself; its own axis is perpendicular to
+     * the given one.
+     * <p>
+     * Valid input: {@code (axisX, axisY, axisZ)} must have unit length; this quaternion must have
+     * unit length.
+     *
+     * @param axisX the {@code x} component of the rotation axis {@code (axisX, axisY, axisZ)}
+     * @param axisY the {@code y} component of the rotation axis {@code (axisX, axisY, axisZ)}
+     * @param axisZ the {@code z} component of the rotation axis {@code (axisX, axisY, axisZ)}
+     * @return the resulting quaternion
+     */
+    public FloatQuat getSwing(float axisX, float axisY, float axisZ) {
+        if (!org.joml2.internal.FmaSwitch.ON) return getSwing_mulAdd(axisX, axisY, axisZ);
+        float _t2 = java.lang.Math.fma(axisZ, this.z, java.lang.Math.fma(axisX, this.x, axisY * this.y));
+        float _t4 = java.lang.Math.fma(this.w, this.w, _t2 * _t2);
+        float _t5 = (1.0f / (float) java.lang.Math.sqrt(_t4));
+        float _t7 = _t2 * _t5;
+        float _t11, _t12, _t13, _t14;
+        if (_t4 > 1.0E-14f) {
+            _t11 = this.w * _t5;
+            _t12 = axisX * _t7;
+            _t13 = axisY * _t7;
+            _t14 = axisZ * _t7;
+        } else {
+            _t11 = 1.0f;
+            _t12 = 0.0f;
+            _t13 = 0.0f;
+            _t14 = 0.0f;
+        }
+        return new FloatQuat(java.lang.Math.fma(this.x, _t11, -this.w * _t12) + java.lang.Math.fma(this.z, _t13, -this.y * _t14), java.lang.Math.fma(this.x, _t14, -this.w * _t13) + java.lang.Math.fma(this.y, _t11, -this.z * _t12), java.lang.Math.fma(this.y, _t12, this.z * _t11) + java.lang.Math.fma(-this.x, _t13, -this.w * _t14), java.lang.Math.fma(this.x, _t12, this.w * _t11) - java.lang.Math.fma(-this.z, _t14, -this.y * _t13));
+    }
+
+    /** {@code getSwing} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private FloatQuat getSwing_mulAdd(float axisX, float axisY, float axisZ) {
+        float _t2 = ((axisZ) * (this.z) + (((axisX) * (this.x) + (axisY * this.y))));
+        float _t4 = ((this.w) * (this.w) + (_t2 * _t2));
+        float _t5 = (1.0f / (float) java.lang.Math.sqrt(_t4));
+        float _t7 = _t2 * _t5;
+        float _t11, _t12, _t13, _t14;
+        if (_t4 > 1.0E-14f) {
+            _t11 = this.w * _t5;
+            _t12 = axisX * _t7;
+            _t13 = axisY * _t7;
+            _t14 = axisZ * _t7;
+        } else {
+            _t11 = 1.0f;
+            _t12 = 0.0f;
+            _t13 = 0.0f;
+            _t14 = 0.0f;
+        }
+        return new FloatQuat(((this.x) * (_t11) - (this.w * _t12)) + ((this.z) * (_t13) - (this.y * _t14)), ((this.x) * (_t14) - (this.w * _t13)) + ((this.y) * (_t11) - (this.z * _t12)), ((this.y) * (_t12) + (this.z * _t11)) + ((-this.x) * (_t13) - (this.w * _t14)), ((this.x) * (_t12) + (this.w * _t11)) - ((-this.z) * (_t14) - (this.y * _t13)));
+    }
+
+    /**
+     * Extract the twist component of this quaternion: the rotation about {@code axis} in the
+     * swing-twist decomposition, returning the result as a value.
+     * <p>
+     * The twist is the rotation about the axis alone; it is the identity rotation ({@code IDENTITY}
+     * or its negation) when the rotation is a pure swing, and {@code IDENTITY} in the 180-degree
+     * perpendicular case where the twist angle is undefined.
+     * <p>
+     * Valid input: {@code axis} must have unit length.
+     *
+     * @param axis the rotation axis
+     * @return the resulting quaternion
+     */
+    public FloatQuat getTwist(Float3 axis) {
+        float axisX = axis.x();
+        float axisY = axis.y();
+        float axisZ = axis.z();
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t2 = java.lang.Math.fma(axisZ, this.z, java.lang.Math.fma(axisX, this.x, axisY * this.y));
+            float _t4 = java.lang.Math.fma(this.w, this.w, _t2 * _t2);
+            float _t5 = (1.0f / (float) java.lang.Math.sqrt(_t4));
+            float _t6 = _t2 * _t5;
+            if (_t4 > 1.0E-14f) {
+                return new FloatQuat(axisX * _t6, axisY * _t6, axisZ * _t6, this.w * _t5);
+            } else {
+                return new FloatQuat(0.0f, 0.0f, 0.0f, 1.0f);
+            }
+        } else {
+            float _t2 = ((axisZ) * (this.z) + (((axisX) * (this.x) + (axisY * this.y))));
+            float _t4 = ((this.w) * (this.w) + (_t2 * _t2));
+            float _t5 = (1.0f / (float) java.lang.Math.sqrt(_t4));
+            float _t6 = _t2 * _t5;
+            if (_t4 > 1.0E-14f) {
+                return new FloatQuat(axisX * _t6, axisY * _t6, axisZ * _t6, this.w * _t5);
+            } else {
+                return new FloatQuat(0.0f, 0.0f, 0.0f, 1.0f);
+            }
+        }
+    }
+
+    /**
+     * Extract the twist component of this quaternion: the rotation about ({@code axisX},
+     * {@code axisY}, {@code axisZ}) in the swing-twist decomposition, returning the result as a
+     * value.
+     * <p>
+     * The twist is the rotation about the axis alone; it is the identity rotation ({@code IDENTITY}
+     * or its negation) when the rotation is a pure swing, and {@code IDENTITY} in the 180-degree
+     * perpendicular case where the twist angle is undefined.
+     * <p>
+     * Valid input: {@code (axisX, axisY, axisZ)} must have unit length.
+     *
+     * @param axisX the {@code x} component of the rotation axis {@code (axisX, axisY, axisZ)}
+     * @param axisY the {@code y} component of the rotation axis {@code (axisX, axisY, axisZ)}
+     * @param axisZ the {@code z} component of the rotation axis {@code (axisX, axisY, axisZ)}
+     * @return the resulting quaternion
+     */
+    public FloatQuat getTwist(float axisX, float axisY, float axisZ) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t2 = java.lang.Math.fma(axisZ, this.z, java.lang.Math.fma(axisX, this.x, axisY * this.y));
+            float _t4 = java.lang.Math.fma(this.w, this.w, _t2 * _t2);
+            float _t5 = (1.0f / (float) java.lang.Math.sqrt(_t4));
+            float _t6 = _t2 * _t5;
+            if (_t4 > 1.0E-14f) {
+                return new FloatQuat(axisX * _t6, axisY * _t6, axisZ * _t6, this.w * _t5);
+            } else {
+                return new FloatQuat(0.0f, 0.0f, 0.0f, 1.0f);
+            }
+        } else {
+            float _t2 = ((axisZ) * (this.z) + (((axisX) * (this.x) + (axisY * this.y))));
+            float _t4 = ((this.w) * (this.w) + (_t2 * _t2));
+            float _t5 = (1.0f / (float) java.lang.Math.sqrt(_t4));
+            float _t6 = _t2 * _t5;
+            if (_t4 > 1.0E-14f) {
+                return new FloatQuat(axisX * _t6, axisY * _t6, axisZ * _t6, this.w * _t5);
+            } else {
+                return new FloatQuat(0.0f, 0.0f, 0.0f, 1.0f);
+            }
+        }
+    }
+
+    /**
+     * Create an identity quaternion.
+     * <p>
+     * Valid input: the method reads no input.
+     *
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeIdentity() {
+        return new FloatQuat(0.0f, 0.0f, 0.0f, 1.0f);
+    }
+
+    /**
+     * Create an all-zero quaternion.
+     * <p>
+     * Valid input: the method reads no input.
+     *
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeZero() {
+        return FloatQuat.ZERO;
+    }
+
+    /**
+     * Linearly interpolate between this quaternion and {@code other} using the interpolation factor
+     * {@code t}, returning the result as a value.
+     * <p>
+     * The interpolation starts at this quaternion (interpolation factor {@code 0}) and ends at
+     * {@code other} (interpolation factor {@code 1}). Each linearly interpolated component is
+     * {@code this + (other - this) * t}, as in JOML and glMatrix: monotone in {@code t} and exact
+     * at {@code 0}, but at {@code 1} exact only up to the rounding of {@code other - this}, which
+     * shows when this component is much larger in magnitude than the other one (1e8 towards 1 ends
+     * at 0).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param other the quaternion to interpolate towards
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return the resulting quaternion
+     */
+    public FloatQuat lerp(FloatQuat other, float t) {
+        float otherX = other.x;
+        float otherY = other.y;
+        float otherZ = other.z;
+        float otherW = other.w;
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new FloatQuat(java.lang.Math.fma(t, otherX - this.x, this.x), java.lang.Math.fma(t, otherY - this.y, this.y), java.lang.Math.fma(t, otherZ - this.z, this.z), java.lang.Math.fma(t, otherW - this.w, this.w));
+        } else {
+            return new FloatQuat(((t) * (otherX - this.x) + (this.x)), ((t) * (otherY - this.y) + (this.y)), ((t) * (otherZ - this.z) + (this.z)), ((t) * (otherW - this.w) + (this.w)));
+        }
+    }
+
+    /**
+     * Linearly interpolate between this quaternion and ({@code otherX}, {@code otherY},
+     * {@code otherZ}, {@code otherW}) using the interpolation factor {@code t}, returning the
+     * result as a value.
+     * <p>
+     * The interpolation starts at this quaternion (interpolation factor {@code 0}) and ends at
+     * ({@code otherX}, {@code otherY}, {@code otherZ}, {@code otherW}) (interpolation factor
+     * {@code 1}). Each linearly interpolated component is {@code this + (other - this) * t}, as in
+     * JOML and glMatrix: monotone in {@code t} and exact at {@code 0}, but at {@code 1} exact only
+     * up to the rounding of {@code other - this}, which shows when this component is much larger in
+     * magnitude than the other one (1e8 towards 1 ends at 0).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param otherX the {@code x} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return the resulting quaternion
+     */
+    public FloatQuat lerp(float otherX, float otherY, float otherZ, float otherW, float t) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new FloatQuat(java.lang.Math.fma(t, otherX - this.x, this.x), java.lang.Math.fma(t, otherY - this.y, this.y), java.lang.Math.fma(t, otherZ - this.z, this.z), java.lang.Math.fma(t, otherW - this.w, this.w));
+        } else {
+            return new FloatQuat(((t) * (otherX - this.x) + (this.x)), ((t) * (otherY - this.y) + (this.y)), ((t) * (otherZ - this.z) + (this.z)), ((t) * (otherW - this.w) + (this.w)));
+        }
+    }
+
+    /**
+     * Interpolate between this quaternion and {@code target} using the interpolation factor
+     * {@code alpha} and normalize the result, returning the result as a value.
+     * <p>
+     * The interpolation starts at this quaternion (interpolation factor {@code 0}) and ends at
+     * {@code target} (interpolation factor {@code 1}).
+     * <p>
+     * Valid input: {@code alpha} must lie in {@code [0, 1]}.
+     *
+     * @param target the target rotation
+     * @param alpha the interpolation factor, typically within {@code [0, 1]}
+     * @return the resulting quaternion
+     */
+    public FloatQuat nlerp(FloatQuat target, float alpha) {
+        return nlerp(target.x, target.y, target.z, target.w, alpha);
+    }
+
+    /**
+     * Interpolate between this quaternion and ({@code targetX}, {@code targetY}, {@code targetZ},
+     * {@code targetW}) using the interpolation factor {@code alpha} and normalize the result,
+     * returning the result as a value.
+     * <p>
+     * The interpolation starts at this quaternion (interpolation factor {@code 0}) and ends at
+     * ({@code targetX}, {@code targetY}, {@code targetZ}, {@code targetW}) (interpolation factor
+     * {@code 1}).
+     * <p>
+     * Valid input: {@code alpha} must lie in {@code [0, 1]}.
+     *
+     * @param targetX the {@code x} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param targetY the {@code y} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param targetZ the {@code z} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param targetW the {@code w} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param alpha the interpolation factor, typically within {@code [0, 1]}
+     * @return the resulting quaternion
+     */
+    public FloatQuat nlerp(float targetX, float targetY, float targetZ, float targetW, float alpha) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = 1.0f - alpha;
+            float _t5 = java.lang.Math.fma(alpha, targetW, this.w * _t0);
+            float _t6 = java.lang.Math.fma(alpha, targetZ, this.z * _t0);
+            float _t7 = java.lang.Math.fma(alpha, targetX, this.x * _t0);
+            float _t8 = java.lang.Math.fma(alpha, targetY, this.y * _t0);
+            float _t12 = java.lang.Math.fma(_t5, _t5, java.lang.Math.fma(_t6, _t6, java.lang.Math.fma(_t7, _t7, _t8 * _t8)));
+            float _t13 = (1.0f / (float) java.lang.Math.sqrt(_t12));
+            if (_t12 != 0.0f) {
+                return new FloatQuat(_t7 * _t13, _t8 * _t13, _t6 * _t13, _t5 * _t13);
+            } else {
+                return FloatQuat.ZERO;
+            }
+        } else {
+            float _t0 = 1.0f - alpha;
+            float _t5 = ((alpha) * (targetW) + (this.w * _t0));
+            float _t6 = ((alpha) * (targetZ) + (this.z * _t0));
+            float _t7 = ((alpha) * (targetX) + (this.x * _t0));
+            float _t8 = ((alpha) * (targetY) + (this.y * _t0));
+            float _t12 = ((_t5) * (_t5) + (((_t6) * (_t6) + (((_t7) * (_t7) + (_t8 * _t8))))));
+            float _t13 = (1.0f / (float) java.lang.Math.sqrt(_t12));
+            if (_t12 != 0.0f) {
+                return new FloatQuat(_t7 * _t13, _t8 * _t13, _t6 * _t13, _t5 * _t13);
+            } else {
+                return FloatQuat.ZERO;
+            }
+        }
+    }
+
+    /**
+     * Interpolate along the shortest path between this quaternion and {@code target} using the
+     * interpolation factor {@code alpha} and normalize the result, returning the result as a value.
+     * <p>
+     * The interpolation starts at this quaternion (interpolation factor {@code 0}) and ends at
+     * {@code target} (interpolation factor {@code 1}), or at its negation - the same rotation -
+     * when the two quaternions' dot product is negative.
+     * <p>
+     * Valid input: {@code alpha} must lie in {@code [0, 1]}.
+     *
+     * @param target the target rotation
+     * @param alpha the interpolation factor, typically within {@code [0, 1]}
+     * @return the resulting quaternion
+     */
+    public FloatQuat nlerpShortest(FloatQuat target, float alpha) {
+        float targetX = target.x;
+        float targetY = target.y;
+        float targetZ = target.z;
+        float targetW = target.w;
+        if (!org.joml2.internal.FmaSwitch.ON) return nlerpShortest_mulAdd(targetX, targetY, targetZ, targetW, alpha);
+        float _t1 = 1.0f - alpha;
+        float _t18, _t19, _t20, _t21;
+        if (-java.lang.Math.fma(this.w, targetW, java.lang.Math.fma(this.z, targetZ, java.lang.Math.fma(this.x, targetX, this.y * targetY))) > 0.0f) {
+            _t18 = java.lang.Math.fma(alpha, -targetW, this.w * _t1);
+            _t19 = java.lang.Math.fma(alpha, -targetZ, this.z * _t1);
+            _t20 = java.lang.Math.fma(alpha, -targetX, this.x * _t1);
+            _t21 = java.lang.Math.fma(alpha, -targetY, this.y * _t1);
+        } else {
+            _t18 = java.lang.Math.fma(alpha, targetW, this.w * _t1);
+            _t19 = java.lang.Math.fma(alpha, targetZ, this.z * _t1);
+            _t20 = java.lang.Math.fma(alpha, targetX, this.x * _t1);
+            _t21 = java.lang.Math.fma(alpha, targetY, this.y * _t1);
+        }
+        float _t25 = java.lang.Math.fma(_t18, _t18, java.lang.Math.fma(_t19, _t19, java.lang.Math.fma(_t20, _t20, _t21 * _t21)));
+        float _t26 = (1.0f / (float) java.lang.Math.sqrt(_t25));
+        if (_t25 != 0.0f) {
+            return new FloatQuat(_t20 * _t26, _t21 * _t26, _t19 * _t26, _t18 * _t26);
+        } else {
+            return FloatQuat.ZERO;
+        }
+    }
+
+    /**
+     * Interpolate along the shortest path between this quaternion and ({@code targetX},
+     * {@code targetY}, {@code targetZ}, {@code targetW}) using the interpolation factor
+     * {@code alpha} and normalize the result, returning the result as a value.
+     * <p>
+     * The interpolation starts at this quaternion (interpolation factor {@code 0}) and ends at
+     * ({@code targetX}, {@code targetY}, {@code targetZ}, {@code targetW}) (interpolation factor
+     * {@code 1}), or at its negation - the same rotation - when the two quaternions' dot product is
+     * negative.
+     * <p>
+     * Valid input: {@code alpha} must lie in {@code [0, 1]}.
+     *
+     * @param targetX the {@code x} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param targetY the {@code y} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param targetZ the {@code z} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param targetW the {@code w} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param alpha the interpolation factor, typically within {@code [0, 1]}
+     * @return the resulting quaternion
+     */
+    public FloatQuat nlerpShortest(float targetX, float targetY, float targetZ, float targetW, float alpha) {
+        if (!org.joml2.internal.FmaSwitch.ON) return nlerpShortest_mulAdd(targetX, targetY, targetZ, targetW, alpha);
+        float _t1 = 1.0f - alpha;
+        float _t18, _t19, _t20, _t21;
+        if (-java.lang.Math.fma(this.w, targetW, java.lang.Math.fma(this.z, targetZ, java.lang.Math.fma(this.x, targetX, this.y * targetY))) > 0.0f) {
+            _t18 = java.lang.Math.fma(alpha, -targetW, this.w * _t1);
+            _t19 = java.lang.Math.fma(alpha, -targetZ, this.z * _t1);
+            _t20 = java.lang.Math.fma(alpha, -targetX, this.x * _t1);
+            _t21 = java.lang.Math.fma(alpha, -targetY, this.y * _t1);
+        } else {
+            _t18 = java.lang.Math.fma(alpha, targetW, this.w * _t1);
+            _t19 = java.lang.Math.fma(alpha, targetZ, this.z * _t1);
+            _t20 = java.lang.Math.fma(alpha, targetX, this.x * _t1);
+            _t21 = java.lang.Math.fma(alpha, targetY, this.y * _t1);
+        }
+        float _t25 = java.lang.Math.fma(_t18, _t18, java.lang.Math.fma(_t19, _t19, java.lang.Math.fma(_t20, _t20, _t21 * _t21)));
+        float _t26 = (1.0f / (float) java.lang.Math.sqrt(_t25));
+        if (_t25 != 0.0f) {
+            return new FloatQuat(_t20 * _t26, _t21 * _t26, _t19 * _t26, _t18 * _t26);
+        } else {
+            return FloatQuat.ZERO;
+        }
+    }
+
+    /** {@code nlerpShortest} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private FloatQuat nlerpShortest_mulAdd(float targetX, float targetY, float targetZ, float targetW, float alpha) {
+        float _t1 = 1.0f - alpha;
+        float _t18, _t19, _t20, _t21;
+        if (-((this.w) * (targetW) + (((this.z) * (targetZ) + (((this.x) * (targetX) + (this.y * targetY)))))) > 0.0f) {
+            _t18 = ((this.w * _t1) - (alpha) * (targetW));
+            _t19 = ((this.z * _t1) - (alpha) * (targetZ));
+            _t20 = ((this.x * _t1) - (alpha) * (targetX));
+            _t21 = ((this.y * _t1) - (alpha) * (targetY));
+        } else {
+            _t18 = ((alpha) * (targetW) + (this.w * _t1));
+            _t19 = ((alpha) * (targetZ) + (this.z * _t1));
+            _t20 = ((alpha) * (targetX) + (this.x * _t1));
+            _t21 = ((alpha) * (targetY) + (this.y * _t1));
+        }
+        float _t25 = ((_t18) * (_t18) + (((_t19) * (_t19) + (((_t20) * (_t20) + (_t21 * _t21))))));
+        float _t26 = (1.0f / (float) java.lang.Math.sqrt(_t25));
+        if (_t25 != 0.0f) {
+            return new FloatQuat(_t20 * _t26, _t21 * _t26, _t19 * _t26, _t18 * _t26);
+        } else {
+            return FloatQuat.ZERO;
+        }
+    }
+
+    /**
+     * Spherically interpolate between this quaternion and {@code target} using the interpolation
+     * factor {@code alpha}, returning the result as a value.
+     * <p>
+     * This method interpolates along the arc as given: when the two quaternions' dot product is
+     * negative, the longer path around the sphere is taken. Use {@link #slerpShortest} (or negate
+     * one operand) to always interpolate along the shorter arc. For nearly opposite quaternions -
+     * nearly the same rotation, taken the long way round - both interpolation weights grow like 1 /
+     * sin of the angle between them and largely cancel, so the error grows like an ulp over that
+     * sine, up to a few percent at the smallest one this method still interpolates along (1e-6 in
+     * {@code float}, 1e-14 in {@code double}); the shorter arc has no such loss.
+     * <p>
+     * The interpolation starts at this quaternion (interpolation factor {@code 0}) and ends at
+     * {@code target} (interpolation factor {@code 1}).
+     * <p>
+     * Valid input: {@code target} must have unit length; this quaternion must have unit length;
+     * {@code alpha} must lie in {@code [0, 1]}.
+     *
+     * @param target the target rotation
+     * @param alpha the interpolation factor, typically within {@code [0, 1]}
+     * @return the resulting quaternion
+     */
+    public FloatQuat slerp(FloatQuat target, float alpha) {
+        float targetX = target.x;
+        float targetY = target.y;
+        float targetZ = target.z;
+        float targetW = target.w;
+        if (!org.joml2.internal.FmaSwitch.ON) return slerp_mulAdd(targetX, targetY, targetZ, targetW, alpha);
+        float _t2 = this.w + targetW;
+        float _t3 = this.z + targetZ;
+        float _t4 = this.x + targetX;
+        float _t5 = this.y + targetY;
+        float _t10 = Math.min(4.0f, java.lang.Math.fma(_t2, _t2, java.lang.Math.fma(_t3, _t3, java.lang.Math.fma(_t4, _t4, _t5 * _t5))));
+        float _t14 = Math.min(alpha, 1.0f - alpha) * quatArcAngle_fma(_t10);
+        float _ct0 = (float) java.lang.Math.sqrt((4.0f - _t10) * _t10);
+        if (!(_ct0 > 2.0E-6f && _ct0 < Float.POSITIVE_INFINITY)) return slerp_degenerate_fma(targetX, targetY, targetZ, targetW, alpha);
+        float _t22 = 2.0f * Math.sinWithCos(_t14) / _ct0;
+        float _t24 = java.lang.Math.fma(java.lang.Math.fma(-0.5f, _t10, 1.0f), _t22, Math.cosWithSin(_t14));
+        float _t25, _t26;
+        if (alpha < 0.5f) {
+            _t25 = _t24;
+            _t26 = _t22;
+        } else {
+            _t25 = _t22;
+            _t26 = _t24;
+        }
+        return new FloatQuat(java.lang.Math.fma(this.x, _t25, targetX * _t26), java.lang.Math.fma(this.y, _t25, targetY * _t26), java.lang.Math.fma(this.z, _t25, targetZ * _t26), java.lang.Math.fma(this.w, _t25, targetW * _t26));
+    }
+
+    /**
+     * Spherically interpolate between this quaternion and ({@code targetX}, {@code targetY},
+     * {@code targetZ}, {@code targetW}) using the interpolation factor {@code alpha}, returning the
+     * result as a value.
+     * <p>
+     * This method interpolates along the arc as given: when the two quaternions' dot product is
+     * negative, the longer path around the sphere is taken. Use {@link #slerpShortest} (or negate
+     * one operand) to always interpolate along the shorter arc. For nearly opposite quaternions -
+     * nearly the same rotation, taken the long way round - both interpolation weights grow like 1 /
+     * sin of the angle between them and largely cancel, so the error grows like an ulp over that
+     * sine, up to a few percent at the smallest one this method still interpolates along (1e-6 in
+     * {@code float}, 1e-14 in {@code double}); the shorter arc has no such loss.
+     * <p>
+     * The interpolation starts at this quaternion (interpolation factor {@code 0}) and ends at
+     * ({@code targetX}, {@code targetY}, {@code targetZ}, {@code targetW}) (interpolation factor
+     * {@code 1}).
+     * <p>
+     * Valid input: {@code (targetX, targetY, targetZ, targetW)} must have unit length; this
+     * quaternion must have unit length; {@code alpha} must lie in {@code [0, 1]}.
+     *
+     * @param targetX the {@code x} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param targetY the {@code y} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param targetZ the {@code z} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param targetW the {@code w} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param alpha the interpolation factor, typically within {@code [0, 1]}
+     * @return the resulting quaternion
+     */
+    public FloatQuat slerp(float targetX, float targetY, float targetZ, float targetW, float alpha) {
+        if (!org.joml2.internal.FmaSwitch.ON) return slerp_mulAdd(targetX, targetY, targetZ, targetW, alpha);
+        float _t2 = this.w + targetW;
+        float _t3 = this.z + targetZ;
+        float _t4 = this.x + targetX;
+        float _t5 = this.y + targetY;
+        float _t10 = Math.min(4.0f, java.lang.Math.fma(_t2, _t2, java.lang.Math.fma(_t3, _t3, java.lang.Math.fma(_t4, _t4, _t5 * _t5))));
+        float _t14 = Math.min(alpha, 1.0f - alpha) * quatArcAngle_fma(_t10);
+        float _ct0 = (float) java.lang.Math.sqrt((4.0f - _t10) * _t10);
+        if (!(_ct0 > 2.0E-6f && _ct0 < Float.POSITIVE_INFINITY)) return slerp_degenerate_fma(targetX, targetY, targetZ, targetW, alpha);
+        float _t22 = 2.0f * Math.sinWithCos(_t14) / _ct0;
+        float _t24 = java.lang.Math.fma(java.lang.Math.fma(-0.5f, _t10, 1.0f), _t22, Math.cosWithSin(_t14));
+        float _t25, _t26;
+        if (alpha < 0.5f) {
+            _t25 = _t24;
+            _t26 = _t22;
+        } else {
+            _t25 = _t22;
+            _t26 = _t24;
+        }
+        return new FloatQuat(java.lang.Math.fma(this.x, _t25, targetX * _t26), java.lang.Math.fma(this.y, _t25, targetY * _t26), java.lang.Math.fma(this.z, _t25, targetZ * _t26), java.lang.Math.fma(this.w, _t25, targetW * _t26));
+    }
+
+    /** {@code slerp} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private FloatQuat slerp_mulAdd(float targetX, float targetY, float targetZ, float targetW, float alpha) {
+        float _t2 = this.w + targetW;
+        float _t3 = this.z + targetZ;
+        float _t4 = this.x + targetX;
+        float _t5 = this.y + targetY;
+        float _t10 = Math.min(4.0f, ((_t2) * (_t2) + (((_t3) * (_t3) + (((_t4) * (_t4) + (_t5 * _t5)))))));
+        float _t14 = Math.min(alpha, 1.0f - alpha) * quatArcAngle_mulAdd(_t10);
+        float _ct0 = (float) java.lang.Math.sqrt((4.0f - _t10) * _t10);
+        if (!(_ct0 > 2.0E-6f && _ct0 < Float.POSITIVE_INFINITY)) return slerp_degenerate_mulAdd(targetX, targetY, targetZ, targetW, alpha);
+        float _t22 = 2.0f * Math.sinWithCos(_t14) / _ct0;
+        float _t24 = ((((1.0f) - (0.5f) * (_t10))) * (_t22) + (Math.cosWithSin(_t14)));
+        float _t25, _t26;
+        if (alpha < 0.5f) {
+            _t25 = _t24;
+            _t26 = _t22;
+        } else {
+            _t25 = _t22;
+            _t26 = _t24;
+        }
+        return new FloatQuat(((this.x) * (_t25) + (targetX * _t26)), ((this.y) * (_t25) + (targetY * _t26)), ((this.z) * (_t25) + (targetZ * _t26)), ((this.w) * (_t25) + (targetW * _t26)));
+    }
+
+    /**
+     * Degenerate-arc path of {@code slerp}: its methods leave here when the two quaternions are
+     * equal or opposite to within the precision (the sine of the angle between them is too small to
+     * divide by) or NaN; reached only through them.
+     */
+    private FloatQuat slerp_degenerate_fma(float targetX, float targetY, float targetZ, float targetW, float alpha) {
+        float _t1 = this.w + targetW;
+        float _t2 = this.z + targetZ;
+        float _t3 = this.x + targetX;
+        float _t4 = this.y + targetY;
+        float _t5 = alpha < 0.5f ? 1.0f : 0.0f;
+        float _t11 = Math.min(4.0f, java.lang.Math.fma(_t1, _t1, java.lang.Math.fma(_t2, _t2, java.lang.Math.fma(_t3, _t3, _t4 * _t4))));
+        float _t13, _t14;
+        if (_t11 > 4.0f - _t11) {
+            _t13 = 1.0f - alpha;
+            _t14 = alpha;
+        } else {
+            _t13 = _t5;
+            _t14 = 1.0f - _t5;
+        }
+        return new FloatQuat(java.lang.Math.fma(this.x, _t13, targetX * _t14), java.lang.Math.fma(this.y, _t13, targetY * _t14), java.lang.Math.fma(this.z, _t13, targetZ * _t14), java.lang.Math.fma(this.w, _t13, targetW * _t14));
+    }
+
+    /**
+     * Degenerate-arc path of {@code slerp}: its methods leave here when the two quaternions are
+     * equal or opposite to within the precision (the sine of the angle between them is too small to
+     * divide by) or NaN; reached only through them.
+     */
+    private FloatQuat slerp_degenerate_mulAdd(float targetX, float targetY, float targetZ, float targetW, float alpha) {
+        float _t1 = this.w + targetW;
+        float _t2 = this.z + targetZ;
+        float _t3 = this.x + targetX;
+        float _t4 = this.y + targetY;
+        float _t5 = alpha < 0.5f ? 1.0f : 0.0f;
+        float _t11 = Math.min(4.0f, ((_t1) * (_t1) + (((_t2) * (_t2) + (((_t3) * (_t3) + (_t4 * _t4)))))));
+        float _t13, _t14;
+        if (_t11 > 4.0f - _t11) {
+            _t13 = 1.0f - alpha;
+            _t14 = alpha;
+        } else {
+            _t13 = _t5;
+            _t14 = 1.0f - _t5;
+        }
+        return new FloatQuat(((this.x) * (_t13) + (targetX * _t14)), ((this.y) * (_t13) + (targetY * _t14)), ((this.z) * (_t13) + (targetZ * _t14)), ((this.w) * (_t13) + (targetW * _t14)));
+    }
+
+    /**
+     * Spherically interpolate along the shortest path between this quaternion and {@code target}
+     * using the interpolation factor {@code alpha}, returning the result as a value.
+     * <p>
+     * The interpolation starts at this quaternion (interpolation factor {@code 0}) and ends at
+     * {@code target} (interpolation factor {@code 1}), or at its negation - the same rotation -
+     * when the two quaternions' dot product is negative.
+     * <p>
+     * Valid input: {@code target} must have unit length; this quaternion must have unit length;
+     * {@code alpha} must lie in {@code [0, 1]}.
+     *
+     * @param target the target rotation
+     * @param alpha the interpolation factor, typically within {@code [0, 1]}
+     * @return the resulting quaternion
+     */
+    public FloatQuat slerpShortest(FloatQuat target, float alpha) {
+        float targetX = target.x;
+        float targetY = target.y;
+        float targetZ = target.z;
+        float targetW = target.w;
+        if (!org.joml2.internal.FmaSwitch.ON) return slerpShortest_mulAdd(targetX, targetY, targetZ, targetW, alpha);
+        float _t12 = java.lang.Math.fma(this.w, targetW, java.lang.Math.fma(this.z, targetZ, java.lang.Math.fma(this.x, targetX, this.y * targetY)));
+        float _t15 = Math.min(1.0f, java.lang.Math.abs(_t12));
+        float _t18 = alpha * Math.acos(_t15);
+        float _t21, _t22, _t23, _t24;
+        if (-_t12 > 0.0f) {
+            _t21 = -targetW;
+            _t22 = -targetZ;
+            _t23 = -targetX;
+            _t24 = -targetY;
+        } else {
+            _t21 = targetW;
+            _t22 = targetZ;
+            _t23 = targetX;
+            _t24 = targetY;
+        }
+        float _t29 = java.lang.Math.fma(-_t15, _t15, 1.0f);
+        float _t32 = Math.sinWithCos(_t18) * (1.0f / (float) java.lang.Math.sqrt(_t29));
+        return slerpShortest_s9ffd1c_tail_fma((float) java.lang.Math.sqrt(_t29), java.lang.Math.fma(-_t32, _t15, Math.cosWithSin(_t18)), _t32, _t21, alpha, 1.0f - alpha, _t22, _t23, _t24);
+    }
+
+    /** Private tail of {@code slerpShortest}; reached only through it. */
+    private FloatQuat slerpShortest_s9ffd1c_tail_fma(float _t30, float _t38, float _t32, float _t21, float alpha, float _t1, float _t22, float _t23, float _t24) {
+        float _t43, _t44, _t45, _t46;
+        if (_t30 > 0.0f) {
+            _t43 = java.lang.Math.fma(this.w, _t38, _t32 * _t21);
+            _t44 = java.lang.Math.fma(this.z, _t38, _t32 * _t22);
+            _t45 = java.lang.Math.fma(this.x, _t38, _t32 * _t23);
+            _t46 = java.lang.Math.fma(this.y, _t38, _t32 * _t24);
+        } else {
+            _t43 = java.lang.Math.fma(alpha, _t21, this.w * _t1);
+            _t44 = java.lang.Math.fma(alpha, _t22, this.z * _t1);
+            _t45 = java.lang.Math.fma(alpha, _t23, this.x * _t1);
+            _t46 = java.lang.Math.fma(alpha, _t24, this.y * _t1);
+        }
+        float _t50 = java.lang.Math.fma(_t43, _t43, java.lang.Math.fma(_t44, _t44, java.lang.Math.fma(_t45, _t45, _t46 * _t46)));
+        float _t51 = (1.0f / (float) java.lang.Math.sqrt(_t50));
+        if (_t50 != 0.0f) {
+            return new FloatQuat(_t51 * _t45, _t51 * _t46, _t51 * _t44, _t51 * _t43);
+        } else {
+            return FloatQuat.ZERO;
+        }
+    }
+
+    /** Private tail of {@code slerpShortest}; reached only through it. */
+    private FloatQuat slerpShortest_s9ffd1c_tail_mulAdd(float _t30, float _t38, float _t32, float _t21, float alpha, float _t1, float _t22, float _t23, float _t24) {
+        float _t43, _t44, _t45, _t46;
+        if (_t30 > 0.0f) {
+            _t43 = ((this.w) * (_t38) + (_t32 * _t21));
+            _t44 = ((this.z) * (_t38) + (_t32 * _t22));
+            _t45 = ((this.x) * (_t38) + (_t32 * _t23));
+            _t46 = ((this.y) * (_t38) + (_t32 * _t24));
+        } else {
+            _t43 = ((alpha) * (_t21) + (this.w * _t1));
+            _t44 = ((alpha) * (_t22) + (this.z * _t1));
+            _t45 = ((alpha) * (_t23) + (this.x * _t1));
+            _t46 = ((alpha) * (_t24) + (this.y * _t1));
+        }
+        float _t50 = ((_t43) * (_t43) + (((_t44) * (_t44) + (((_t45) * (_t45) + (_t46 * _t46))))));
+        float _t51 = (1.0f / (float) java.lang.Math.sqrt(_t50));
+        if (_t50 != 0.0f) {
+            return new FloatQuat(_t51 * _t45, _t51 * _t46, _t51 * _t44, _t51 * _t43);
+        } else {
+            return FloatQuat.ZERO;
+        }
+    }
+
+    /**
+     * Spherically interpolate along the shortest path between this quaternion and ({@code targetX},
+     * {@code targetY}, {@code targetZ}, {@code targetW}) using the interpolation factor
+     * {@code alpha}, returning the result as a value.
+     * <p>
+     * The interpolation starts at this quaternion (interpolation factor {@code 0}) and ends at
+     * ({@code targetX}, {@code targetY}, {@code targetZ}, {@code targetW}) (interpolation factor
+     * {@code 1}), or at its negation - the same rotation - when the two quaternions' dot product is
+     * negative.
+     * <p>
+     * Valid input: {@code (targetX, targetY, targetZ, targetW)} must have unit length; this
+     * quaternion must have unit length; {@code alpha} must lie in {@code [0, 1]}.
+     *
+     * @param targetX the {@code x} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param targetY the {@code y} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param targetZ the {@code z} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param targetW the {@code w} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param alpha the interpolation factor, typically within {@code [0, 1]}
+     * @return the resulting quaternion
+     */
+    public FloatQuat slerpShortest(float targetX, float targetY, float targetZ, float targetW, float alpha) {
+        if (!org.joml2.internal.FmaSwitch.ON) return slerpShortest_mulAdd(targetX, targetY, targetZ, targetW, alpha);
+        float _t12 = java.lang.Math.fma(this.w, targetW, java.lang.Math.fma(this.z, targetZ, java.lang.Math.fma(this.x, targetX, this.y * targetY)));
+        float _t15 = Math.min(1.0f, java.lang.Math.abs(_t12));
+        float _t18 = alpha * Math.acos(_t15);
+        float _t21, _t22, _t23, _t24;
+        if (-_t12 > 0.0f) {
+            _t21 = -targetW;
+            _t22 = -targetZ;
+            _t23 = -targetX;
+            _t24 = -targetY;
+        } else {
+            _t21 = targetW;
+            _t22 = targetZ;
+            _t23 = targetX;
+            _t24 = targetY;
+        }
+        float _t29 = java.lang.Math.fma(-_t15, _t15, 1.0f);
+        float _t32 = Math.sinWithCos(_t18) * (1.0f / (float) java.lang.Math.sqrt(_t29));
+        return slerpShortest_s9ffd1c_tail_fma((float) java.lang.Math.sqrt(_t29), java.lang.Math.fma(-_t32, _t15, Math.cosWithSin(_t18)), _t32, _t21, alpha, 1.0f - alpha, _t22, _t23, _t24);
+    }
+
+    /** {@code slerpShortest} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private FloatQuat slerpShortest_mulAdd(float targetX, float targetY, float targetZ, float targetW, float alpha) {
+        float _t12 = ((this.w) * (targetW) + (((this.z) * (targetZ) + (((this.x) * (targetX) + (this.y * targetY))))));
+        float _t15 = Math.min(1.0f, java.lang.Math.abs(_t12));
+        float _t18 = alpha * Math.acos(_t15);
+        float _t21, _t22, _t23, _t24;
+        if (-_t12 > 0.0f) {
+            _t21 = -targetW;
+            _t22 = -targetZ;
+            _t23 = -targetX;
+            _t24 = -targetY;
+        } else {
+            _t21 = targetW;
+            _t22 = targetZ;
+            _t23 = targetX;
+            _t24 = targetY;
+        }
+        float _t29 = ((1.0f) - (_t15) * (_t15));
+        float _t32 = Math.sinWithCos(_t18) * (1.0f / (float) java.lang.Math.sqrt(_t29));
+        return slerpShortest_s9ffd1c_tail_mulAdd((float) java.lang.Math.sqrt(_t29), ((Math.cosWithSin(_t18)) - (_t32) * (_t15)), _t32, _t21, alpha, 1.0f - alpha, _t22, _t23, _t24);
+    }
+
+    /**
+     * Perform spherical quadrangle interpolation (SQUAD) between this quaternion (the start
+     * rotation) and the target rotation, shaped by the two inner control quaternions, returning the
+     * result as a value.
+     * <p>
+     * Valid input: this quaternion must have unit length; {@code control0} must have unit length;
+     * {@code control1} must have unit length; {@code target} must have unit length; {@code t} must
+     * lie in {@code [0, 1]}.
+     *
+     * @param control0 the inner control quaternion associated with the start rotation
+     * @param control1 the inner control quaternion associated with the end rotation
+     * @param target the target rotation
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return the resulting quaternion
+     */
+    public FloatQuat squad(FloatQuat control0, FloatQuat control1, FloatQuat target, float t) {
+        float control0X = control0.x;
+        float control0Y = control0.y;
+        float control0Z = control0.z;
+        float control0W = control0.w;
+        float control1X = control1.x;
+        float control1Y = control1.y;
+        float control1Z = control1.z;
+        float control1W = control1.w;
+        float targetX = target.x;
+        float targetY = target.y;
+        float targetZ = target.z;
+        float targetW = target.w;
+        if (org.joml2.internal.FmaSwitch.ON) return squad_fma(control0X, control0Y, control0Z, control0W, control1X, control1Y, control1Z, control1W, targetX, targetY, targetZ, targetW, t);
+        return squad_mulAdd(control0X, control0Y, control0Z, control0W, control1X, control1Y, control1Z, control1W, targetX, targetY, targetZ, targetW, t);
+    }
+
+    /**
+     * Perform spherical quadrangle interpolation (SQUAD) between this quaternion (the start
+     * rotation) and the target rotation, shaped by the two inner control quaternions, returning the
+     * result as a value.
+     * <p>
+     * Valid input: this quaternion must have unit length;
+     * {@code (control0X, control0Y, control0Z, control0W)} must have unit length;
+     * {@code (control1X, control1Y, control1Z, control1W)} must have unit length;
+     * {@code (targetX, targetY, targetZ, targetW)} must have unit length; {@code t} must lie in
+     * {@code [0, 1]}.
+     *
+     * @param control0X the {@code x} component of the quaternion
+     *        {@code (control0X, control0Y, control0Z, control0W)}
+     * @param control0Y the {@code y} component of the quaternion
+     *        {@code (control0X, control0Y, control0Z, control0W)}
+     * @param control0Z the {@code z} component of the quaternion
+     *        {@code (control0X, control0Y, control0Z, control0W)}
+     * @param control0W the {@code w} component of the quaternion
+     *        {@code (control0X, control0Y, control0Z, control0W)}
+     * @param control1X the {@code x} component of the quaternion
+     *        {@code (control1X, control1Y, control1Z, control1W)}
+     * @param control1Y the {@code y} component of the quaternion
+     *        {@code (control1X, control1Y, control1Z, control1W)}
+     * @param control1Z the {@code z} component of the quaternion
+     *        {@code (control1X, control1Y, control1Z, control1W)}
+     * @param control1W the {@code w} component of the quaternion
+     *        {@code (control1X, control1Y, control1Z, control1W)}
+     * @param targetX the {@code x} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param targetY the {@code y} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param targetZ the {@code z} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param targetW the {@code w} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return the resulting quaternion
+     */
+    public FloatQuat squad(float control0X, float control0Y, float control0Z, float control0W, float control1X, float control1Y, float control1Z, float control1W, float targetX, float targetY, float targetZ, float targetW, float t) {
+        if (org.joml2.internal.FmaSwitch.ON) return squad_fma(control0X, control0Y, control0Z, control0W, control1X, control1Y, control1Z, control1W, targetX, targetY, targetZ, targetW, t);
+        return squad_mulAdd(control0X, control0Y, control0Z, control0W, control1X, control1Y, control1Z, control1W, targetX, targetY, targetZ, targetW, t);
+    }
+
+    /** {@code squad} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private FloatQuat squad_fma(float control0X, float control0Y, float control0Z, float control0W, float control1X, float control1Y, float control1Z, float control1W, float targetX, float targetY, float targetZ, float targetW, float t) {
+        float _t0 = 1.0f - t;
+        float _t1 = t + t;
+        float _t3 = control0W + control1W;
+        float _t4 = control0Z + control1Z;
+        float _t5 = control0X + control1X;
+        float _t6 = control0Y + control1Y;
+        float _t7 = Math.min(t, _t0);
+        float _t8 = this.w + targetW;
+        float _t9 = this.z + targetZ;
+        float _t10 = this.x + targetX;
+        float _t11 = this.y + targetY;
+        float _t12 = _t0 * _t1;
+        float _t23 = Math.min(4.0f, java.lang.Math.fma(_t3, _t3, java.lang.Math.fma(_t4, _t4, java.lang.Math.fma(_t5, _t5, _t6 * _t6))));
+        float _t24 = Math.min(4.0f, java.lang.Math.fma(_t8, _t8, java.lang.Math.fma(_t9, _t9, java.lang.Math.fma(_t10, _t10, _t11 * _t11))));
+        float _t27 = 4.0f - _t23;
+        float _t28 = 4.0f - _t24;
+        float _t33 = _t7 * quatArcAngle_fma(_t23);
+        float _t41 = (float) java.lang.Math.sqrt(_t27 * _t23);
+        return squad_s14071083_1_fma(control0X, control0Y, control0Z, control0W, control1X, control1Y, control1Z, control1W, targetX, targetY, targetZ, targetW, t, _t12, Math.min(_t12, java.lang.Math.fma(-_t0, _t1, 1.0f)), _t23, _t24, _t33, _t7 * quatArcAngle_fma(_t24), _t41, (float) java.lang.Math.sqrt(_t28 * _t24), _t23 > _t27 ? _t7 : 0.0f, _t24 > _t28 ? _t7 : 0.0f, 2.0f / _t41 * Math.sinWithCos(_t33));
+    }
+
+    /** {@code squad} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private FloatQuat squad_mulAdd(float control0X, float control0Y, float control0Z, float control0W, float control1X, float control1Y, float control1Z, float control1W, float targetX, float targetY, float targetZ, float targetW, float t) {
+        float _t0 = 1.0f - t;
+        float _t1 = t + t;
+        float _t3 = control0W + control1W;
+        float _t4 = control0Z + control1Z;
+        float _t5 = control0X + control1X;
+        float _t6 = control0Y + control1Y;
+        float _t7 = Math.min(t, _t0);
+        float _t8 = this.w + targetW;
+        float _t9 = this.z + targetZ;
+        float _t10 = this.x + targetX;
+        float _t11 = this.y + targetY;
+        float _t12 = _t0 * _t1;
+        float _t23 = Math.min(4.0f, ((_t3) * (_t3) + (((_t4) * (_t4) + (((_t5) * (_t5) + (_t6 * _t6)))))));
+        float _t24 = Math.min(4.0f, ((_t8) * (_t8) + (((_t9) * (_t9) + (((_t10) * (_t10) + (_t11 * _t11)))))));
+        float _t27 = 4.0f - _t23;
+        float _t28 = 4.0f - _t24;
+        float _t33 = _t7 * quatArcAngle_mulAdd(_t23);
+        float _t41 = (float) java.lang.Math.sqrt(_t27 * _t23);
+        return squad_s14071083_1_mulAdd(control0X, control0Y, control0Z, control0W, control1X, control1Y, control1Z, control1W, targetX, targetY, targetZ, targetW, t, _t12, Math.min(_t12, ((1.0f) - (_t0) * (_t1))), _t23, _t24, _t33, _t7 * quatArcAngle_mulAdd(_t24), _t41, (float) java.lang.Math.sqrt(_t28 * _t24), _t23 > _t27 ? _t7 : 0.0f, _t24 > _t28 ? _t7 : 0.0f, 2.0f / _t41 * Math.sinWithCos(_t33));
+    }
+
+    /** Piece 2 of {@code squad}, split to fit the inline budget; reached only through it. */
+    private FloatQuat squad_s14071083_1_fma(float control0X, float control0Y, float control0Z, float control0W, float control1X, float control1Y, float control1Z, float control1W, float targetX, float targetY, float targetZ, float targetW, float t, float _t12, float _t16, float _t23, float _t24, float _t33, float _t34, float _t41, float _t43, float _t47, float _t48, float _t51) {
+        float _t52 = 2.0f / _t43 * Math.sinWithCos(_t34);
+        float _t55, _t57;
+        if (_t41 > 2.0E-6f) {
+            _t55 = _t51;
+            _t57 = java.lang.Math.fma(java.lang.Math.fma(-0.5f, _t23, 1.0f), _t51, Math.cosWithSin(_t33));
+        } else {
+            _t55 = _t47;
+            _t57 = 1.0f - _t47;
+        }
+        float _t56, _t58;
+        if (_t43 > 2.0E-6f) {
+            _t56 = _t52;
+            _t58 = java.lang.Math.fma(java.lang.Math.fma(-0.5f, _t24, 1.0f), _t52, Math.cosWithSin(_t34));
+        } else {
+            _t56 = _t48;
+            _t58 = 1.0f - _t48;
+        }
+        float _t59, _t60, _t61, _t62;
+        if (t < 0.5f) {
+            _t59 = _t57;
+            _t60 = _t55;
+            _t61 = _t58;
+            _t62 = _t56;
+        } else {
+            _t59 = _t55;
+            _t60 = _t57;
+            _t61 = _t56;
+            _t62 = _t58;
+        }
+        float _t71 = java.lang.Math.fma(control0X, _t59, control1X * _t60);
+        float _t72 = java.lang.Math.fma(control0W, _t59, control1W * _t60);
+        float _t73 = java.lang.Math.fma(this.w, _t61, targetW * _t62);
+        float _t74 = java.lang.Math.fma(control0Z, _t59, control1Z * _t60);
+        float _t75 = java.lang.Math.fma(this.z, _t61, targetZ * _t62);
+        float _t76 = java.lang.Math.fma(this.x, _t61, targetX * _t62);
+        return squad_s14071083_2_fma(_t12, _t16, _t71, _t72, _t73, _t74, _t75, _t76, java.lang.Math.fma(control0Y, _t59, control1Y * _t60), java.lang.Math.fma(this.y, _t61, targetY * _t62), _t72 + _t73, _t74 + _t75, _t71 + _t76);
+    }
+
+    /** Piece 2 of {@code squad}, split to fit the inline budget; reached only through it. */
+    private FloatQuat squad_s14071083_1_mulAdd(float control0X, float control0Y, float control0Z, float control0W, float control1X, float control1Y, float control1Z, float control1W, float targetX, float targetY, float targetZ, float targetW, float t, float _t12, float _t16, float _t23, float _t24, float _t33, float _t34, float _t41, float _t43, float _t47, float _t48, float _t51) {
+        float _t52 = 2.0f / _t43 * Math.sinWithCos(_t34);
+        float _t55, _t57;
+        if (_t41 > 2.0E-6f) {
+            _t55 = _t51;
+            _t57 = ((((1.0f) - (0.5f) * (_t23))) * (_t51) + (Math.cosWithSin(_t33)));
+        } else {
+            _t55 = _t47;
+            _t57 = 1.0f - _t47;
+        }
+        float _t56, _t58;
+        if (_t43 > 2.0E-6f) {
+            _t56 = _t52;
+            _t58 = ((((1.0f) - (0.5f) * (_t24))) * (_t52) + (Math.cosWithSin(_t34)));
+        } else {
+            _t56 = _t48;
+            _t58 = 1.0f - _t48;
+        }
+        float _t59, _t60, _t61, _t62;
+        if (t < 0.5f) {
+            _t59 = _t57;
+            _t60 = _t55;
+            _t61 = _t58;
+            _t62 = _t56;
+        } else {
+            _t59 = _t55;
+            _t60 = _t57;
+            _t61 = _t56;
+            _t62 = _t58;
+        }
+        float _t71 = ((control0X) * (_t59) + (control1X * _t60));
+        float _t72 = ((control0W) * (_t59) + (control1W * _t60));
+        float _t73 = ((this.w) * (_t61) + (targetW * _t62));
+        float _t74 = ((control0Z) * (_t59) + (control1Z * _t60));
+        float _t75 = ((this.z) * (_t61) + (targetZ * _t62));
+        float _t76 = ((this.x) * (_t61) + (targetX * _t62));
+        return squad_s14071083_2_mulAdd(_t12, _t16, _t71, _t72, _t73, _t74, _t75, _t76, ((control0Y) * (_t59) + (control1Y * _t60)), ((this.y) * (_t61) + (targetY * _t62)), _t72 + _t73, _t74 + _t75, _t71 + _t76);
+    }
+
+    /** Piece 3 of {@code squad}, split to fit the inline budget; reached only through it. */
+    private FloatQuat squad_s14071083_2_fma(float _t12, float _t16, float _t71, float _t72, float _t73, float _t74, float _t75, float _t76, float _t77, float _t78, float _t79, float _t80, float _t81) {
+        float _t82 = _t77 + _t78;
+        float _t87 = Math.min(4.0f, java.lang.Math.fma(_t79, _t79, java.lang.Math.fma(_t80, _t80, java.lang.Math.fma(_t81, _t81, _t82 * _t82))));
+        float _t89 = 4.0f - _t87;
+        float _t92 = _t16 * quatArcAngle_fma(_t87);
+        float _t96 = (float) java.lang.Math.sqrt(_t89 * _t87);
+        float _t99 = _t87 > _t89 ? _t16 : 0.0f;
+        float _t101 = 2.0f / _t96 * Math.sinWithCos(_t92);
+        float _t103, _t104;
+        if (_t96 > 2.0E-6f) {
+            _t103 = _t101;
+            _t104 = java.lang.Math.fma(java.lang.Math.fma(-0.5f, _t87, 1.0f), _t101, Math.cosWithSin(_t92));
+        } else {
+            _t103 = _t99;
+            _t104 = 1.0f - _t99;
+        }
+        float _t105, _t106;
+        if (_t12 < 0.5f) {
+            _t105 = _t103;
+            _t106 = _t104;
+        } else {
+            _t105 = _t104;
+            _t106 = _t103;
+        }
+        float _sfx0 = java.lang.Math.fma(_t71, _t105, _t76 * _t106);
+        float _sfx1 = java.lang.Math.fma(_t77, _t105, _t78 * _t106);
+        float _sfx2 = java.lang.Math.fma(_t74, _t105, _t75 * _t106);
+        float _sfx3 = java.lang.Math.fma(_t72, _t105, _t73 * _t106);
+        return new FloatQuat(_sfx0, _sfx1, _sfx2, _sfx3);
+    }
+
+    /** Piece 3 of {@code squad}, split to fit the inline budget; reached only through it. */
+    private FloatQuat squad_s14071083_2_mulAdd(float _t12, float _t16, float _t71, float _t72, float _t73, float _t74, float _t75, float _t76, float _t77, float _t78, float _t79, float _t80, float _t81) {
+        float _t82 = _t77 + _t78;
+        float _t87 = Math.min(4.0f, ((_t79) * (_t79) + (((_t80) * (_t80) + (((_t81) * (_t81) + (_t82 * _t82)))))));
+        float _t89 = 4.0f - _t87;
+        float _t92 = _t16 * quatArcAngle_mulAdd(_t87);
+        float _t96 = (float) java.lang.Math.sqrt(_t89 * _t87);
+        float _t99 = _t87 > _t89 ? _t16 : 0.0f;
+        float _t101 = 2.0f / _t96 * Math.sinWithCos(_t92);
+        float _t103, _t104;
+        if (_t96 > 2.0E-6f) {
+            _t103 = _t101;
+            _t104 = ((((1.0f) - (0.5f) * (_t87))) * (_t101) + (Math.cosWithSin(_t92)));
+        } else {
+            _t103 = _t99;
+            _t104 = 1.0f - _t99;
+        }
+        float _t105, _t106;
+        if (_t12 < 0.5f) {
+            _t105 = _t103;
+            _t106 = _t104;
+        } else {
+            _t105 = _t104;
+            _t106 = _t103;
+        }
+        float _sfx0 = ((_t71) * (_t105) + (_t76 * _t106));
+        float _sfx1 = ((_t77) * (_t105) + (_t78 * _t106));
+        float _sfx2 = ((_t74) * (_t105) + (_t75 * _t106));
+        float _sfx3 = ((_t72) * (_t105) + (_t73 * _t106));
+        return new FloatQuat(_sfx0, _sfx1, _sfx2, _sfx3);
+    }
+
+    /**
+     * Multiply this quaternion by {@code other}, returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code R} the operand, then the new quaternion
+     * will be {@code Q * R}. So when transforming a vector {@code v} with the new quaternion by
+     * using {@code Q * R * v}, the transformation of the operand will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param other the right operand
+     * @return the resulting quaternion
+     */
+    public FloatQuat mul(FloatQuat other) {
+        float otherX = other.x;
+        float otherY = other.y;
+        float otherZ = other.z;
+        float otherW = other.w;
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new FloatQuat(java.lang.Math.fma(otherX, this.w, otherW * this.x) + java.lang.Math.fma(otherZ, this.y, -(otherY * this.z)), java.lang.Math.fma(otherX, this.z, otherW * this.y) + java.lang.Math.fma(otherY, this.w, otherZ * -this.x), java.lang.Math.fma(otherY, this.x, otherZ * this.w) + java.lang.Math.fma(otherW, this.z, -(otherX * this.y)), java.lang.Math.fma(otherW, this.w, otherX * -this.x) - java.lang.Math.fma(otherY, this.y, otherZ * this.z));
+        } else {
+            return new FloatQuat(((otherX) * (this.w) + (otherW * this.x)) + ((otherZ) * (this.y) - (otherY * this.z)), ((otherX) * (this.z) + (otherW * this.y)) + ((otherY) * (this.w) - (otherZ * this.x)), ((otherY) * (this.x) + (otherZ * this.w)) + ((otherW) * (this.z) - (otherX * this.y)), ((otherW) * (this.w) - (otherX * this.x)) - ((otherY) * (this.y) + (otherZ * this.z)));
+        }
+    }
+
+    /**
+     * Multiply this quaternion by ({@code otherX}, {@code otherY}, {@code otherZ}, {@code otherW}),
+     * returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code R} the operand, then the new quaternion
+     * will be {@code Q * R}. So when transforming a vector {@code v} with the new quaternion by
+     * using {@code Q * R * v}, the transformation of the operand will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param otherX the {@code x} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @return the resulting quaternion
+     */
+    public FloatQuat mul(float otherX, float otherY, float otherZ, float otherW) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new FloatQuat(java.lang.Math.fma(otherX, this.w, otherW * this.x) + java.lang.Math.fma(otherZ, this.y, -(otherY * this.z)), java.lang.Math.fma(otherX, this.z, otherW * this.y) + java.lang.Math.fma(otherY, this.w, otherZ * -this.x), java.lang.Math.fma(otherY, this.x, otherZ * this.w) + java.lang.Math.fma(otherW, this.z, -(otherX * this.y)), java.lang.Math.fma(otherW, this.w, otherX * -this.x) - java.lang.Math.fma(otherY, this.y, otherZ * this.z));
+        } else {
+            return new FloatQuat(((otherX) * (this.w) + (otherW * this.x)) + ((otherZ) * (this.y) - (otherY * this.z)), ((otherX) * (this.z) + (otherW * this.y)) + ((otherY) * (this.w) - (otherZ * this.x)), ((otherY) * (this.x) + (otherZ * this.w)) + ((otherW) * (this.z) - (otherX * this.y)), ((otherW) * (this.w) - (otherX * this.x)) - ((otherY) * (this.y) + (otherZ * this.z)));
+        }
+    }
+
+    /**
+     * Pre-multiply the transformation {@code other} onto this quaternion, returning the result as a
+     * value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code T} the given transformation quaternion,
+     * then the new quaternion will be {@code T * Q}. So when transforming a vector {@code v} with
+     * the new quaternion by using {@code T * Q * v}, the given transformation will be applied last.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param other the left operand
+     * @return the resulting quaternion
+     */
+    public FloatQuat preMul(FloatQuat other) {
+        float otherX = other.x;
+        float otherY = other.y;
+        float otherZ = other.z;
+        float otherW = other.w;
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new FloatQuat(java.lang.Math.fma(otherX, this.w, otherW * this.x) + java.lang.Math.fma(otherY, this.z, -(otherZ * this.y)), java.lang.Math.fma(otherY, this.w, otherZ * this.x) + java.lang.Math.fma(otherW, this.y, -otherX * this.z), java.lang.Math.fma(otherX, this.y, otherW * this.z) + java.lang.Math.fma(otherZ, this.w, -(otherY * this.x)), java.lang.Math.fma(otherW, this.w, -otherX * this.x) - java.lang.Math.fma(otherY, this.y, otherZ * this.z));
+        } else {
+            return new FloatQuat(((otherX) * (this.w) + (otherW * this.x)) + ((otherY) * (this.z) - (otherZ * this.y)), ((otherY) * (this.w) + (otherZ * this.x)) + ((otherW) * (this.y) - (otherX * this.z)), ((otherX) * (this.y) + (otherW * this.z)) + ((otherZ) * (this.w) - (otherY * this.x)), ((otherW) * (this.w) - (otherX * this.x)) - ((otherY) * (this.y) + (otherZ * this.z)));
+        }
+    }
+
+    /**
+     * Pre-multiply the transformation ({@code otherX}, {@code otherY}, {@code otherZ},
+     * {@code otherW}) onto this quaternion, returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code T} the given transformation quaternion,
+     * then the new quaternion will be {@code T * Q}. So when transforming a vector {@code v} with
+     * the new quaternion by using {@code T * Q * v}, the given transformation will be applied last.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param otherX the {@code x} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @return the resulting quaternion
+     */
+    public FloatQuat preMul(float otherX, float otherY, float otherZ, float otherW) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new FloatQuat(java.lang.Math.fma(otherX, this.w, otherW * this.x) + java.lang.Math.fma(otherY, this.z, -(otherZ * this.y)), java.lang.Math.fma(otherY, this.w, otherZ * this.x) + java.lang.Math.fma(otherW, this.y, -otherX * this.z), java.lang.Math.fma(otherX, this.y, otherW * this.z) + java.lang.Math.fma(otherZ, this.w, -(otherY * this.x)), java.lang.Math.fma(otherW, this.w, -otherX * this.x) - java.lang.Math.fma(otherY, this.y, otherZ * this.z));
+        } else {
+            return new FloatQuat(((otherX) * (this.w) + (otherW * this.x)) + ((otherY) * (this.z) - (otherZ * this.y)), ((otherY) * (this.w) + (otherZ * this.x)) + ((otherW) * (this.y) - (otherX * this.z)), ((otherX) * (this.y) + (otherW * this.z)) + ((otherZ) * (this.w) - (otherY * this.x)), ((otherW) * (this.w) - (otherX * this.x)) - ((otherY) * (this.y) + (otherZ * this.z)));
+        }
+    }
+
+    /**
+     * Add {@code other} scaled by {@code weight} to this quaternion, returning the result as a
+     * value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param other the quaternion to scale and add
+     * @param weight the factor to scale {@code other} by before adding
+     * @return the resulting quaternion
+     */
+    public FloatQuat addScaled(FloatQuat other, float weight) {
+        float otherX = other.x;
+        float otherY = other.y;
+        float otherZ = other.z;
+        float otherW = other.w;
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new FloatQuat(java.lang.Math.fma(weight, otherX, this.x), java.lang.Math.fma(weight, otherY, this.y), java.lang.Math.fma(weight, otherZ, this.z), java.lang.Math.fma(weight, otherW, this.w));
+        } else {
+            return new FloatQuat(((weight) * (otherX) + (this.x)), ((weight) * (otherY) + (this.y)), ((weight) * (otherZ) + (this.z)), ((weight) * (otherW) + (this.w)));
+        }
+    }
+
+    /**
+     * Add ({@code otherX}, {@code otherY}, {@code otherZ}, {@code otherW}) scaled by {@code weight}
+     * to this quaternion, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param otherX the {@code x} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param weight the factor to scale ({@code otherX}, {@code otherY}, {@code otherZ},
+     *        {@code otherW}) by before adding
+     * @return the resulting quaternion
+     */
+    public FloatQuat addScaled(float otherX, float otherY, float otherZ, float otherW, float weight) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new FloatQuat(java.lang.Math.fma(weight, otherX, this.x), java.lang.Math.fma(weight, otherY, this.y), java.lang.Math.fma(weight, otherZ, this.z), java.lang.Math.fma(weight, otherW, this.w));
+        } else {
+            return new FloatQuat(((weight) * (otherX) + (this.x)), ((weight) * (otherY) + (this.y)), ((weight) * (otherZ) + (this.z)), ((weight) * (otherW) + (this.w)));
+        }
+    }
+
+    /**
+     * Compute the rotation angle in radians of this quaternion, within {@code [0, 2*PI]}.
+     * <p>
+     * The angle is computed with {@code atan2}, so it keeps full {@code float} resolution all the
+     * way down to 0 (an {@code acos}-based form loses precision for small angles).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the rotation angle in radians of this quaternion, within {@code [0, 2*PI]}
+     */
+    public float angle() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return 2.0f * Math.atan2((float) java.lang.Math.sqrt(java.lang.Math.fma(this.z, this.z, java.lang.Math.fma(this.x, this.x, this.y * this.y))), this.w);
+        } else {
+            return 2.0f * Math.atan2((float) java.lang.Math.sqrt(((this.z) * (this.z) + (((this.x) * (this.x) + (this.y * this.y))))), this.w);
+        }
+    }
+
+    /**
+     * Compute the angle in radians of the rotation that takes this quaternion to {@code other},
+     * within {@code [0, PI]} (a quaternion and its negation, the same rotation, give 0).
+     * <p>
+     * The angle is computed with {@code atan2}, so it keeps full {@code float} resolution all the
+     * way down to 0 (an {@code acos}-based form loses precision for small angles).
+     * <p>
+     * Valid input: this quaternion must have unit length; {@code other} must have unit length.
+     *
+     * @param other the quaternion to measure the angle to
+     * @return the angle in radians of the rotation that takes this quaternion to {@code other},
+     *        within {@code [0, PI]} (a quaternion and its negation, the same rotation, give 0)
+     */
+    public float angleTo(FloatQuat other) {
+        float otherX = other.x;
+        float otherY = other.y;
+        float otherZ = other.z;
+        float otherW = other.w;
+        if (!org.joml2.internal.FmaSwitch.ON) return angleTo_mulAdd(otherX, otherY, otherZ, otherW);
+        float _t9, _t10, _t11, _t12;
+        if (-java.lang.Math.fma(otherW, this.w, java.lang.Math.fma(otherZ, this.z, java.lang.Math.fma(otherX, this.x, otherY * this.y))) > 0.0f) {
+            _t9 = -otherW;
+            _t10 = -otherZ;
+            _t11 = -otherX;
+            _t12 = -otherY;
+        } else {
+            _t9 = otherW;
+            _t10 = otherZ;
+            _t11 = otherX;
+            _t12 = otherY;
+        }
+        float _t13 = this.w - _t9;
+        float _t14 = this.z - _t10;
+        float _t15 = this.x - _t11;
+        float _t16 = this.y - _t12;
+        float _t17 = this.w + _t9;
+        float _t18 = this.z + _t10;
+        float _t19 = this.x + _t11;
+        float _t20 = this.y + _t12;
+        return 4.0f * Math.atan2((float) java.lang.Math.sqrt(java.lang.Math.fma(_t13, _t13, java.lang.Math.fma(_t14, _t14, java.lang.Math.fma(_t15, _t15, _t16 * _t16)))), (float) java.lang.Math.sqrt(java.lang.Math.fma(_t17, _t17, java.lang.Math.fma(_t18, _t18, java.lang.Math.fma(_t19, _t19, _t20 * _t20)))));
+    }
+
+    /**
+     * Compute the angle in radians of the rotation that takes this quaternion to ({@code otherX},
+     * {@code otherY}, {@code otherZ}, {@code otherW}), within {@code [0, PI]} (a quaternion and its
+     * negation, the same rotation, give 0).
+     * <p>
+     * The angle is computed with {@code atan2}, so it keeps full {@code float} resolution all the
+     * way down to 0 (an {@code acos}-based form loses precision for small angles).
+     * <p>
+     * Valid input: this quaternion must have unit length; {@code (otherX, otherY, otherZ, otherW)}
+     * must have unit length.
+     *
+     * @param otherX the {@code x} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @return the angle in radians of the rotation that takes this quaternion to ({@code otherX},
+     *        {@code otherY}, {@code otherZ}, {@code otherW}), within {@code [0, PI]} (a quaternion
+     *        and its negation, the same rotation, give 0)
+     */
+    public float angleTo(float otherX, float otherY, float otherZ, float otherW) {
+        if (!org.joml2.internal.FmaSwitch.ON) return angleTo_mulAdd(otherX, otherY, otherZ, otherW);
+        float _t9, _t10, _t11, _t12;
+        if (-java.lang.Math.fma(otherW, this.w, java.lang.Math.fma(otherZ, this.z, java.lang.Math.fma(otherX, this.x, otherY * this.y))) > 0.0f) {
+            _t9 = -otherW;
+            _t10 = -otherZ;
+            _t11 = -otherX;
+            _t12 = -otherY;
+        } else {
+            _t9 = otherW;
+            _t10 = otherZ;
+            _t11 = otherX;
+            _t12 = otherY;
+        }
+        float _t13 = this.w - _t9;
+        float _t14 = this.z - _t10;
+        float _t15 = this.x - _t11;
+        float _t16 = this.y - _t12;
+        float _t17 = this.w + _t9;
+        float _t18 = this.z + _t10;
+        float _t19 = this.x + _t11;
+        float _t20 = this.y + _t12;
+        return 4.0f * Math.atan2((float) java.lang.Math.sqrt(java.lang.Math.fma(_t13, _t13, java.lang.Math.fma(_t14, _t14, java.lang.Math.fma(_t15, _t15, _t16 * _t16)))), (float) java.lang.Math.sqrt(java.lang.Math.fma(_t17, _t17, java.lang.Math.fma(_t18, _t18, java.lang.Math.fma(_t19, _t19, _t20 * _t20)))));
+    }
+
+    /** {@code angleTo} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private float angleTo_mulAdd(float otherX, float otherY, float otherZ, float otherW) {
+        float _t9, _t10, _t11, _t12;
+        if (-((otherW) * (this.w) + (((otherZ) * (this.z) + (((otherX) * (this.x) + (otherY * this.y)))))) > 0.0f) {
+            _t9 = -otherW;
+            _t10 = -otherZ;
+            _t11 = -otherX;
+            _t12 = -otherY;
+        } else {
+            _t9 = otherW;
+            _t10 = otherZ;
+            _t11 = otherX;
+            _t12 = otherY;
+        }
+        float _t13 = this.w - _t9;
+        float _t14 = this.z - _t10;
+        float _t15 = this.x - _t11;
+        float _t16 = this.y - _t12;
+        float _t17 = this.w + _t9;
+        float _t18 = this.z + _t10;
+        float _t19 = this.x + _t11;
+        float _t20 = this.y + _t12;
+        return 4.0f * Math.atan2((float) java.lang.Math.sqrt(((_t13) * (_t13) + (((_t14) * (_t14) + (((_t15) * (_t15) + (_t16 * _t16))))))), (float) java.lang.Math.sqrt(((_t17) * (_t17) + (((_t18) * (_t18) + (((_t19) * (_t19) + (_t20 * _t20))))))));
+    }
+
+    /**
+     * Get the normalized rotation axis of this quaternion (zero when the rotation angle is zero),
+     * returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting vector
+     */
+    public Float3 axis() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t2 = java.lang.Math.fma(this.z, this.z, java.lang.Math.fma(this.x, this.x, this.y * this.y));
+            float _t3 = (1.0f / (float) java.lang.Math.sqrt(_t2));
+            if (_t2 > 0.0f) {
+                return new Float3(this.x * _t3, this.y * _t3, this.z * _t3);
+            } else {
+                return Float3.ZERO;
+            }
+        } else {
+            float _t2 = ((this.z) * (this.z) + (((this.x) * (this.x) + (this.y * this.y))));
+            float _t3 = (1.0f / (float) java.lang.Math.sqrt(_t2));
+            if (_t2 > 0.0f) {
+                return new Float3(this.x * _t3, this.y * _t3, this.z * _t3);
+            } else {
+                return Float3.ZERO;
+            }
+        }
+    }
+
+    /**
+     * Recompute the {@code w} component of this quaternion from {@code x}, {@code y} and {@code z},
+     * assuming unit length (the positive square root is chosen), returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting quaternion
+     */
+    public FloatQuat calculateW() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new FloatQuat(this.x, this.y, this.z, (float) java.lang.Math.sqrt(Math.max(0.0f, java.lang.Math.fma(-this.x, this.x, java.lang.Math.fma(-this.y, this.y, java.lang.Math.fma(-this.z, this.z, 1.0f))))));
+        } else {
+            return new FloatQuat(this.x, this.y, this.z, (float) java.lang.Math.sqrt(Math.max(0.0f, ((((((1.0f) - (this.z) * (this.z))) - (this.y) * (this.y))) - (this.x) * (this.x)))));
+        }
+    }
+
+    /**
+     * Conjugate this quaternion, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting quaternion
+     */
+    public FloatQuat conjugate() {
+        return new FloatQuat(-this.x, -this.y, -this.z, this.w);
+    }
+
+    /**
+     * Conjugate this quaternion by {@code q}, i.e. compute {@code q * this * conj(q)} where
+     * {@code q} is the given quaternion (equal to {@code q * this * q^-1} when it has unit length),
+     * returning the result as a value.
+     * <p>
+     * Valid input: {@code q} must have unit length.
+     *
+     * @param q the quaternion to conjugate by
+     * @return the resulting quaternion
+     */
+    public FloatQuat conjugateBy(FloatQuat q) {
+        float qX = q.x;
+        float qY = q.y;
+        float qZ = q.z;
+        float qW = q.w;
+        if (!org.joml2.internal.FmaSwitch.ON) return conjugateBy_mulAdd(qX, qY, qZ, qW);
+        float _t20 = java.lang.Math.fma(qX, this.y, qW * this.z) + java.lang.Math.fma(qZ, this.w, qY * -this.x);
+        float _t21 = java.lang.Math.fma(qY, this.w, qZ * this.x) + java.lang.Math.fma(qW, this.y, -(qX * this.z));
+        float _t22 = java.lang.Math.fma(qX, this.w, qW * this.x) + java.lang.Math.fma(qY, this.z, -(qZ * this.y));
+        float _t23 = java.lang.Math.fma(qW, this.w, qX * -this.x) - java.lang.Math.fma(qY, this.y, qZ * this.z);
+        return new FloatQuat(java.lang.Math.fma(qY, _t20, -qZ * _t21) + java.lang.Math.fma(qW, _t22, -qX * _t23), java.lang.Math.fma(qZ, _t22, -qY * _t23) + java.lang.Math.fma(qW, _t21, -qX * _t20), java.lang.Math.fma(qX, _t21, qW * _t20) + java.lang.Math.fma(-qY, _t22, -qZ * _t23), java.lang.Math.fma(qX, _t22, qW * _t23) - java.lang.Math.fma(-qZ, _t20, -qY * _t21));
+    }
+
+    /**
+     * Conjugate this quaternion by ({@code qX}, {@code qY}, {@code qZ}, {@code qW}), i.e. compute
+     * {@code q * this * conj(q)} where {@code q} is the given quaternion (equal to
+     * {@code q * this * q^-1} when it has unit length), returning the result as a value.
+     * <p>
+     * Valid input: {@code (qX, qY, qZ, qW)} must have unit length.
+     *
+     * @param qX the {@code x} component of the quaternion {@code (qX, qY, qZ, qW)}
+     * @param qY the {@code y} component of the quaternion {@code (qX, qY, qZ, qW)}
+     * @param qZ the {@code z} component of the quaternion {@code (qX, qY, qZ, qW)}
+     * @param qW the {@code w} component of the quaternion {@code (qX, qY, qZ, qW)}
+     * @return the resulting quaternion
+     */
+    public FloatQuat conjugateBy(float qX, float qY, float qZ, float qW) {
+        if (!org.joml2.internal.FmaSwitch.ON) return conjugateBy_mulAdd(qX, qY, qZ, qW);
+        float _t20 = java.lang.Math.fma(qX, this.y, qW * this.z) + java.lang.Math.fma(qZ, this.w, qY * -this.x);
+        float _t21 = java.lang.Math.fma(qY, this.w, qZ * this.x) + java.lang.Math.fma(qW, this.y, -(qX * this.z));
+        float _t22 = java.lang.Math.fma(qX, this.w, qW * this.x) + java.lang.Math.fma(qY, this.z, -(qZ * this.y));
+        float _t23 = java.lang.Math.fma(qW, this.w, qX * -this.x) - java.lang.Math.fma(qY, this.y, qZ * this.z);
+        return new FloatQuat(java.lang.Math.fma(qY, _t20, -qZ * _t21) + java.lang.Math.fma(qW, _t22, -qX * _t23), java.lang.Math.fma(qZ, _t22, -qY * _t23) + java.lang.Math.fma(qW, _t21, -qX * _t20), java.lang.Math.fma(qX, _t21, qW * _t20) + java.lang.Math.fma(-qY, _t22, -qZ * _t23), java.lang.Math.fma(qX, _t22, qW * _t23) - java.lang.Math.fma(-qZ, _t20, -qY * _t21));
+    }
+
+    /** {@code conjugateBy} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private FloatQuat conjugateBy_mulAdd(float qX, float qY, float qZ, float qW) {
+        float _t20 = ((qX) * (this.y) + (qW * this.z)) + ((qZ) * (this.w) - (qY * this.x));
+        float _t21 = ((qY) * (this.w) + (qZ * this.x)) + ((qW) * (this.y) - (qX * this.z));
+        float _t22 = ((qX) * (this.w) + (qW * this.x)) + ((qY) * (this.z) - (qZ * this.y));
+        float _t23 = ((qW) * (this.w) - (qX * this.x)) - ((qY) * (this.y) + (qZ * this.z));
+        return new FloatQuat(((qY) * (_t20) - (qZ * _t21)) + ((qW) * (_t22) - (qX * _t23)), ((qZ) * (_t22) - (qY * _t23)) + ((qW) * (_t21) - (qX * _t20)), ((qX) * (_t21) + (qW * _t20)) + ((-qY) * (_t22) - (qZ * _t23)), ((qX) * (_t22) + (qW * _t23)) - ((-qZ) * (_t20) - (qY * _t21)));
+    }
+
+    /**
+     * Compute the difference between this quaternion and {@code other}, i.e. the rotation {@code D}
+     * with {@code this * D = other}, that is {@code D = this^-1 * other}, returning the result as a
+     * value.
+     * <p>
+     * Valid input: this quaternion must be non-zero.
+     *
+     * @param other the target quaternion, reached by composing this quaternion with the result
+     * @return the resulting quaternion
+     */
+    public FloatQuat difference(FloatQuat other) {
+        float otherX = other.x;
+        float otherY = other.y;
+        float otherZ = other.z;
+        float otherW = other.w;
+        if (!org.joml2.internal.FmaSwitch.ON) return difference_mulAdd(otherX, otherY, otherZ, otherW);
+        float _t3_inv = 1.0f / java.lang.Math.fma(this.w, this.w, java.lang.Math.fma(this.z, this.z, java.lang.Math.fma(this.x, this.x, this.y * this.y)));
+        float _sp1 = _t3_inv * this.z;
+        float _sp0 = this.y * _t3_inv;
+        return new FloatQuat((java.lang.Math.fma(otherX, this.w, -otherW * this.x) + java.lang.Math.fma(otherY, this.z, -otherZ * this.y)) * _t3_inv, java.lang.Math.fma(java.lang.Math.fma(otherY, this.w, otherZ * this.x), _t3_inv, java.lang.Math.fma(-otherX, _sp1, -otherW * _sp0)), (java.lang.Math.fma(otherX, this.y, -otherW * this.z) + java.lang.Math.fma(otherZ, this.w, -otherY * this.x)) * _t3_inv, java.lang.Math.fma(java.lang.Math.fma(otherX, this.x, otherW * this.w), _t3_inv, java.lang.Math.fma(otherZ, _sp1, otherY * _sp0)));
+    }
+
+    /**
+     * Compute the difference between this quaternion and ({@code otherX}, {@code otherY},
+     * {@code otherZ}, {@code otherW}), i.e. the rotation {@code D} with
+     * {@code this * D = (otherX, otherY, otherZ, otherW)}, that is
+     * {@code D = this^-1 * (otherX, otherY, otherZ, otherW)}, returning the result as a value.
+     * <p>
+     * Valid input: this quaternion must be non-zero.
+     *
+     * @param otherX the {@code x} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @return the resulting quaternion
+     */
+    public FloatQuat difference(float otherX, float otherY, float otherZ, float otherW) {
+        if (!org.joml2.internal.FmaSwitch.ON) return difference_mulAdd(otherX, otherY, otherZ, otherW);
+        float _t3_inv = 1.0f / java.lang.Math.fma(this.w, this.w, java.lang.Math.fma(this.z, this.z, java.lang.Math.fma(this.x, this.x, this.y * this.y)));
+        float _sp1 = _t3_inv * this.z;
+        float _sp0 = this.y * _t3_inv;
+        return new FloatQuat((java.lang.Math.fma(otherX, this.w, -otherW * this.x) + java.lang.Math.fma(otherY, this.z, -otherZ * this.y)) * _t3_inv, java.lang.Math.fma(java.lang.Math.fma(otherY, this.w, otherZ * this.x), _t3_inv, java.lang.Math.fma(-otherX, _sp1, -otherW * _sp0)), (java.lang.Math.fma(otherX, this.y, -otherW * this.z) + java.lang.Math.fma(otherZ, this.w, -otherY * this.x)) * _t3_inv, java.lang.Math.fma(java.lang.Math.fma(otherX, this.x, otherW * this.w), _t3_inv, java.lang.Math.fma(otherZ, _sp1, otherY * _sp0)));
+    }
+
+    /** {@code difference} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private FloatQuat difference_mulAdd(float otherX, float otherY, float otherZ, float otherW) {
+        float _t3_inv = 1.0f / ((this.w) * (this.w) + (((this.z) * (this.z) + (((this.x) * (this.x) + (this.y * this.y))))));
+        float _sp1 = _t3_inv * this.z;
+        float _sp0 = this.y * _t3_inv;
+        return new FloatQuat((((otherX) * (this.w) - (otherW * this.x)) + ((otherY) * (this.z) - (otherZ * this.y))) * _t3_inv, ((((otherY) * (this.w) + (otherZ * this.x))) * (_t3_inv) + (((-otherX) * (_sp1) - (otherW * _sp0)))), (((otherX) * (this.y) - (otherW * this.z)) + ((otherZ) * (this.w) - (otherY * this.x))) * _t3_inv, ((((otherX) * (this.x) + (otherW * this.w))) * (_t3_inv) + (((otherZ) * (_sp1) + (otherY * _sp0)))));
+    }
+
+    /**
+     * Compute the dot product of this quaternion and {@code other}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param other the other operand of the dot product
+     * @return the dot product of this quaternion and {@code other}
+     */
+    public float dot(FloatQuat other) {
+        float otherX = other.x;
+        float otherY = other.y;
+        float otherZ = other.z;
+        float otherW = other.w;
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return java.lang.Math.fma(otherW, this.w, java.lang.Math.fma(otherZ, this.z, java.lang.Math.fma(otherX, this.x, otherY * this.y)));
+        } else {
+            return ((otherW) * (this.w) + (((otherZ) * (this.z) + (((otherX) * (this.x) + (otherY * this.y))))));
+        }
+    }
+
+    /**
+     * Compute the dot product of this quaternion and ({@code otherX}, {@code otherY},
+     * {@code otherZ}, {@code otherW}).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param otherX the {@code x} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @return the dot product of this quaternion and ({@code otherX}, {@code otherY},
+     *        {@code otherZ}, {@code otherW})
+     */
+    public float dot(float otherX, float otherY, float otherZ, float otherW) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return java.lang.Math.fma(otherW, this.w, java.lang.Math.fma(otherZ, this.z, java.lang.Math.fma(otherX, this.x, otherY * this.y)));
+        } else {
+            return ((otherW) * (this.w) + (((otherZ) * (this.z) + (((otherX) * (this.x) + (otherY * this.y))))));
+        }
+    }
+
+    /**
+     * Compute the exponential of this quaternion, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting quaternion
+     */
+    public FloatQuat exp() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t2 = Math.min(Math.exp(this.w), 3.4028235E38f);
+            float _t4 = java.lang.Math.fma(this.z, this.z, java.lang.Math.fma(this.x, this.x, this.y * this.y));
+            float _t5 = (float) java.lang.Math.sqrt(_t4);
+            float _t10 = _t2 * (Math.sinWithCos(_t5) / _t5);
+            if (_t4 > 0.0f) {
+                return new FloatQuat(this.x * _t10, this.y * _t10, this.z * _t10, Math.cosWithSin(_t5) * _t2);
+            } else {
+                return new FloatQuat(0.0f, 0.0f, 0.0f, Math.cosWithSin(_t5) * _t2);
+            }
+        } else {
+            float _t2 = Math.min(Math.exp(this.w), 3.4028235E38f);
+            float _t4 = ((this.z) * (this.z) + (((this.x) * (this.x) + (this.y * this.y))));
+            float _t5 = (float) java.lang.Math.sqrt(_t4);
+            float _t10 = _t2 * (Math.sinWithCos(_t5) / _t5);
+            if (_t4 > 0.0f) {
+                return new FloatQuat(this.x * _t10, this.y * _t10, this.z * _t10, Math.cosWithSin(_t5) * _t2);
+            } else {
+                return new FloatQuat(0.0f, 0.0f, 0.0f, Math.cosWithSin(_t5) * _t2);
+            }
+        }
+    }
+
+    /**
+     * Get the Euler angles in radians of this quaternion for rotations about the X, Y and Z axes,
+     * in that order (intrinsic rotations, each about the axes the previous ones turned: the matrix
+     * product {@code Rx * Ry * Rz}, so a vector is rotated about the fixed Z axis first, then Y,
+     * then X), returning the result as a value.
+     * <p>
+     * The result holds each angle at the component of its axis, not at its position in the order:
+     * the angle about X in {@code x}, about Y in {@code y} and about Z in {@code z}. So, with
+     * {@code e} the result, {@code makeRotationXYZ(e.x(), e.y(), e.z())}, which takes the angles in
+     * the order of its name, rebuilds the rotation.
+     * <p>
+     * At gimbal lock (a middle rotation of ±90 degrees) the decomposition is not unique; one valid
+     * set of angles is returned.
+     * <p>
+     * The middle angle is recovered with {@code atan2} rather than {@code asin}, so it keeps full
+     * {@code float} resolution over its whole range, down to 0. The last angle is read off the
+     * rotation the first one leaves, so the three rebuild the rotation to within rounding even next
+     * to the gimbal lock.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the Euler angles in radians: about X in {@code x}, about Y in {@code y}, about Z in
+     *        {@code z}
+     */
+    public Float3 getEulerAnglesXYZ() {
+        if (!org.joml2.internal.FmaSwitch.ON) return getEulerAnglesXYZ_mulAdd();
+        float _t1 = this.y * this.z;
+        float _t2 = this.y * this.w;
+        float _t10 = 2.0f * java.lang.Math.fma(this.x, this.z, _t2);
+        float _t11 = 2.0f * java.lang.Math.fma(this.x, this.w, _t1);
+        float _t12 = 2.0f * java.lang.Math.fma(this.x, this.w, -_t1);
+        float _t13 = java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, this.y * this.y), 1.0f);
+        float _t14 = java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, this.z * this.z), 1.0f);
+        float _t16 = java.lang.Math.fma(_t13, _t13, _t12 * _t12);
+        if (_t16 <= java.lang.Math.fma(_t10, _t10, _t16) * 2.2737368E-13f) {
+            return new Float3(Math.atan2(_t11, _t14), Math.atan2(_t10, (float) java.lang.Math.sqrt(_t16)), 0.0f);
+        } else {
+            return new Float3(Math.atan2(_t12, _t13), Math.atan2(_t10, (float) java.lang.Math.sqrt(_t16)), Math.atan2(java.lang.Math.fma(_t13, 2.0f * java.lang.Math.fma(this.x, this.y, this.z * this.w), 2.0f * java.lang.Math.fma(this.x, this.z, -_t2) * _t12), java.lang.Math.fma(_t13, _t14, _t11 * _t12)));
+        }
+    }
+
+    /** {@code getEulerAnglesXYZ} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private Float3 getEulerAnglesXYZ_mulAdd() {
+        float _t1 = this.y * this.z;
+        float _t2 = this.y * this.w;
+        float _t10 = 2.0f * ((this.x) * (this.z) + (_t2));
+        float _t11 = 2.0f * ((this.x) * (this.w) + (_t1));
+        float _t12 = 2.0f * ((this.x) * (this.w) - (_t1));
+        float _t13 = ((1.0f) - (2.0f) * (((this.x) * (this.x) + (this.y * this.y))));
+        float _t14 = ((1.0f) - (2.0f) * (((this.x) * (this.x) + (this.z * this.z))));
+        float _t16 = ((_t13) * (_t13) + (_t12 * _t12));
+        if (_t16 <= ((_t10) * (_t10) + (_t16)) * 2.2737368E-13f) {
+            return new Float3(Math.atan2(_t11, _t14), Math.atan2(_t10, (float) java.lang.Math.sqrt(_t16)), 0.0f);
+        } else {
+            return new Float3(Math.atan2(_t12, _t13), Math.atan2(_t10, (float) java.lang.Math.sqrt(_t16)), Math.atan2(((_t13) * (2.0f * ((this.x) * (this.y) + (this.z * this.w))) + (2.0f * ((this.x) * (this.z) - (_t2)) * _t12)), ((_t13) * (_t14) + (_t11 * _t12))));
+        }
+    }
+
+    /**
+     * Get the Euler angles in radians of this quaternion for rotations about the X, Y and Z axes,
+     * in that order (intrinsic rotations, each about the axes the previous ones turned: the matrix
+     * product {@code Rx * Ry * Rz}, so a vector is rotated about the fixed Z axis first, then Y,
+     * then X), returning the result as a value.
+     * <p>
+     * The result holds each angle at the component of its axis, not at its position in the order:
+     * the angle about X in {@code x}, about Y in {@code y} and about Z in {@code z}. So, with
+     * {@code e} the result, {@code makeRotationXYZ(e.x(), e.y(), e.z())}, which takes the angles in
+     * the order of its name, rebuilds the rotation.
+     * <p>
+     * At gimbal lock (a middle rotation of ±90 degrees) the decomposition is not unique; one valid
+     * set of angles is returned.
+     * <p>
+     * The middle angle is recovered with {@code atan2} rather than {@code asin}, so it keeps full
+     * {@code float} resolution over its whole range, down to 0. The last angle is read off the
+     * rotation the first one leaves, so the three rebuild the rotation to within rounding even next
+     * to the gimbal lock.
+     * <p>
+     * Valid input: this quaternion must have unit length; {@code epsilon} must lie in
+     * {@code [0, 1)}.
+     *
+     * @param epsilon the gimbal-lock tolerance: the rotation counts as locked when the squared
+     *        cosine of the middle angle is at most {@code epsilon} times the sum of the squares it
+     *        is formed from (the first angle then carries the coupled rotation and the last is 0);
+     *        the overload without it uses {@code 2^-42}
+     * @return the Euler angles in radians: about X in {@code x}, about Y in {@code y}, about Z in
+     *        {@code z}
+     */
+    public Float3 getEulerAnglesXYZ(float epsilon) {
+        if (!org.joml2.internal.FmaSwitch.ON) return getEulerAnglesXYZ_mulAdd(epsilon);
+        float _t1 = this.y * this.z;
+        float _t2 = this.y * this.w;
+        float _t10 = 2.0f * java.lang.Math.fma(this.x, this.z, _t2);
+        float _t11 = 2.0f * java.lang.Math.fma(this.x, this.w, _t1);
+        float _t12 = 2.0f * java.lang.Math.fma(this.x, this.w, -_t1);
+        float _t13 = java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, this.y * this.y), 1.0f);
+        float _t14 = java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, this.z * this.z), 1.0f);
+        float _t16 = java.lang.Math.fma(_t13, _t13, _t12 * _t12);
+        if (_t16 <= epsilon * java.lang.Math.fma(_t10, _t10, _t16)) {
+            return new Float3(Math.atan2(_t11, _t14), Math.atan2(_t10, (float) java.lang.Math.sqrt(_t16)), 0.0f);
+        } else {
+            return new Float3(Math.atan2(_t12, _t13), Math.atan2(_t10, (float) java.lang.Math.sqrt(_t16)), Math.atan2(java.lang.Math.fma(_t13, 2.0f * java.lang.Math.fma(this.x, this.y, this.z * this.w), 2.0f * java.lang.Math.fma(this.x, this.z, -_t2) * _t12), java.lang.Math.fma(_t13, _t14, _t11 * _t12)));
+        }
+    }
+
+    /** {@code getEulerAnglesXYZ} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private Float3 getEulerAnglesXYZ_mulAdd(float epsilon) {
+        float _t1 = this.y * this.z;
+        float _t2 = this.y * this.w;
+        float _t10 = 2.0f * ((this.x) * (this.z) + (_t2));
+        float _t11 = 2.0f * ((this.x) * (this.w) + (_t1));
+        float _t12 = 2.0f * ((this.x) * (this.w) - (_t1));
+        float _t13 = ((1.0f) - (2.0f) * (((this.x) * (this.x) + (this.y * this.y))));
+        float _t14 = ((1.0f) - (2.0f) * (((this.x) * (this.x) + (this.z * this.z))));
+        float _t16 = ((_t13) * (_t13) + (_t12 * _t12));
+        if (_t16 <= epsilon * ((_t10) * (_t10) + (_t16))) {
+            return new Float3(Math.atan2(_t11, _t14), Math.atan2(_t10, (float) java.lang.Math.sqrt(_t16)), 0.0f);
+        } else {
+            return new Float3(Math.atan2(_t12, _t13), Math.atan2(_t10, (float) java.lang.Math.sqrt(_t16)), Math.atan2(((_t13) * (2.0f * ((this.x) * (this.y) + (this.z * this.w))) + (2.0f * ((this.x) * (this.z) - (_t2)) * _t12)), ((_t13) * (_t14) + (_t11 * _t12))));
+        }
+    }
+
+    /** Private tail of {@code getEulerAnglesXZY}; reached only through it. */
+    private Float3 getEulerAnglesXZY_s0_tail_fma(float _t10, float _t14, float _t1, float _t12, float _t9, float _t11) {
+        if (_t14 <= java.lang.Math.fma(_t10, _t10, _t14) * 2.2737368E-13f) {
+            return new Float3(Math.atan2(2.0f * java.lang.Math.fma(this.x, this.w, -_t1), _t12), 0.0f, Math.atan2(_t10, (float) java.lang.Math.sqrt(_t14)));
+        } else {
+            return new Float3(Math.atan2(_t9, _t11), Math.atan2(java.lang.Math.fma(2.0f * java.lang.Math.fma(this.x, this.y, this.z * this.w), _t9, _t11 * -2.0f * java.lang.Math.fma(this.x, this.z, this.y * -this.w)), java.lang.Math.fma(_t12, _t11, _t9 * -2.0f * java.lang.Math.fma(this.y, this.z, this.x * -this.w))), Math.atan2(_t10, (float) java.lang.Math.sqrt(_t14)));
+        }
+    }
+
+    /** Private tail of {@code getEulerAnglesXZY}; reached only through it. */
+    private Float3 getEulerAnglesXZY_s0_tail_mulAdd(float _t10, float _t14, float _t1, float _t12, float _t9, float _t11) {
+        if (_t14 <= ((_t10) * (_t10) + (_t14)) * 2.2737368E-13f) {
+            return new Float3(Math.atan2(2.0f * ((this.x) * (this.w) - (_t1)), _t12), 0.0f, Math.atan2(_t10, (float) java.lang.Math.sqrt(_t14)));
+        } else {
+            return new Float3(Math.atan2(_t9, _t11), Math.atan2(((2.0f * ((this.x) * (this.y) + (this.z * this.w))) * (_t9) - (_t11 * 2.0f * ((this.x) * (this.z) - (this.y * this.w)))), ((_t12) * (_t11) - (_t9 * 2.0f * ((this.y) * (this.z) - (this.x * this.w))))), Math.atan2(_t10, (float) java.lang.Math.sqrt(_t14)));
+        }
+    }
+
+    /**
+     * Get the Euler angles in radians of this quaternion for rotations about the X, Z and Y axes,
+     * in that order (intrinsic rotations, each about the axes the previous ones turned: the matrix
+     * product {@code Rx * Rz * Ry}, so a vector is rotated about the fixed Y axis first, then Z,
+     * then X), returning the result as a value.
+     * <p>
+     * The result holds each angle at the component of its axis, not at its position in the order:
+     * the angle about X in {@code x}, about Y in {@code y} and about Z in {@code z}. So, with
+     * {@code e} the result, {@code makeRotationXZY(e.x(), e.z(), e.y())}, which takes the angles in
+     * the order of its name, rebuilds the rotation.
+     * <p>
+     * At gimbal lock (a middle rotation of ±90 degrees) the decomposition is not unique; one valid
+     * set of angles is returned.
+     * <p>
+     * The middle angle is recovered with {@code atan2} rather than {@code asin}, so it keeps full
+     * {@code float} resolution over its whole range, down to 0. The last angle is read off the
+     * rotation the first one leaves, so the three rebuild the rotation to within rounding even next
+     * to the gimbal lock.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the Euler angles in radians: about X in {@code x}, about Y in {@code y}, about Z in
+     *        {@code z}
+     */
+    public Float3 getEulerAnglesXZY() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t1 = this.y * this.z;
+            float _t9 = 2.0f * java.lang.Math.fma(this.x, this.w, _t1);
+            float _t11 = java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, this.z * this.z), 1.0f);
+            return getEulerAnglesXZY_s0_tail_fma(2.0f * java.lang.Math.fma(this.z, this.w, -(this.x * this.y)), java.lang.Math.fma(_t11, _t11, _t9 * _t9), _t1, java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, this.y * this.y), 1.0f), _t9, _t11);
+        } else {
+            float _t1 = this.y * this.z;
+            float _t9 = 2.0f * ((this.x) * (this.w) + (_t1));
+            float _t11 = ((1.0f) - (2.0f) * (((this.x) * (this.x) + (this.z * this.z))));
+            return getEulerAnglesXZY_s0_tail_mulAdd(2.0f * ((this.z) * (this.w) - (this.x * this.y)), ((_t11) * (_t11) + (_t9 * _t9)), _t1, ((1.0f) - (2.0f) * (((this.x) * (this.x) + (this.y * this.y)))), _t9, _t11);
+        }
+    }
+
+    /** Private tail of {@code getEulerAnglesXZY}; reached only through it. */
+    private Float3 getEulerAnglesXZY_s35c5b5a6_tail_fma(float epsilon, float _t10, float _t14, float _t1, float _t12, float _t9, float _t11) {
+        if (_t14 <= epsilon * java.lang.Math.fma(_t10, _t10, _t14)) {
+            return new Float3(Math.atan2(2.0f * java.lang.Math.fma(this.x, this.w, -_t1), _t12), 0.0f, Math.atan2(_t10, (float) java.lang.Math.sqrt(_t14)));
+        } else {
+            return new Float3(Math.atan2(_t9, _t11), Math.atan2(java.lang.Math.fma(2.0f * java.lang.Math.fma(this.x, this.y, this.z * this.w), _t9, _t11 * -2.0f * java.lang.Math.fma(this.x, this.z, this.y * -this.w)), java.lang.Math.fma(_t12, _t11, _t9 * -2.0f * java.lang.Math.fma(this.y, this.z, this.x * -this.w))), Math.atan2(_t10, (float) java.lang.Math.sqrt(_t14)));
+        }
+    }
+
+    /** Private tail of {@code getEulerAnglesXZY}; reached only through it. */
+    private Float3 getEulerAnglesXZY_s35c5b5a6_tail_mulAdd(float epsilon, float _t10, float _t14, float _t1, float _t12, float _t9, float _t11) {
+        if (_t14 <= epsilon * ((_t10) * (_t10) + (_t14))) {
+            return new Float3(Math.atan2(2.0f * ((this.x) * (this.w) - (_t1)), _t12), 0.0f, Math.atan2(_t10, (float) java.lang.Math.sqrt(_t14)));
+        } else {
+            return new Float3(Math.atan2(_t9, _t11), Math.atan2(((2.0f * ((this.x) * (this.y) + (this.z * this.w))) * (_t9) - (_t11 * 2.0f * ((this.x) * (this.z) - (this.y * this.w)))), ((_t12) * (_t11) - (_t9 * 2.0f * ((this.y) * (this.z) - (this.x * this.w))))), Math.atan2(_t10, (float) java.lang.Math.sqrt(_t14)));
+        }
+    }
+
+    /**
+     * Get the Euler angles in radians of this quaternion for rotations about the X, Z and Y axes,
+     * in that order (intrinsic rotations, each about the axes the previous ones turned: the matrix
+     * product {@code Rx * Rz * Ry}, so a vector is rotated about the fixed Y axis first, then Z,
+     * then X), returning the result as a value.
+     * <p>
+     * The result holds each angle at the component of its axis, not at its position in the order:
+     * the angle about X in {@code x}, about Y in {@code y} and about Z in {@code z}. So, with
+     * {@code e} the result, {@code makeRotationXZY(e.x(), e.z(), e.y())}, which takes the angles in
+     * the order of its name, rebuilds the rotation.
+     * <p>
+     * At gimbal lock (a middle rotation of ±90 degrees) the decomposition is not unique; one valid
+     * set of angles is returned.
+     * <p>
+     * The middle angle is recovered with {@code atan2} rather than {@code asin}, so it keeps full
+     * {@code float} resolution over its whole range, down to 0. The last angle is read off the
+     * rotation the first one leaves, so the three rebuild the rotation to within rounding even next
+     * to the gimbal lock.
+     * <p>
+     * Valid input: this quaternion must have unit length; {@code epsilon} must lie in
+     * {@code [0, 1)}.
+     *
+     * @param epsilon the gimbal-lock tolerance: the rotation counts as locked when the squared
+     *        cosine of the middle angle is at most {@code epsilon} times the sum of the squares it
+     *        is formed from (the first angle then carries the coupled rotation and the last is 0);
+     *        the overload without it uses {@code 2^-42}
+     * @return the Euler angles in radians: about X in {@code x}, about Y in {@code y}, about Z in
+     *        {@code z}
+     */
+    public Float3 getEulerAnglesXZY(float epsilon) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t1 = this.y * this.z;
+            float _t9 = 2.0f * java.lang.Math.fma(this.x, this.w, _t1);
+            float _t11 = java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, this.z * this.z), 1.0f);
+            return getEulerAnglesXZY_s35c5b5a6_tail_fma(epsilon, 2.0f * java.lang.Math.fma(this.z, this.w, -(this.x * this.y)), java.lang.Math.fma(_t11, _t11, _t9 * _t9), _t1, java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, this.y * this.y), 1.0f), _t9, _t11);
+        } else {
+            float _t1 = this.y * this.z;
+            float _t9 = 2.0f * ((this.x) * (this.w) + (_t1));
+            float _t11 = ((1.0f) - (2.0f) * (((this.x) * (this.x) + (this.z * this.z))));
+            return getEulerAnglesXZY_s35c5b5a6_tail_mulAdd(epsilon, 2.0f * ((this.z) * (this.w) - (this.x * this.y)), ((_t11) * (_t11) + (_t9 * _t9)), _t1, ((1.0f) - (2.0f) * (((this.x) * (this.x) + (this.y * this.y)))), _t9, _t11);
+        }
+    }
+
+    /** Private tail of {@code getEulerAnglesYXZ}; reached only through it. */
+    private Float3 getEulerAnglesYXZ_s0_tail_fma(float _t10, float _t14, float _t12, float _t9, float _t11, float _t0, float _t2) {
+        if (_t14 <= java.lang.Math.fma(_t10, _t10, _t14) * 2.2737368E-13f) {
+            return new Float3(Math.atan2(_t10, (float) java.lang.Math.sqrt(_t14)), Math.atan2(2.0f * java.lang.Math.fma(this.y, this.w, -(this.x * this.z)), _t12), 0.0f);
+        } else {
+            return new Float3(Math.atan2(_t10, (float) java.lang.Math.sqrt(_t14)), Math.atan2(_t9, _t11), Math.atan2(java.lang.Math.fma(_t9, 2.0f * java.lang.Math.fma(this.x, this.w, _t0), _t11 * -2.0f * java.lang.Math.fma(this.x, this.y, -(this.z * this.w))), java.lang.Math.fma(_t11, _t12, _t9 * -2.0f * java.lang.Math.fma(this.x, this.z, -_t2))));
+        }
+    }
+
+    /** Private tail of {@code getEulerAnglesYXZ}; reached only through it. */
+    private Float3 getEulerAnglesYXZ_s0_tail_mulAdd(float _t10, float _t14, float _t12, float _t9, float _t11, float _t0, float _t2) {
+        if (_t14 <= ((_t10) * (_t10) + (_t14)) * 2.2737368E-13f) {
+            return new Float3(Math.atan2(_t10, (float) java.lang.Math.sqrt(_t14)), Math.atan2(2.0f * ((this.y) * (this.w) - (this.x * this.z)), _t12), 0.0f);
+        } else {
+            return new Float3(Math.atan2(_t10, (float) java.lang.Math.sqrt(_t14)), Math.atan2(_t9, _t11), Math.atan2(((_t9) * (2.0f * ((this.x) * (this.w) + (_t0))) - (_t11 * 2.0f * ((this.x) * (this.y) - (this.z * this.w)))), ((_t11) * (_t12) - (_t9 * 2.0f * ((this.x) * (this.z) - (_t2))))));
+        }
+    }
+
+    /**
+     * Get the Euler angles in radians of this quaternion for rotations about the Y, X and Z axes,
+     * in that order (intrinsic rotations, each about the axes the previous ones turned: the matrix
+     * product {@code Ry * Rx * Rz}, so a vector is rotated about the fixed Z axis first, then X,
+     * then Y), returning the result as a value.
+     * <p>
+     * The result holds each angle at the component of its axis, not at its position in the order:
+     * the angle about X in {@code x}, about Y in {@code y} and about Z in {@code z}. So, with
+     * {@code e} the result, {@code makeRotationYXZ(e.y(), e.x(), e.z())}, which takes the angles in
+     * the order of its name, rebuilds the rotation.
+     * <p>
+     * At gimbal lock (a middle rotation of ±90 degrees) the decomposition is not unique; one valid
+     * set of angles is returned.
+     * <p>
+     * The middle angle is recovered with {@code atan2} rather than {@code asin}, so it keeps full
+     * {@code float} resolution over its whole range, down to 0. The last angle is read off the
+     * rotation the first one leaves, so the three rebuild the rotation to within rounding even next
+     * to the gimbal lock.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the Euler angles in radians: about X in {@code x}, about Y in {@code y}, about Z in
+     *        {@code z}
+     */
+    public Float3 getEulerAnglesYXZ() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = this.y * this.z;
+            float _t2 = this.y * this.w;
+            float _t9 = 2.0f * java.lang.Math.fma(this.x, this.z, _t2);
+            float _t11 = java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, this.y * this.y), 1.0f);
+            return getEulerAnglesYXZ_s0_tail_fma(2.0f * java.lang.Math.fma(this.x, this.w, -_t0), java.lang.Math.fma(_t11, _t11, _t9 * _t9), java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.y, this.y, this.z * this.z), 1.0f), _t9, _t11, _t0, _t2);
+        } else {
+            float _t0 = this.y * this.z;
+            float _t2 = this.y * this.w;
+            float _t9 = 2.0f * ((this.x) * (this.z) + (_t2));
+            float _t11 = ((1.0f) - (2.0f) * (((this.x) * (this.x) + (this.y * this.y))));
+            return getEulerAnglesYXZ_s0_tail_mulAdd(2.0f * ((this.x) * (this.w) - (_t0)), ((_t11) * (_t11) + (_t9 * _t9)), ((1.0f) - (2.0f) * (((this.y) * (this.y) + (this.z * this.z)))), _t9, _t11, _t0, _t2);
+        }
+    }
+
+    /** Private tail of {@code getEulerAnglesYXZ}; reached only through it. */
+    private Float3 getEulerAnglesYXZ_s35c5b5a6_tail_fma(float epsilon, float _t10, float _t14, float _t12, float _t9, float _t11, float _t0, float _t2) {
+        if (_t14 <= epsilon * java.lang.Math.fma(_t10, _t10, _t14)) {
+            return new Float3(Math.atan2(_t10, (float) java.lang.Math.sqrt(_t14)), Math.atan2(2.0f * java.lang.Math.fma(this.y, this.w, -(this.x * this.z)), _t12), 0.0f);
+        } else {
+            return new Float3(Math.atan2(_t10, (float) java.lang.Math.sqrt(_t14)), Math.atan2(_t9, _t11), Math.atan2(java.lang.Math.fma(_t9, 2.0f * java.lang.Math.fma(this.x, this.w, _t0), _t11 * -2.0f * java.lang.Math.fma(this.x, this.y, -(this.z * this.w))), java.lang.Math.fma(_t11, _t12, _t9 * -2.0f * java.lang.Math.fma(this.x, this.z, -_t2))));
+        }
+    }
+
+    /** Private tail of {@code getEulerAnglesYXZ}; reached only through it. */
+    private Float3 getEulerAnglesYXZ_s35c5b5a6_tail_mulAdd(float epsilon, float _t10, float _t14, float _t12, float _t9, float _t11, float _t0, float _t2) {
+        if (_t14 <= epsilon * ((_t10) * (_t10) + (_t14))) {
+            return new Float3(Math.atan2(_t10, (float) java.lang.Math.sqrt(_t14)), Math.atan2(2.0f * ((this.y) * (this.w) - (this.x * this.z)), _t12), 0.0f);
+        } else {
+            return new Float3(Math.atan2(_t10, (float) java.lang.Math.sqrt(_t14)), Math.atan2(_t9, _t11), Math.atan2(((_t9) * (2.0f * ((this.x) * (this.w) + (_t0))) - (_t11 * 2.0f * ((this.x) * (this.y) - (this.z * this.w)))), ((_t11) * (_t12) - (_t9 * 2.0f * ((this.x) * (this.z) - (_t2))))));
+        }
+    }
+
+    /**
+     * Get the Euler angles in radians of this quaternion for rotations about the Y, X and Z axes,
+     * in that order (intrinsic rotations, each about the axes the previous ones turned: the matrix
+     * product {@code Ry * Rx * Rz}, so a vector is rotated about the fixed Z axis first, then X,
+     * then Y), returning the result as a value.
+     * <p>
+     * The result holds each angle at the component of its axis, not at its position in the order:
+     * the angle about X in {@code x}, about Y in {@code y} and about Z in {@code z}. So, with
+     * {@code e} the result, {@code makeRotationYXZ(e.y(), e.x(), e.z())}, which takes the angles in
+     * the order of its name, rebuilds the rotation.
+     * <p>
+     * At gimbal lock (a middle rotation of ±90 degrees) the decomposition is not unique; one valid
+     * set of angles is returned.
+     * <p>
+     * The middle angle is recovered with {@code atan2} rather than {@code asin}, so it keeps full
+     * {@code float} resolution over its whole range, down to 0. The last angle is read off the
+     * rotation the first one leaves, so the three rebuild the rotation to within rounding even next
+     * to the gimbal lock.
+     * <p>
+     * Valid input: this quaternion must have unit length; {@code epsilon} must lie in
+     * {@code [0, 1)}.
+     *
+     * @param epsilon the gimbal-lock tolerance: the rotation counts as locked when the squared
+     *        cosine of the middle angle is at most {@code epsilon} times the sum of the squares it
+     *        is formed from (the first angle then carries the coupled rotation and the last is 0);
+     *        the overload without it uses {@code 2^-42}
+     * @return the Euler angles in radians: about X in {@code x}, about Y in {@code y}, about Z in
+     *        {@code z}
+     */
+    public Float3 getEulerAnglesYXZ(float epsilon) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = this.y * this.z;
+            float _t2 = this.y * this.w;
+            float _t9 = 2.0f * java.lang.Math.fma(this.x, this.z, _t2);
+            float _t11 = java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, this.y * this.y), 1.0f);
+            return getEulerAnglesYXZ_s35c5b5a6_tail_fma(epsilon, 2.0f * java.lang.Math.fma(this.x, this.w, -_t0), java.lang.Math.fma(_t11, _t11, _t9 * _t9), java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.y, this.y, this.z * this.z), 1.0f), _t9, _t11, _t0, _t2);
+        } else {
+            float _t0 = this.y * this.z;
+            float _t2 = this.y * this.w;
+            float _t9 = 2.0f * ((this.x) * (this.z) + (_t2));
+            float _t11 = ((1.0f) - (2.0f) * (((this.x) * (this.x) + (this.y * this.y))));
+            return getEulerAnglesYXZ_s35c5b5a6_tail_mulAdd(epsilon, 2.0f * ((this.x) * (this.w) - (_t0)), ((_t11) * (_t11) + (_t9 * _t9)), ((1.0f) - (2.0f) * (((this.y) * (this.y) + (this.z * this.z)))), _t9, _t11, _t0, _t2);
+        }
+    }
+
+    /**
+     * Get the Euler angles in radians of this quaternion for rotations about the Y, Z and X axes,
+     * in that order (intrinsic rotations, each about the axes the previous ones turned: the matrix
+     * product {@code Ry * Rz * Rx}, so a vector is rotated about the fixed X axis first, then Z,
+     * then Y), returning the result as a value.
+     * <p>
+     * The result holds each angle at the component of its axis, not at its position in the order:
+     * the angle about X in {@code x}, about Y in {@code y} and about Z in {@code z}. So, with
+     * {@code e} the result, {@code makeRotationYZX(e.y(), e.z(), e.x())}, which takes the angles in
+     * the order of its name, rebuilds the rotation.
+     * <p>
+     * At gimbal lock (a middle rotation of ±90 degrees) the decomposition is not unique; one valid
+     * set of angles is returned.
+     * <p>
+     * The middle angle is recovered with {@code atan2} rather than {@code asin}, so it keeps full
+     * {@code float} resolution over its whole range, down to 0. The last angle is read off the
+     * rotation the first one leaves, so the three rebuild the rotation to within rounding even next
+     * to the gimbal lock.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the Euler angles in radians: about X in {@code x}, about Y in {@code y}, about Z in
+     *        {@code z}
+     */
+    public Float3 getEulerAnglesYZX() {
+        if (!org.joml2.internal.FmaSwitch.ON) return getEulerAnglesYZX_mulAdd();
+        float _t2 = this.z * this.w;
+        float _t11 = 2.0f * java.lang.Math.fma(this.x, this.y, _t2);
+        float _t12 = 2.0f * java.lang.Math.fma(this.x, this.z, this.y * this.w);
+        float _t13 = 2.0f * java.lang.Math.fma(this.y, this.w, -(this.x * this.z));
+        float _t14 = java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.y, this.y, this.z * this.z), 1.0f);
+        float _t15 = java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, this.y * this.y), 1.0f);
+        float _t17 = java.lang.Math.fma(_t14, _t14, _t13 * _t13);
+        if (_t17 <= java.lang.Math.fma(_t11, _t11, _t17) * 2.2737368E-13f) {
+            return new Float3(0.0f, Math.atan2(_t12, _t15), Math.atan2(_t11, (float) java.lang.Math.sqrt(_t17)));
+        } else {
+            return new Float3(Math.atan2(java.lang.Math.fma(_t14, 2.0f * java.lang.Math.fma(this.x, this.w, this.y * this.z), 2.0f * java.lang.Math.fma(this.x, this.y, -_t2) * _t13), java.lang.Math.fma(_t15, _t14, _t12 * _t13)), Math.atan2(_t13, _t14), Math.atan2(_t11, (float) java.lang.Math.sqrt(_t17)));
+        }
+    }
+
+    /** {@code getEulerAnglesYZX} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private Float3 getEulerAnglesYZX_mulAdd() {
+        float _t2 = this.z * this.w;
+        float _t11 = 2.0f * ((this.x) * (this.y) + (_t2));
+        float _t12 = 2.0f * ((this.x) * (this.z) + (this.y * this.w));
+        float _t13 = 2.0f * ((this.y) * (this.w) - (this.x * this.z));
+        float _t14 = ((1.0f) - (2.0f) * (((this.y) * (this.y) + (this.z * this.z))));
+        float _t15 = ((1.0f) - (2.0f) * (((this.x) * (this.x) + (this.y * this.y))));
+        float _t17 = ((_t14) * (_t14) + (_t13 * _t13));
+        if (_t17 <= ((_t11) * (_t11) + (_t17)) * 2.2737368E-13f) {
+            return new Float3(0.0f, Math.atan2(_t12, _t15), Math.atan2(_t11, (float) java.lang.Math.sqrt(_t17)));
+        } else {
+            return new Float3(Math.atan2(((_t14) * (2.0f * ((this.x) * (this.w) + (this.y * this.z))) + (2.0f * ((this.x) * (this.y) - (_t2)) * _t13)), ((_t15) * (_t14) + (_t12 * _t13))), Math.atan2(_t13, _t14), Math.atan2(_t11, (float) java.lang.Math.sqrt(_t17)));
+        }
+    }
+
+    /**
+     * Get the Euler angles in radians of this quaternion for rotations about the Y, Z and X axes,
+     * in that order (intrinsic rotations, each about the axes the previous ones turned: the matrix
+     * product {@code Ry * Rz * Rx}, so a vector is rotated about the fixed X axis first, then Z,
+     * then Y), returning the result as a value.
+     * <p>
+     * The result holds each angle at the component of its axis, not at its position in the order:
+     * the angle about X in {@code x}, about Y in {@code y} and about Z in {@code z}. So, with
+     * {@code e} the result, {@code makeRotationYZX(e.y(), e.z(), e.x())}, which takes the angles in
+     * the order of its name, rebuilds the rotation.
+     * <p>
+     * At gimbal lock (a middle rotation of ±90 degrees) the decomposition is not unique; one valid
+     * set of angles is returned.
+     * <p>
+     * The middle angle is recovered with {@code atan2} rather than {@code asin}, so it keeps full
+     * {@code float} resolution over its whole range, down to 0. The last angle is read off the
+     * rotation the first one leaves, so the three rebuild the rotation to within rounding even next
+     * to the gimbal lock.
+     * <p>
+     * Valid input: this quaternion must have unit length; {@code epsilon} must lie in
+     * {@code [0, 1)}.
+     *
+     * @param epsilon the gimbal-lock tolerance: the rotation counts as locked when the squared
+     *        cosine of the middle angle is at most {@code epsilon} times the sum of the squares it
+     *        is formed from (the first angle then carries the coupled rotation and the last is 0);
+     *        the overload without it uses {@code 2^-42}
+     * @return the Euler angles in radians: about X in {@code x}, about Y in {@code y}, about Z in
+     *        {@code z}
+     */
+    public Float3 getEulerAnglesYZX(float epsilon) {
+        if (!org.joml2.internal.FmaSwitch.ON) return getEulerAnglesYZX_mulAdd(epsilon);
+        float _t2 = this.z * this.w;
+        float _t11 = 2.0f * java.lang.Math.fma(this.x, this.y, _t2);
+        float _t12 = 2.0f * java.lang.Math.fma(this.x, this.z, this.y * this.w);
+        float _t13 = 2.0f * java.lang.Math.fma(this.y, this.w, -(this.x * this.z));
+        float _t14 = java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.y, this.y, this.z * this.z), 1.0f);
+        float _t15 = java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, this.y * this.y), 1.0f);
+        float _t17 = java.lang.Math.fma(_t14, _t14, _t13 * _t13);
+        if (_t17 <= epsilon * java.lang.Math.fma(_t11, _t11, _t17)) {
+            return new Float3(0.0f, Math.atan2(_t12, _t15), Math.atan2(_t11, (float) java.lang.Math.sqrt(_t17)));
+        } else {
+            return new Float3(Math.atan2(java.lang.Math.fma(_t14, 2.0f * java.lang.Math.fma(this.x, this.w, this.y * this.z), 2.0f * java.lang.Math.fma(this.x, this.y, -_t2) * _t13), java.lang.Math.fma(_t15, _t14, _t12 * _t13)), Math.atan2(_t13, _t14), Math.atan2(_t11, (float) java.lang.Math.sqrt(_t17)));
+        }
+    }
+
+    /** {@code getEulerAnglesYZX} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private Float3 getEulerAnglesYZX_mulAdd(float epsilon) {
+        float _t2 = this.z * this.w;
+        float _t11 = 2.0f * ((this.x) * (this.y) + (_t2));
+        float _t12 = 2.0f * ((this.x) * (this.z) + (this.y * this.w));
+        float _t13 = 2.0f * ((this.y) * (this.w) - (this.x * this.z));
+        float _t14 = ((1.0f) - (2.0f) * (((this.y) * (this.y) + (this.z * this.z))));
+        float _t15 = ((1.0f) - (2.0f) * (((this.x) * (this.x) + (this.y * this.y))));
+        float _t17 = ((_t14) * (_t14) + (_t13 * _t13));
+        if (_t17 <= epsilon * ((_t11) * (_t11) + (_t17))) {
+            return new Float3(0.0f, Math.atan2(_t12, _t15), Math.atan2(_t11, (float) java.lang.Math.sqrt(_t17)));
+        } else {
+            return new Float3(Math.atan2(((_t14) * (2.0f * ((this.x) * (this.w) + (this.y * this.z))) + (2.0f * ((this.x) * (this.y) - (_t2)) * _t13)), ((_t15) * (_t14) + (_t12 * _t13))), Math.atan2(_t13, _t14), Math.atan2(_t11, (float) java.lang.Math.sqrt(_t17)));
+        }
+    }
+
+    /**
+     * Get the Euler angles in radians of this quaternion for rotations about the Z, X and Y axes,
+     * in that order (intrinsic rotations, each about the axes the previous ones turned: the matrix
+     * product {@code Rz * Rx * Ry}, so a vector is rotated about the fixed Y axis first, then X,
+     * then Z), returning the result as a value.
+     * <p>
+     * The result holds each angle at the component of its axis, not at its position in the order:
+     * the angle about X in {@code x}, about Y in {@code y} and about Z in {@code z}. So, with
+     * {@code e} the result, {@code makeRotationZXY(e.z(), e.x(), e.y())}, which takes the angles in
+     * the order of its name, rebuilds the rotation.
+     * <p>
+     * At gimbal lock (a middle rotation of ±90 degrees) the decomposition is not unique; one valid
+     * set of angles is returned.
+     * <p>
+     * The middle angle is recovered with {@code atan2} rather than {@code asin}, so it keeps full
+     * {@code float} resolution over its whole range, down to 0. The last angle is read off the
+     * rotation the first one leaves, so the three rebuild the rotation to within rounding even next
+     * to the gimbal lock.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the Euler angles in radians: about X in {@code x}, about Y in {@code y}, about Z in
+     *        {@code z}
+     */
+    public Float3 getEulerAnglesZXY() {
+        if (!org.joml2.internal.FmaSwitch.ON) return getEulerAnglesZXY_mulAdd();
+        float _t1 = this.z * this.z;
+        float _t10 = 2.0f * java.lang.Math.fma(this.x, this.w, this.y * this.z);
+        float _t11 = 2.0f * java.lang.Math.fma(this.x, this.y, this.z * this.w);
+        float _t12 = 2.0f * java.lang.Math.fma(this.z, this.w, -(this.x * this.y));
+        float _t13 = java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, _t1), 1.0f);
+        float _t14 = java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.y, this.y, _t1), 1.0f);
+        float _t16 = java.lang.Math.fma(_t13, _t13, _t12 * _t12);
+        if (_t16 <= java.lang.Math.fma(_t10, _t10, _t16) * 2.2737368E-13f) {
+            return new Float3(Math.atan2(_t10, (float) java.lang.Math.sqrt(_t16)), 0.0f, Math.atan2(_t11, _t14));
+        } else {
+            return new Float3(Math.atan2(_t10, (float) java.lang.Math.sqrt(_t16)), Math.atan2(java.lang.Math.fma(_t13, 2.0f * java.lang.Math.fma(this.x, this.z, this.y * this.w), 2.0f * java.lang.Math.fma(this.y, this.z, -(this.x * this.w)) * _t12), java.lang.Math.fma(_t13, _t14, _t11 * _t12)), Math.atan2(_t12, _t13));
+        }
+    }
+
+    /** {@code getEulerAnglesZXY} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private Float3 getEulerAnglesZXY_mulAdd() {
+        float _t1 = this.z * this.z;
+        float _t10 = 2.0f * ((this.x) * (this.w) + (this.y * this.z));
+        float _t11 = 2.0f * ((this.x) * (this.y) + (this.z * this.w));
+        float _t12 = 2.0f * ((this.z) * (this.w) - (this.x * this.y));
+        float _t13 = ((1.0f) - (2.0f) * (((this.x) * (this.x) + (_t1))));
+        float _t14 = ((1.0f) - (2.0f) * (((this.y) * (this.y) + (_t1))));
+        float _t16 = ((_t13) * (_t13) + (_t12 * _t12));
+        if (_t16 <= ((_t10) * (_t10) + (_t16)) * 2.2737368E-13f) {
+            return new Float3(Math.atan2(_t10, (float) java.lang.Math.sqrt(_t16)), 0.0f, Math.atan2(_t11, _t14));
+        } else {
+            return new Float3(Math.atan2(_t10, (float) java.lang.Math.sqrt(_t16)), Math.atan2(((_t13) * (2.0f * ((this.x) * (this.z) + (this.y * this.w))) + (2.0f * ((this.y) * (this.z) - (this.x * this.w)) * _t12)), ((_t13) * (_t14) + (_t11 * _t12))), Math.atan2(_t12, _t13));
+        }
+    }
+
+    /**
+     * Get the Euler angles in radians of this quaternion for rotations about the Z, X and Y axes,
+     * in that order (intrinsic rotations, each about the axes the previous ones turned: the matrix
+     * product {@code Rz * Rx * Ry}, so a vector is rotated about the fixed Y axis first, then X,
+     * then Z), returning the result as a value.
+     * <p>
+     * The result holds each angle at the component of its axis, not at its position in the order:
+     * the angle about X in {@code x}, about Y in {@code y} and about Z in {@code z}. So, with
+     * {@code e} the result, {@code makeRotationZXY(e.z(), e.x(), e.y())}, which takes the angles in
+     * the order of its name, rebuilds the rotation.
+     * <p>
+     * At gimbal lock (a middle rotation of ±90 degrees) the decomposition is not unique; one valid
+     * set of angles is returned.
+     * <p>
+     * The middle angle is recovered with {@code atan2} rather than {@code asin}, so it keeps full
+     * {@code float} resolution over its whole range, down to 0. The last angle is read off the
+     * rotation the first one leaves, so the three rebuild the rotation to within rounding even next
+     * to the gimbal lock.
+     * <p>
+     * Valid input: this quaternion must have unit length; {@code epsilon} must lie in
+     * {@code [0, 1)}.
+     *
+     * @param epsilon the gimbal-lock tolerance: the rotation counts as locked when the squared
+     *        cosine of the middle angle is at most {@code epsilon} times the sum of the squares it
+     *        is formed from (the first angle then carries the coupled rotation and the last is 0);
+     *        the overload without it uses {@code 2^-42}
+     * @return the Euler angles in radians: about X in {@code x}, about Y in {@code y}, about Z in
+     *        {@code z}
+     */
+    public Float3 getEulerAnglesZXY(float epsilon) {
+        if (!org.joml2.internal.FmaSwitch.ON) return getEulerAnglesZXY_mulAdd(epsilon);
+        float _t1 = this.z * this.z;
+        float _t10 = 2.0f * java.lang.Math.fma(this.x, this.w, this.y * this.z);
+        float _t11 = 2.0f * java.lang.Math.fma(this.x, this.y, this.z * this.w);
+        float _t12 = 2.0f * java.lang.Math.fma(this.z, this.w, -(this.x * this.y));
+        float _t13 = java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, _t1), 1.0f);
+        float _t14 = java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.y, this.y, _t1), 1.0f);
+        float _t16 = java.lang.Math.fma(_t13, _t13, _t12 * _t12);
+        if (_t16 <= epsilon * java.lang.Math.fma(_t10, _t10, _t16)) {
+            return new Float3(Math.atan2(_t10, (float) java.lang.Math.sqrt(_t16)), 0.0f, Math.atan2(_t11, _t14));
+        } else {
+            return new Float3(Math.atan2(_t10, (float) java.lang.Math.sqrt(_t16)), Math.atan2(java.lang.Math.fma(_t13, 2.0f * java.lang.Math.fma(this.x, this.z, this.y * this.w), 2.0f * java.lang.Math.fma(this.y, this.z, -(this.x * this.w)) * _t12), java.lang.Math.fma(_t13, _t14, _t11 * _t12)), Math.atan2(_t12, _t13));
+        }
+    }
+
+    /** {@code getEulerAnglesZXY} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private Float3 getEulerAnglesZXY_mulAdd(float epsilon) {
+        float _t1 = this.z * this.z;
+        float _t10 = 2.0f * ((this.x) * (this.w) + (this.y * this.z));
+        float _t11 = 2.0f * ((this.x) * (this.y) + (this.z * this.w));
+        float _t12 = 2.0f * ((this.z) * (this.w) - (this.x * this.y));
+        float _t13 = ((1.0f) - (2.0f) * (((this.x) * (this.x) + (_t1))));
+        float _t14 = ((1.0f) - (2.0f) * (((this.y) * (this.y) + (_t1))));
+        float _t16 = ((_t13) * (_t13) + (_t12 * _t12));
+        if (_t16 <= epsilon * ((_t10) * (_t10) + (_t16))) {
+            return new Float3(Math.atan2(_t10, (float) java.lang.Math.sqrt(_t16)), 0.0f, Math.atan2(_t11, _t14));
+        } else {
+            return new Float3(Math.atan2(_t10, (float) java.lang.Math.sqrt(_t16)), Math.atan2(((_t13) * (2.0f * ((this.x) * (this.z) + (this.y * this.w))) + (2.0f * ((this.y) * (this.z) - (this.x * this.w)) * _t12)), ((_t13) * (_t14) + (_t11 * _t12))), Math.atan2(_t12, _t13));
+        }
+    }
+
+    /** Private tail of {@code getEulerAnglesZYX}; reached only through it. */
+    private Float3 getEulerAnglesZYX_s0_tail_fma(float _t9, float _t13, float _t8, float _t10, float _t11, float _t1) {
+        if (_t13 <= java.lang.Math.fma(_t9, _t9, _t13) * 2.2737368E-13f) {
+            return new Float3(0.0f, Math.atan2(_t9, (float) java.lang.Math.sqrt(_t13)), Math.atan2(2.0f * java.lang.Math.fma(this.z, this.w, -this.x * this.y), _t11));
+        } else {
+            return new Float3(Math.atan2(java.lang.Math.fma(_t8, 2.0f * java.lang.Math.fma(this.x, this.z, this.y * this.w), _t10 * -2.0f * java.lang.Math.fma(this.y, this.z, -(this.x * this.w))), java.lang.Math.fma(_t11, _t10, _t8 * -2.0f * java.lang.Math.fma(this.x, this.y, -_t1))), Math.atan2(_t9, (float) java.lang.Math.sqrt(_t13)), Math.atan2(_t8, _t10));
+        }
+    }
+
+    /** Private tail of {@code getEulerAnglesZYX}; reached only through it. */
+    private Float3 getEulerAnglesZYX_s0_tail_mulAdd(float _t9, float _t13, float _t8, float _t10, float _t11, float _t1) {
+        if (_t13 <= ((_t9) * (_t9) + (_t13)) * 2.2737368E-13f) {
+            return new Float3(0.0f, Math.atan2(_t9, (float) java.lang.Math.sqrt(_t13)), Math.atan2(2.0f * ((this.z) * (this.w) - (this.x * this.y)), _t11));
+        } else {
+            return new Float3(Math.atan2(((_t8) * (2.0f * ((this.x) * (this.z) + (this.y * this.w))) - (_t10 * 2.0f * ((this.y) * (this.z) - (this.x * this.w)))), ((_t11) * (_t10) - (_t8 * 2.0f * ((this.x) * (this.y) - (_t1))))), Math.atan2(_t9, (float) java.lang.Math.sqrt(_t13)), Math.atan2(_t8, _t10));
+        }
+    }
+
+    /**
+     * Get the Euler angles in radians of this quaternion for rotations about the Z, Y and X axes,
+     * in that order (intrinsic rotations, each about the axes the previous ones turned: the matrix
+     * product {@code Rz * Ry * Rx}, so a vector is rotated about the fixed X axis first, then Y,
+     * then Z), returning the result as a value.
+     * <p>
+     * The result holds each angle at the component of its axis, not at its position in the order:
+     * the angle about X in {@code x}, about Y in {@code y} and about Z in {@code z}. So, with
+     * {@code e} the result, {@code makeRotationZYX(e.z(), e.y(), e.x())}, which takes the angles in
+     * the order of its name, rebuilds the rotation.
+     * <p>
+     * At gimbal lock (a middle rotation of ±90 degrees) the decomposition is not unique; one valid
+     * set of angles is returned.
+     * <p>
+     * The middle angle is recovered with {@code atan2} rather than {@code asin}, so it keeps full
+     * {@code float} resolution over its whole range, down to 0. The last angle is read off the
+     * rotation the first one leaves, so the three rebuild the rotation to within rounding even next
+     * to the gimbal lock.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the Euler angles in radians: about X in {@code x}, about Y in {@code y}, about Z in
+     *        {@code z}
+     */
+    public Float3 getEulerAnglesZYX() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = this.z * this.z;
+            float _t1 = this.z * this.w;
+            float _t8 = 2.0f * java.lang.Math.fma(this.x, this.y, _t1);
+            float _t10 = java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.y, this.y, _t0), 1.0f);
+            return getEulerAnglesZYX_s0_tail_fma(2.0f * java.lang.Math.fma(this.y, this.w, -this.x * this.z), java.lang.Math.fma(_t10, _t10, _t8 * _t8), _t8, _t10, java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, _t0), 1.0f), _t1);
+        } else {
+            float _t0 = this.z * this.z;
+            float _t1 = this.z * this.w;
+            float _t8 = 2.0f * ((this.x) * (this.y) + (_t1));
+            float _t10 = ((1.0f) - (2.0f) * (((this.y) * (this.y) + (_t0))));
+            return getEulerAnglesZYX_s0_tail_mulAdd(2.0f * ((this.y) * (this.w) - (this.x * this.z)), ((_t10) * (_t10) + (_t8 * _t8)), _t8, _t10, ((1.0f) - (2.0f) * (((this.x) * (this.x) + (_t0)))), _t1);
+        }
+    }
+
+    /** Private tail of {@code getEulerAnglesZYX}; reached only through it. */
+    private Float3 getEulerAnglesZYX_s35c5b5a6_tail_fma(float epsilon, float _t9, float _t13, float _t8, float _t10, float _t11, float _t1) {
+        if (_t13 <= epsilon * java.lang.Math.fma(_t9, _t9, _t13)) {
+            return new Float3(0.0f, Math.atan2(_t9, (float) java.lang.Math.sqrt(_t13)), Math.atan2(2.0f * java.lang.Math.fma(this.z, this.w, -this.x * this.y), _t11));
+        } else {
+            return new Float3(Math.atan2(java.lang.Math.fma(_t8, 2.0f * java.lang.Math.fma(this.x, this.z, this.y * this.w), _t10 * -2.0f * java.lang.Math.fma(this.y, this.z, -(this.x * this.w))), java.lang.Math.fma(_t11, _t10, _t8 * -2.0f * java.lang.Math.fma(this.x, this.y, -_t1))), Math.atan2(_t9, (float) java.lang.Math.sqrt(_t13)), Math.atan2(_t8, _t10));
+        }
+    }
+
+    /** Private tail of {@code getEulerAnglesZYX}; reached only through it. */
+    private Float3 getEulerAnglesZYX_s35c5b5a6_tail_mulAdd(float epsilon, float _t9, float _t13, float _t8, float _t10, float _t11, float _t1) {
+        if (_t13 <= epsilon * ((_t9) * (_t9) + (_t13))) {
+            return new Float3(0.0f, Math.atan2(_t9, (float) java.lang.Math.sqrt(_t13)), Math.atan2(2.0f * ((this.z) * (this.w) - (this.x * this.y)), _t11));
+        } else {
+            return new Float3(Math.atan2(((_t8) * (2.0f * ((this.x) * (this.z) + (this.y * this.w))) - (_t10 * 2.0f * ((this.y) * (this.z) - (this.x * this.w)))), ((_t11) * (_t10) - (_t8 * 2.0f * ((this.x) * (this.y) - (_t1))))), Math.atan2(_t9, (float) java.lang.Math.sqrt(_t13)), Math.atan2(_t8, _t10));
+        }
+    }
+
+    /**
+     * Get the Euler angles in radians of this quaternion for rotations about the Z, Y and X axes,
+     * in that order (intrinsic rotations, each about the axes the previous ones turned: the matrix
+     * product {@code Rz * Ry * Rx}, so a vector is rotated about the fixed X axis first, then Y,
+     * then Z), returning the result as a value.
+     * <p>
+     * The result holds each angle at the component of its axis, not at its position in the order:
+     * the angle about X in {@code x}, about Y in {@code y} and about Z in {@code z}. So, with
+     * {@code e} the result, {@code makeRotationZYX(e.z(), e.y(), e.x())}, which takes the angles in
+     * the order of its name, rebuilds the rotation.
+     * <p>
+     * At gimbal lock (a middle rotation of ±90 degrees) the decomposition is not unique; one valid
+     * set of angles is returned.
+     * <p>
+     * The middle angle is recovered with {@code atan2} rather than {@code asin}, so it keeps full
+     * {@code float} resolution over its whole range, down to 0. The last angle is read off the
+     * rotation the first one leaves, so the three rebuild the rotation to within rounding even next
+     * to the gimbal lock.
+     * <p>
+     * Valid input: this quaternion must have unit length; {@code epsilon} must lie in
+     * {@code [0, 1)}.
+     *
+     * @param epsilon the gimbal-lock tolerance: the rotation counts as locked when the squared
+     *        cosine of the middle angle is at most {@code epsilon} times the sum of the squares it
+     *        is formed from (the first angle then carries the coupled rotation and the last is 0);
+     *        the overload without it uses {@code 2^-42}
+     * @return the Euler angles in radians: about X in {@code x}, about Y in {@code y}, about Z in
+     *        {@code z}
+     */
+    public Float3 getEulerAnglesZYX(float epsilon) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = this.z * this.z;
+            float _t1 = this.z * this.w;
+            float _t8 = 2.0f * java.lang.Math.fma(this.x, this.y, _t1);
+            float _t10 = java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.y, this.y, _t0), 1.0f);
+            return getEulerAnglesZYX_s35c5b5a6_tail_fma(epsilon, 2.0f * java.lang.Math.fma(this.y, this.w, -this.x * this.z), java.lang.Math.fma(_t10, _t10, _t8 * _t8), _t8, _t10, java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, _t0), 1.0f), _t1);
+        } else {
+            float _t0 = this.z * this.z;
+            float _t1 = this.z * this.w;
+            float _t8 = 2.0f * ((this.x) * (this.y) + (_t1));
+            float _t10 = ((1.0f) - (2.0f) * (((this.y) * (this.y) + (_t0))));
+            return getEulerAnglesZYX_s35c5b5a6_tail_mulAdd(epsilon, 2.0f * ((this.y) * (this.w) - (this.x * this.z)), ((_t10) * (_t10) + (_t8 * _t8)), _t8, _t10, ((1.0f) - (2.0f) * (((this.x) * (this.x) + (_t0)))), _t1);
+        }
+    }
+
+    /**
+     * Integrate the given angular velocity over the given time step and pre-multiply the resulting
+     * rotation onto this quaternion ({@code dq * this}: the angular velocity is given in the
+     * reference frame, not in this quaternion's local one), returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angularVel the angular velocity, in radians per second, applied in the reference frame
+     * @param dt the time step
+     * @return the resulting quaternion
+     */
+    public FloatQuat integrate(Float3 angularVel, float dt) {
+        float angularVelX = angularVel.x();
+        float angularVelY = angularVel.y();
+        float angularVelZ = angularVel.z();
+        if (!org.joml2.internal.FmaSwitch.ON) return integrate_mulAdd(angularVelX, angularVelY, angularVelZ, dt);
+        float _t0 = 0.5f * dt;
+        float _t1 = angularVelZ * _t0;
+        float _t2 = angularVelX * _t0;
+        float _t3 = angularVelY * _t0;
+        float _t6 = java.lang.Math.fma(_t1, _t1, java.lang.Math.fma(_t2, _t2, _t3 * _t3));
+        float _t7 = (float) java.lang.Math.sqrt(_t6);
+        float _t9 = Math.cosWithSin(_t7);
+        float _t11 = Math.sinWithCos(_t7) / _t7;
+        float _t15, _t16, _t17;
+        if (_t6 > 0.0f) {
+            _t15 = _t2 * _t11;
+            _t16 = _t3 * _t11;
+            _t17 = _t1 * _t11;
+        } else {
+            _t15 = 0.0f;
+            _t16 = 0.0f;
+            _t17 = 0.0f;
+        }
+        return new FloatQuat(java.lang.Math.fma(this.x, _t9, this.w * _t15) + java.lang.Math.fma(this.z, _t16, -(this.y * _t17)), java.lang.Math.fma(this.x, _t17, this.w * _t16) + java.lang.Math.fma(this.y, _t9, -(this.z * _t15)), java.lang.Math.fma(this.y, _t15, this.z * _t9) + java.lang.Math.fma(this.w, _t17, -this.x * _t16), java.lang.Math.fma(this.w, _t9, -this.x * _t15) - java.lang.Math.fma(this.y, _t16, this.z * _t17));
+    }
+
+    /**
+     * Integrate the given angular velocity over the given time step and pre-multiply the resulting
+     * rotation onto this quaternion ({@code dq * this}: the angular velocity is given in the
+     * reference frame, not in this quaternion's local one), returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angularVelX the {@code x} component of the vector
+     *        {@code (angularVelX, angularVelY, angularVelZ)}
+     * @param angularVelY the {@code y} component of the vector
+     *        {@code (angularVelX, angularVelY, angularVelZ)}
+     * @param angularVelZ the {@code z} component of the vector
+     *        {@code (angularVelX, angularVelY, angularVelZ)}
+     * @param dt the time step
+     * @return the resulting quaternion
+     */
+    public FloatQuat integrate(float angularVelX, float angularVelY, float angularVelZ, float dt) {
+        if (!org.joml2.internal.FmaSwitch.ON) return integrate_mulAdd(angularVelX, angularVelY, angularVelZ, dt);
+        float _t0 = 0.5f * dt;
+        float _t1 = angularVelZ * _t0;
+        float _t2 = angularVelX * _t0;
+        float _t3 = angularVelY * _t0;
+        float _t6 = java.lang.Math.fma(_t1, _t1, java.lang.Math.fma(_t2, _t2, _t3 * _t3));
+        float _t7 = (float) java.lang.Math.sqrt(_t6);
+        float _t9 = Math.cosWithSin(_t7);
+        float _t11 = Math.sinWithCos(_t7) / _t7;
+        float _t15, _t16, _t17;
+        if (_t6 > 0.0f) {
+            _t15 = _t2 * _t11;
+            _t16 = _t3 * _t11;
+            _t17 = _t1 * _t11;
+        } else {
+            _t15 = 0.0f;
+            _t16 = 0.0f;
+            _t17 = 0.0f;
+        }
+        return new FloatQuat(java.lang.Math.fma(this.x, _t9, this.w * _t15) + java.lang.Math.fma(this.z, _t16, -(this.y * _t17)), java.lang.Math.fma(this.x, _t17, this.w * _t16) + java.lang.Math.fma(this.y, _t9, -(this.z * _t15)), java.lang.Math.fma(this.y, _t15, this.z * _t9) + java.lang.Math.fma(this.w, _t17, -this.x * _t16), java.lang.Math.fma(this.w, _t9, -this.x * _t15) - java.lang.Math.fma(this.y, _t16, this.z * _t17));
+    }
+
+    /** {@code integrate} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private FloatQuat integrate_mulAdd(float angularVelX, float angularVelY, float angularVelZ, float dt) {
+        float _t0 = 0.5f * dt;
+        float _t1 = angularVelZ * _t0;
+        float _t2 = angularVelX * _t0;
+        float _t3 = angularVelY * _t0;
+        float _t6 = ((_t1) * (_t1) + (((_t2) * (_t2) + (_t3 * _t3))));
+        float _t7 = (float) java.lang.Math.sqrt(_t6);
+        float _t9 = Math.cosWithSin(_t7);
+        float _t11 = Math.sinWithCos(_t7) / _t7;
+        float _t15, _t16, _t17;
+        if (_t6 > 0.0f) {
+            _t15 = _t2 * _t11;
+            _t16 = _t3 * _t11;
+            _t17 = _t1 * _t11;
+        } else {
+            _t15 = 0.0f;
+            _t16 = 0.0f;
+            _t17 = 0.0f;
+        }
+        return new FloatQuat(((this.x) * (_t9) + (this.w * _t15)) + ((this.z) * (_t16) - (this.y * _t17)), ((this.x) * (_t17) + (this.w * _t16)) + ((this.y) * (_t9) - (this.z * _t15)), ((this.y) * (_t15) + (this.z * _t9)) + ((this.w) * (_t17) - (this.x * _t16)), ((this.w) * (_t9) - (this.x * _t15)) - ((this.y) * (_t16) + (this.z * _t17)));
+    }
+
+    /**
+     * Obtain the direction of {@code -X} before the transformation represented by this quaternion
+     * is applied, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting vector
+     */
+    public Float3 invNegativeX() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t9 = 2.0f * java.lang.Math.fma(this.x, this.z, this.y * this.w);
+            float _t10 = 2.0f * java.lang.Math.fma(this.x, this.y, -(this.z * this.w));
+            float _t12 = java.lang.Math.fma(-this.z, this.z, java.lang.Math.fma(-this.y, this.y, java.lang.Math.fma(this.x, this.x, this.w * this.w)));
+            float _t15 = java.lang.Math.fma(_t9, _t9, java.lang.Math.fma(_t12, _t12, _t10 * _t10));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(-(_t12 * _t16), -(_t10 * _t16), -(_t9 * _t16));
+            } else {
+                return Float3.ZERO;
+            }
+        } else {
+            float _t9 = 2.0f * ((this.x) * (this.z) + (this.y * this.w));
+            float _t10 = 2.0f * ((this.x) * (this.y) - (this.z * this.w));
+            float _t12 = ((((((this.x) * (this.x) + (this.w * this.w))) - (this.y) * (this.y))) - (this.z) * (this.z));
+            float _t15 = ((_t9) * (_t9) + (((_t12) * (_t12) + (_t10 * _t10))));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(-(_t12 * _t16), -(_t10 * _t16), -(_t9 * _t16));
+            } else {
+                return Float3.ZERO;
+            }
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code -Y} before the transformation represented by this quaternion
+     * is applied, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting vector
+     */
+    public Float3 invNegativeY() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t9 = 2.0f * java.lang.Math.fma(this.x, this.y, this.z * this.w);
+            float _t10 = 2.0f * java.lang.Math.fma(this.y, this.z, -this.x * this.w);
+            float _t12 = java.lang.Math.fma(-this.z, this.z, java.lang.Math.fma(this.y, this.y, java.lang.Math.fma(this.w, this.w, -this.x * this.x)));
+            float _t15 = java.lang.Math.fma(_t10, _t10, java.lang.Math.fma(_t12, _t12, _t9 * _t9));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(-(_t9 * _t16), -(_t12 * _t16), -(_t10 * _t16));
+            } else {
+                return Float3.ZERO;
+            }
+        } else {
+            float _t9 = 2.0f * ((this.x) * (this.y) + (this.z * this.w));
+            float _t10 = 2.0f * ((this.y) * (this.z) - (this.x * this.w));
+            float _t12 = ((((this.y) * (this.y) + (((this.w) * (this.w) - (this.x * this.x))))) - (this.z) * (this.z));
+            float _t15 = ((_t10) * (_t10) + (((_t12) * (_t12) + (_t9 * _t9))));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(-(_t9 * _t16), -(_t12 * _t16), -(_t10 * _t16));
+            } else {
+                return Float3.ZERO;
+            }
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code -Z} before the transformation represented by this quaternion
+     * is applied, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting vector
+     */
+    public Float3 invNegativeZ() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t9 = 2.0f * java.lang.Math.fma(this.x, this.w, this.y * this.z);
+            float _t10 = 2.0f * java.lang.Math.fma(this.x, this.z, -(this.y * this.w));
+            float _t12 = java.lang.Math.fma(this.z, this.z, java.lang.Math.fma(-this.y, this.y, java.lang.Math.fma(this.w, this.w, -this.x * this.x)));
+            float _t15 = java.lang.Math.fma(_t12, _t12, java.lang.Math.fma(_t9, _t9, _t10 * _t10));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(-(_t10 * _t16), -(_t9 * _t16), -(_t12 * _t16));
+            } else {
+                return Float3.ZERO;
+            }
+        } else {
+            float _t9 = 2.0f * ((this.x) * (this.w) + (this.y * this.z));
+            float _t10 = 2.0f * ((this.x) * (this.z) - (this.y * this.w));
+            float _t12 = ((this.z) * (this.z) + (((((this.w) * (this.w) - (this.x * this.x))) - (this.y) * (this.y))));
+            float _t15 = ((_t12) * (_t12) + (((_t9) * (_t9) + (_t10 * _t10))));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(-(_t10 * _t16), -(_t9 * _t16), -(_t12 * _t16));
+            } else {
+                return Float3.ZERO;
+            }
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code -X} before the transformation represented by this quaternion
+     * is applied, returning the result as a value.
+     * <p>
+     * This method skips the normalization the plain variant performs.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the resulting vector
+     */
+    public Float3 invNormalizedNegativeX() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new Float3(java.lang.Math.fma(2.0f, java.lang.Math.fma(this.y, this.y, this.z * this.z), -1.0f), -2.0f * java.lang.Math.fma(this.x, this.y, -(this.z * this.w)), -2.0f * java.lang.Math.fma(this.x, this.z, this.y * this.w));
+        } else {
+            return new Float3(((2.0f) * (((this.y) * (this.y) + (this.z * this.z))) - (1.0f)), -2.0f * ((this.x) * (this.y) - (this.z * this.w)), -2.0f * ((this.x) * (this.z) + (this.y * this.w)));
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code -Y} before the transformation represented by this quaternion
+     * is applied, returning the result as a value.
+     * <p>
+     * This method skips the normalization the plain variant performs.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the resulting vector
+     */
+    public Float3 invNormalizedNegativeY() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new Float3(-2.0f * java.lang.Math.fma(this.x, this.y, this.z * this.w), java.lang.Math.fma(2.0f, java.lang.Math.fma(this.x, this.x, this.z * this.z), -1.0f), -2.0f * java.lang.Math.fma(this.y, this.z, -(this.x * this.w)));
+        } else {
+            return new Float3(-2.0f * ((this.x) * (this.y) + (this.z * this.w)), ((2.0f) * (((this.x) * (this.x) + (this.z * this.z))) - (1.0f)), -2.0f * ((this.y) * (this.z) - (this.x * this.w)));
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code -Z} before the transformation represented by this quaternion
+     * is applied, returning the result as a value.
+     * <p>
+     * This method skips the normalization the plain variant performs.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the resulting vector
+     */
+    public Float3 invNormalizedNegativeZ() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new Float3(-2.0f * java.lang.Math.fma(this.x, this.z, -(this.y * this.w)), -2.0f * java.lang.Math.fma(this.x, this.w, this.y * this.z), java.lang.Math.fma(2.0f, java.lang.Math.fma(this.x, this.x, this.y * this.y), -1.0f));
+        } else {
+            return new Float3(-2.0f * ((this.x) * (this.z) - (this.y * this.w)), -2.0f * ((this.x) * (this.w) + (this.y * this.z)), ((2.0f) * (((this.x) * (this.x) + (this.y * this.y))) - (1.0f)));
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code +X} before the transformation represented by this quaternion
+     * is applied, returning the result as a value.
+     * <p>
+     * This method skips the normalization the plain variant performs.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the resulting vector
+     */
+    public Float3 invNormalizedPositiveX() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new Float3(java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.y, this.y, this.z * this.z), 1.0f), 2.0f * java.lang.Math.fma(this.x, this.y, -(this.z * this.w)), 2.0f * java.lang.Math.fma(this.x, this.z, this.y * this.w));
+        } else {
+            return new Float3(((1.0f) - (2.0f) * (((this.y) * (this.y) + (this.z * this.z)))), 2.0f * ((this.x) * (this.y) - (this.z * this.w)), 2.0f * ((this.x) * (this.z) + (this.y * this.w)));
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code +Y} before the transformation represented by this quaternion
+     * is applied, returning the result as a value.
+     * <p>
+     * This method skips the normalization the plain variant performs.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the resulting vector
+     */
+    public Float3 invNormalizedPositiveY() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new Float3(2.0f * java.lang.Math.fma(this.x, this.y, this.z * this.w), java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, this.z * this.z), 1.0f), 2.0f * java.lang.Math.fma(this.y, this.z, -(this.x * this.w)));
+        } else {
+            return new Float3(2.0f * ((this.x) * (this.y) + (this.z * this.w)), ((1.0f) - (2.0f) * (((this.x) * (this.x) + (this.z * this.z)))), 2.0f * ((this.y) * (this.z) - (this.x * this.w)));
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code +Z} before the transformation represented by this quaternion
+     * is applied, returning the result as a value.
+     * <p>
+     * This method skips the normalization the plain variant performs.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the resulting vector
+     */
+    public Float3 invNormalizedPositiveZ() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new Float3(2.0f * java.lang.Math.fma(this.x, this.z, -(this.y * this.w)), 2.0f * java.lang.Math.fma(this.x, this.w, this.y * this.z), java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, this.y * this.y), 1.0f));
+        } else {
+            return new Float3(2.0f * ((this.x) * (this.z) - (this.y * this.w)), 2.0f * ((this.x) * (this.w) + (this.y * this.z)), ((1.0f) - (2.0f) * (((this.x) * (this.x) + (this.y * this.y)))));
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code +X} before the transformation represented by this quaternion
+     * is applied, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting vector
+     */
+    public Float3 invPositiveX() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t9 = 2.0f * java.lang.Math.fma(this.x, this.z, this.y * this.w);
+            float _t10 = 2.0f * java.lang.Math.fma(this.x, this.y, -(this.z * this.w));
+            float _t12 = java.lang.Math.fma(-this.z, this.z, java.lang.Math.fma(-this.y, this.y, java.lang.Math.fma(this.x, this.x, this.w * this.w)));
+            float _t15 = java.lang.Math.fma(_t9, _t9, java.lang.Math.fma(_t12, _t12, _t10 * _t10));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(_t12 * _t16, _t10 * _t16, _t9 * _t16);
+            } else {
+                return Float3.ZERO;
+            }
+        } else {
+            float _t9 = 2.0f * ((this.x) * (this.z) + (this.y * this.w));
+            float _t10 = 2.0f * ((this.x) * (this.y) - (this.z * this.w));
+            float _t12 = ((((((this.x) * (this.x) + (this.w * this.w))) - (this.y) * (this.y))) - (this.z) * (this.z));
+            float _t15 = ((_t9) * (_t9) + (((_t12) * (_t12) + (_t10 * _t10))));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(_t12 * _t16, _t10 * _t16, _t9 * _t16);
+            } else {
+                return Float3.ZERO;
+            }
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code +Y} before the transformation represented by this quaternion
+     * is applied, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting vector
+     */
+    public Float3 invPositiveY() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t9 = 2.0f * java.lang.Math.fma(this.x, this.y, this.z * this.w);
+            float _t10 = 2.0f * java.lang.Math.fma(this.y, this.z, -this.x * this.w);
+            float _t12 = java.lang.Math.fma(-this.z, this.z, java.lang.Math.fma(this.y, this.y, java.lang.Math.fma(this.w, this.w, -this.x * this.x)));
+            float _t15 = java.lang.Math.fma(_t10, _t10, java.lang.Math.fma(_t12, _t12, _t9 * _t9));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(_t9 * _t16, _t12 * _t16, _t10 * _t16);
+            } else {
+                return Float3.ZERO;
+            }
+        } else {
+            float _t9 = 2.0f * ((this.x) * (this.y) + (this.z * this.w));
+            float _t10 = 2.0f * ((this.y) * (this.z) - (this.x * this.w));
+            float _t12 = ((((this.y) * (this.y) + (((this.w) * (this.w) - (this.x * this.x))))) - (this.z) * (this.z));
+            float _t15 = ((_t10) * (_t10) + (((_t12) * (_t12) + (_t9 * _t9))));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(_t9 * _t16, _t12 * _t16, _t10 * _t16);
+            } else {
+                return Float3.ZERO;
+            }
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code +Z} before the transformation represented by this quaternion
+     * is applied, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting vector
+     */
+    public Float3 invPositiveZ() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t9 = 2.0f * java.lang.Math.fma(this.x, this.w, this.y * this.z);
+            float _t10 = 2.0f * java.lang.Math.fma(this.x, this.z, -(this.y * this.w));
+            float _t12 = java.lang.Math.fma(this.z, this.z, java.lang.Math.fma(-this.y, this.y, java.lang.Math.fma(this.w, this.w, -this.x * this.x)));
+            float _t15 = java.lang.Math.fma(_t12, _t12, java.lang.Math.fma(_t9, _t9, _t10 * _t10));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(_t10 * _t16, _t9 * _t16, _t12 * _t16);
+            } else {
+                return Float3.ZERO;
+            }
+        } else {
+            float _t9 = 2.0f * ((this.x) * (this.w) + (this.y * this.z));
+            float _t10 = 2.0f * ((this.x) * (this.z) - (this.y * this.w));
+            float _t12 = ((this.z) * (this.z) + (((((this.w) * (this.w) - (this.x * this.x))) - (this.y) * (this.y))));
+            float _t15 = ((_t12) * (_t12) + (((_t9) * (_t9) + (_t10 * _t10))));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(_t10 * _t16, _t9 * _t16, _t12 * _t16);
+            } else {
+                return Float3.ZERO;
+            }
+        }
+    }
+
+    /**
+     * Compute the length of this quaternion.
+     * <p>
+     * Valid input: nonzero magnitudes must lie between {@code 1e-19} and {@code 5e18}.
+     *
+     * @return the length of this quaternion
+     */
+    public float length() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return (float) java.lang.Math.sqrt(java.lang.Math.fma(this.w, this.w, java.lang.Math.fma(this.z, this.z, java.lang.Math.fma(this.x, this.x, this.y * this.y))));
+        } else {
+            return (float) java.lang.Math.sqrt(((this.w) * (this.w) + (((this.z) * (this.z) + (((this.x) * (this.x) + (this.y * this.y)))))));
+        }
+    }
+
+    /**
+     * Compute the squared length of this quaternion.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the squared length of this quaternion
+     */
+    public float lengthSquared() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return java.lang.Math.fma(this.w, this.w, java.lang.Math.fma(this.z, this.z, java.lang.Math.fma(this.x, this.x, this.y * this.y)));
+        } else {
+            return ((this.w) * (this.w) + (((this.z) * (this.z) + (((this.x) * (this.x) + (this.y * this.y))))));
+        }
+    }
+
+    /**
+     * Compute the natural logarithm of this quaternion, returning the result as a value.
+     * <p>
+     * The rotation angle is recovered with {@code atan2}, so it keeps full {@code float} resolution
+     * down to 0 - small rotations are not truncated.
+     * <p>
+     * Valid input: this quaternion must be non-zero.
+     *
+     * @return the resulting quaternion
+     */
+    public FloatQuat log() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t2 = java.lang.Math.fma(this.z, this.z, java.lang.Math.fma(this.x, this.x, this.y * this.y));
+            float _t6 = Math.atan2((float) java.lang.Math.sqrt(_t2), this.w) * (1.0f / (float) java.lang.Math.sqrt(_t2));
+            if (_t2 > 0.0f) {
+                return new FloatQuat(this.x * _t6, this.y * _t6, this.z * _t6, Math.log((float) java.lang.Math.sqrt(java.lang.Math.fma(this.w, this.w, _t2))));
+            } else {
+                return new FloatQuat(0.0f, 0.0f, 0.0f, Math.log((float) java.lang.Math.sqrt(java.lang.Math.fma(this.w, this.w, _t2))));
+            }
+        } else {
+            float _t2 = ((this.z) * (this.z) + (((this.x) * (this.x) + (this.y * this.y))));
+            float _t6 = Math.atan2((float) java.lang.Math.sqrt(_t2), this.w) * (1.0f / (float) java.lang.Math.sqrt(_t2));
+            if (_t2 > 0.0f) {
+                return new FloatQuat(this.x * _t6, this.y * _t6, this.z * _t6, Math.log((float) java.lang.Math.sqrt(((this.w) * (this.w) + (_t2)))));
+            } else {
+                return new FloatQuat(0.0f, 0.0f, 0.0f, Math.log((float) java.lang.Math.sqrt(((this.w) * (this.w) + (_t2)))));
+            }
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code -X} after the transformation represented by this quaternion is
+     * applied, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting vector
+     */
+    public Float3 negativeX() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t9 = 2.0f * java.lang.Math.fma(this.x, this.y, this.z * this.w);
+            float _t10 = 2.0f * java.lang.Math.fma(this.x, this.z, -this.y * this.w);
+            float _t12 = java.lang.Math.fma(-this.z, this.z, java.lang.Math.fma(-this.y, this.y, java.lang.Math.fma(this.x, this.x, this.w * this.w)));
+            float _t15 = java.lang.Math.fma(_t10, _t10, java.lang.Math.fma(_t12, _t12, _t9 * _t9));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(-(_t12 * _t16), -(_t9 * _t16), -(_t10 * _t16));
+            } else {
+                return Float3.ZERO;
+            }
+        } else {
+            float _t9 = 2.0f * ((this.x) * (this.y) + (this.z * this.w));
+            float _t10 = 2.0f * ((this.x) * (this.z) - (this.y * this.w));
+            float _t12 = ((((((this.x) * (this.x) + (this.w * this.w))) - (this.y) * (this.y))) - (this.z) * (this.z));
+            float _t15 = ((_t10) * (_t10) + (((_t12) * (_t12) + (_t9 * _t9))));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(-(_t12 * _t16), -(_t9 * _t16), -(_t10 * _t16));
+            } else {
+                return Float3.ZERO;
+            }
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code -Y} after the transformation represented by this quaternion is
+     * applied, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting vector
+     */
+    public Float3 negativeY() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t9 = 2.0f * java.lang.Math.fma(this.x, this.w, this.y * this.z);
+            float _t10 = 2.0f * java.lang.Math.fma(this.x, this.y, -(this.z * this.w));
+            float _t12 = java.lang.Math.fma(-this.z, this.z, java.lang.Math.fma(this.y, this.y, java.lang.Math.fma(this.w, this.w, -this.x * this.x)));
+            float _t15 = java.lang.Math.fma(_t9, _t9, java.lang.Math.fma(_t12, _t12, _t10 * _t10));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(-(_t10 * _t16), -(_t12 * _t16), -(_t9 * _t16));
+            } else {
+                return Float3.ZERO;
+            }
+        } else {
+            float _t9 = 2.0f * ((this.x) * (this.w) + (this.y * this.z));
+            float _t10 = 2.0f * ((this.x) * (this.y) - (this.z * this.w));
+            float _t12 = ((((this.y) * (this.y) + (((this.w) * (this.w) - (this.x * this.x))))) - (this.z) * (this.z));
+            float _t15 = ((_t9) * (_t9) + (((_t12) * (_t12) + (_t10 * _t10))));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(-(_t10 * _t16), -(_t12 * _t16), -(_t9 * _t16));
+            } else {
+                return Float3.ZERO;
+            }
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code -Z} after the transformation represented by this quaternion is
+     * applied, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting vector
+     */
+    public Float3 negativeZ() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t9 = 2.0f * java.lang.Math.fma(this.x, this.z, this.y * this.w);
+            float _t10 = 2.0f * java.lang.Math.fma(this.y, this.z, -this.x * this.w);
+            float _t12 = java.lang.Math.fma(this.z, this.z, java.lang.Math.fma(-this.y, this.y, java.lang.Math.fma(this.w, this.w, -this.x * this.x)));
+            float _t15 = java.lang.Math.fma(_t12, _t12, java.lang.Math.fma(_t9, _t9, _t10 * _t10));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(-(_t9 * _t16), -(_t10 * _t16), -(_t12 * _t16));
+            } else {
+                return Float3.ZERO;
+            }
+        } else {
+            float _t9 = 2.0f * ((this.x) * (this.z) + (this.y * this.w));
+            float _t10 = 2.0f * ((this.y) * (this.z) - (this.x * this.w));
+            float _t12 = ((this.z) * (this.z) + (((((this.w) * (this.w) - (this.x * this.x))) - (this.y) * (this.y))));
+            float _t15 = ((_t12) * (_t12) + (((_t9) * (_t9) + (_t10 * _t10))));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(-(_t9 * _t16), -(_t10 * _t16), -(_t12 * _t16));
+            } else {
+                return Float3.ZERO;
+            }
+        }
+    }
+
+    /**
+     * Normalize this quaternion to unit length, returning the result as a value.
+     * <p>
+     * Valid input: nonzero magnitudes must lie between {@code 1e-19} and {@code 5e18}.
+     *
+     * @return the resulting quaternion
+     */
+    public FloatQuat normalize() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t3 = java.lang.Math.fma(this.w, this.w, java.lang.Math.fma(this.z, this.z, java.lang.Math.fma(this.x, this.x, this.y * this.y)));
+            float _t4 = (1.0f / (float) java.lang.Math.sqrt(_t3));
+            if (_t3 != 0.0f) {
+                return new FloatQuat(this.x * _t4, this.y * _t4, this.z * _t4, this.w * _t4);
+            } else {
+                return FloatQuat.ZERO;
+            }
+        } else {
+            float _t3 = ((this.w) * (this.w) + (((this.z) * (this.z) + (((this.x) * (this.x) + (this.y * this.y))))));
+            float _t4 = (1.0f / (float) java.lang.Math.sqrt(_t3));
+            if (_t3 != 0.0f) {
+                return new FloatQuat(this.x * _t4, this.y * _t4, this.z * _t4, this.w * _t4);
+            } else {
+                return FloatQuat.ZERO;
+            }
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code -X} after the transformation represented by this quaternion is
+     * applied, returning the result as a value.
+     * <p>
+     * This method skips the normalization the plain variant performs.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the resulting vector
+     */
+    public Float3 normalizedNegativeX() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new Float3(java.lang.Math.fma(2.0f, java.lang.Math.fma(this.y, this.y, this.z * this.z), -1.0f), -2.0f * java.lang.Math.fma(this.x, this.y, this.z * this.w), -2.0f * java.lang.Math.fma(this.x, this.z, -(this.y * this.w)));
+        } else {
+            return new Float3(((2.0f) * (((this.y) * (this.y) + (this.z * this.z))) - (1.0f)), -2.0f * ((this.x) * (this.y) + (this.z * this.w)), -2.0f * ((this.x) * (this.z) - (this.y * this.w)));
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code -Y} after the transformation represented by this quaternion is
+     * applied, returning the result as a value.
+     * <p>
+     * This method skips the normalization the plain variant performs.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the resulting vector
+     */
+    public Float3 normalizedNegativeY() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new Float3(-2.0f * java.lang.Math.fma(this.x, this.y, -(this.z * this.w)), java.lang.Math.fma(2.0f, java.lang.Math.fma(this.x, this.x, this.z * this.z), -1.0f), -2.0f * java.lang.Math.fma(this.x, this.w, this.y * this.z));
+        } else {
+            return new Float3(-2.0f * ((this.x) * (this.y) - (this.z * this.w)), ((2.0f) * (((this.x) * (this.x) + (this.z * this.z))) - (1.0f)), -2.0f * ((this.x) * (this.w) + (this.y * this.z)));
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code -Z} after the transformation represented by this quaternion is
+     * applied, returning the result as a value.
+     * <p>
+     * This method skips the normalization the plain variant performs.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the resulting vector
+     */
+    public Float3 normalizedNegativeZ() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new Float3(-2.0f * java.lang.Math.fma(this.x, this.z, this.y * this.w), -2.0f * java.lang.Math.fma(this.y, this.z, -(this.x * this.w)), java.lang.Math.fma(2.0f, java.lang.Math.fma(this.x, this.x, this.y * this.y), -1.0f));
+        } else {
+            return new Float3(-2.0f * ((this.x) * (this.z) + (this.y * this.w)), -2.0f * ((this.y) * (this.z) - (this.x * this.w)), ((2.0f) * (((this.x) * (this.x) + (this.y * this.y))) - (1.0f)));
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code +X} after the transformation represented by this quaternion is
+     * applied, returning the result as a value.
+     * <p>
+     * This method skips the normalization the plain variant performs.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the resulting vector
+     */
+    public Float3 normalizedPositiveX() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new Float3(java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.y, this.y, this.z * this.z), 1.0f), 2.0f * java.lang.Math.fma(this.x, this.y, this.z * this.w), 2.0f * java.lang.Math.fma(this.x, this.z, -(this.y * this.w)));
+        } else {
+            return new Float3(((1.0f) - (2.0f) * (((this.y) * (this.y) + (this.z * this.z)))), 2.0f * ((this.x) * (this.y) + (this.z * this.w)), 2.0f * ((this.x) * (this.z) - (this.y * this.w)));
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code +Y} after the transformation represented by this quaternion is
+     * applied, returning the result as a value.
+     * <p>
+     * This method skips the normalization the plain variant performs.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the resulting vector
+     */
+    public Float3 normalizedPositiveY() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new Float3(2.0f * java.lang.Math.fma(this.x, this.y, -(this.z * this.w)), java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, this.z * this.z), 1.0f), 2.0f * java.lang.Math.fma(this.x, this.w, this.y * this.z));
+        } else {
+            return new Float3(2.0f * ((this.x) * (this.y) - (this.z * this.w)), ((1.0f) - (2.0f) * (((this.x) * (this.x) + (this.z * this.z)))), 2.0f * ((this.x) * (this.w) + (this.y * this.z)));
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code +Z} after the transformation represented by this quaternion is
+     * applied, returning the result as a value.
+     * <p>
+     * This method skips the normalization the plain variant performs.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @return the resulting vector
+     */
+    public Float3 normalizedPositiveZ() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new Float3(2.0f * java.lang.Math.fma(this.x, this.z, this.y * this.w), 2.0f * java.lang.Math.fma(this.y, this.z, -(this.x * this.w)), java.lang.Math.fma(-2.0f, java.lang.Math.fma(this.x, this.x, this.y * this.y), 1.0f));
+        } else {
+            return new Float3(2.0f * ((this.x) * (this.z) + (this.y * this.w)), 2.0f * ((this.y) * (this.z) - (this.x * this.w)), ((1.0f) - (2.0f) * (((this.x) * (this.x) + (this.y * this.y)))));
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code +X} after the transformation represented by this quaternion is
+     * applied, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting vector
+     */
+    public Float3 positiveX() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t9 = 2.0f * java.lang.Math.fma(this.x, this.y, this.z * this.w);
+            float _t10 = 2.0f * java.lang.Math.fma(this.x, this.z, -this.y * this.w);
+            float _t12 = java.lang.Math.fma(-this.z, this.z, java.lang.Math.fma(-this.y, this.y, java.lang.Math.fma(this.x, this.x, this.w * this.w)));
+            float _t15 = java.lang.Math.fma(_t10, _t10, java.lang.Math.fma(_t12, _t12, _t9 * _t9));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(_t12 * _t16, _t9 * _t16, _t10 * _t16);
+            } else {
+                return Float3.ZERO;
+            }
+        } else {
+            float _t9 = 2.0f * ((this.x) * (this.y) + (this.z * this.w));
+            float _t10 = 2.0f * ((this.x) * (this.z) - (this.y * this.w));
+            float _t12 = ((((((this.x) * (this.x) + (this.w * this.w))) - (this.y) * (this.y))) - (this.z) * (this.z));
+            float _t15 = ((_t10) * (_t10) + (((_t12) * (_t12) + (_t9 * _t9))));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(_t12 * _t16, _t9 * _t16, _t10 * _t16);
+            } else {
+                return Float3.ZERO;
+            }
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code +Y} after the transformation represented by this quaternion is
+     * applied, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting vector
+     */
+    public Float3 positiveY() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t9 = 2.0f * java.lang.Math.fma(this.x, this.w, this.y * this.z);
+            float _t10 = 2.0f * java.lang.Math.fma(this.x, this.y, -(this.z * this.w));
+            float _t12 = java.lang.Math.fma(-this.z, this.z, java.lang.Math.fma(this.y, this.y, java.lang.Math.fma(this.w, this.w, -this.x * this.x)));
+            float _t15 = java.lang.Math.fma(_t9, _t9, java.lang.Math.fma(_t12, _t12, _t10 * _t10));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(_t10 * _t16, _t12 * _t16, _t9 * _t16);
+            } else {
+                return Float3.ZERO;
+            }
+        } else {
+            float _t9 = 2.0f * ((this.x) * (this.w) + (this.y * this.z));
+            float _t10 = 2.0f * ((this.x) * (this.y) - (this.z * this.w));
+            float _t12 = ((((this.y) * (this.y) + (((this.w) * (this.w) - (this.x * this.x))))) - (this.z) * (this.z));
+            float _t15 = ((_t9) * (_t9) + (((_t12) * (_t12) + (_t10 * _t10))));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(_t10 * _t16, _t12 * _t16, _t9 * _t16);
+            } else {
+                return Float3.ZERO;
+            }
+        }
+    }
+
+    /**
+     * Obtain the direction of {@code +Z} after the transformation represented by this quaternion is
+     * applied, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting vector
+     */
+    public Float3 positiveZ() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t9 = 2.0f * java.lang.Math.fma(this.x, this.z, this.y * this.w);
+            float _t10 = 2.0f * java.lang.Math.fma(this.y, this.z, -this.x * this.w);
+            float _t12 = java.lang.Math.fma(this.z, this.z, java.lang.Math.fma(-this.y, this.y, java.lang.Math.fma(this.w, this.w, -this.x * this.x)));
+            float _t15 = java.lang.Math.fma(_t12, _t12, java.lang.Math.fma(_t9, _t9, _t10 * _t10));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(_t9 * _t16, _t10 * _t16, _t12 * _t16);
+            } else {
+                return Float3.ZERO;
+            }
+        } else {
+            float _t9 = 2.0f * ((this.x) * (this.z) + (this.y * this.w));
+            float _t10 = 2.0f * ((this.y) * (this.z) - (this.x * this.w));
+            float _t12 = ((this.z) * (this.z) + (((((this.w) * (this.w) - (this.x * this.x))) - (this.y) * (this.y))));
+            float _t15 = ((_t12) * (_t12) + (((_t9) * (_t9) + (_t10 * _t10))));
+            float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t15));
+            if (_t15 != 0.0f) {
+                return new Float3(_t9 * _t16, _t10 * _t16, _t12 * _t16);
+            } else {
+                return Float3.ZERO;
+            }
+        }
+    }
+
+    /**
+     * Raise this quaternion to the power of {@code t}, i.e. compute {@code exp(t * log(this))},
+     * returning the result as a value.
+     * <p>
+     * The rotation angle is recovered with {@code atan2}, so it keeps full {@code float} resolution
+     * down to 0 - small rotations are not truncated.
+     * <p>
+     * Valid input: {@code t} must lie in {@code [-4096, 4096]}.
+     *
+     * @param t the exponent
+     * @return the resulting quaternion
+     */
+    public FloatQuat pow(float t) {
+        if (!org.joml2.internal.FmaSwitch.ON) return pow_mulAdd(t);
+        float _t2 = java.lang.Math.fma(this.z, this.z, java.lang.Math.fma(this.x, this.x, this.y * this.y));
+        float _t12 = Math.min(Math.exp(t == 0.0f ? 0.0f : t * Math.log((float) java.lang.Math.sqrt(java.lang.Math.fma(this.w, this.w, _t2)))), 3.4028235E38f);
+        float _t13 = Math.atan2((float) java.lang.Math.sqrt(_t2), this.w) * (1.0f / (float) java.lang.Math.sqrt(_t2));
+        float _t20, _t21, _t22;
+        if (_t2 > 0.0f) {
+            _t20 = t * this.z * _t13;
+            _t21 = t * this.x * _t13;
+            _t22 = t * this.y * _t13;
+        } else {
+            _t20 = t * 0.0f;
+            _t21 = t * 0.0f;
+            _t22 = t * 0.0f;
+        }
+        float _t25 = java.lang.Math.fma(_t20, _t20, java.lang.Math.fma(_t21, _t21, _t22 * _t22));
+        float _t26 = (float) java.lang.Math.sqrt(_t25);
+        float _t31 = _t12 * (Math.sinWithCos(_t26) / _t26);
+        if (_t25 > 0.0f) {
+            return new FloatQuat(_t21 * _t31, _t22 * _t31, _t20 * _t31, Math.cosWithSin(_t26) * _t12);
+        } else {
+            return new FloatQuat(0.0f, 0.0f, 0.0f, Math.cosWithSin(_t26) * _t12);
+        }
+    }
+
+    /** {@code pow} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private FloatQuat pow_mulAdd(float t) {
+        float _t2 = ((this.z) * (this.z) + (((this.x) * (this.x) + (this.y * this.y))));
+        float _t12 = Math.min(Math.exp(t == 0.0f ? 0.0f : t * Math.log((float) java.lang.Math.sqrt(((this.w) * (this.w) + (_t2))))), 3.4028235E38f);
+        float _t13 = Math.atan2((float) java.lang.Math.sqrt(_t2), this.w) * (1.0f / (float) java.lang.Math.sqrt(_t2));
+        float _t20, _t21, _t22;
+        if (_t2 > 0.0f) {
+            _t20 = t * this.z * _t13;
+            _t21 = t * this.x * _t13;
+            _t22 = t * this.y * _t13;
+        } else {
+            _t20 = t * 0.0f;
+            _t21 = t * 0.0f;
+            _t22 = t * 0.0f;
+        }
+        float _t25 = ((_t20) * (_t20) + (((_t21) * (_t21) + (_t22 * _t22))));
+        float _t26 = (float) java.lang.Math.sqrt(_t25);
+        float _t31 = _t12 * (Math.sinWithCos(_t26) / _t26);
+        if (_t25 > 0.0f) {
+            return new FloatQuat(_t21 * _t31, _t22 * _t31, _t20 * _t31, Math.cosWithSin(_t26) * _t12);
+        } else {
+            return new FloatQuat(0.0f, 0.0f, 0.0f, Math.cosWithSin(_t26) * _t12);
+        }
+    }
+
+    /**
+     * Pre-multiply {@code other} onto this quaternion, returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code R} the operand, then the new quaternion
+     * will be {@code R * Q}. So when transforming a vector {@code v} with the new quaternion by
+     * using {@code R * Q * v}, the transformation of the operand will be applied last.
+     * <p>
+     * Identical to {@link #preMul}; the lower-case spelling is kept for JOML 1 source
+     * compatibility.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param other the left operand
+     * @return the resulting quaternion
+     */
+    public FloatQuat premul(FloatQuat other) {
+        return preMul(other);
+    }
+
+    /**
+     * Pre-multiply ({@code otherX}, {@code otherY}, {@code otherZ}, {@code otherW}) onto this
+     * quaternion, returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code R} the operand, then the new quaternion
+     * will be {@code R * Q}. So when transforming a vector {@code v} with the new quaternion by
+     * using {@code R * Q * v}, the transformation of the operand will be applied last.
+     * <p>
+     * Identical to {@link #preMul}; the lower-case spelling is kept for JOML 1 source
+     * compatibility.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param otherX the {@code x} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the quaternion
+     *        {@code (otherX, otherY, otherZ, otherW)}
+     * @return the resulting quaternion
+     */
+    public FloatQuat premul(float otherX, float otherY, float otherZ, float otherW) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new FloatQuat(java.lang.Math.fma(otherX, this.w, otherW * this.x) + java.lang.Math.fma(otherY, this.z, -(otherZ * this.y)), java.lang.Math.fma(otherY, this.w, otherZ * this.x) + java.lang.Math.fma(otherW, this.y, -otherX * this.z), java.lang.Math.fma(otherX, this.y, otherW * this.z) + java.lang.Math.fma(otherZ, this.w, -(otherY * this.x)), java.lang.Math.fma(otherW, this.w, -otherX * this.x) - java.lang.Math.fma(otherY, this.y, otherZ * this.z));
+        } else {
+            return new FloatQuat(((otherX) * (this.w) + (otherW * this.x)) + ((otherY) * (this.z) - (otherZ * this.y)), ((otherY) * (this.w) + (otherZ * this.x)) + ((otherW) * (this.y) - (otherX * this.z)), ((otherX) * (this.y) + (otherW * this.z)) + ((otherZ) * (this.w) - (otherY * this.x)), ((otherW) * (this.w) - (otherX * this.x)) - ((otherY) * (this.y) + (otherZ * this.z)));
+        }
+    }
+
+    /**
+     * Rotate this quaternion towards {@code target}, by at most the given maximum angle, returning
+     * the result as a value.
+     * <p>
+     * The rotation angle is recovered with {@code atan2}, so it keeps full {@code float} resolution
+     * down to 0 - small rotations are not truncated.
+     * <p>
+     * Valid input: this quaternion must have unit length; {@code target} must have unit length.
+     *
+     * @param target the target rotation
+     * @param step the maximum rotation angle in radians
+     * @return the resulting quaternion
+     */
+    public FloatQuat rotateTowards(FloatQuat target, float step) {
+        float targetX = target.x;
+        float targetY = target.y;
+        float targetZ = target.z;
+        float targetW = target.w;
+        if (!org.joml2.internal.FmaSwitch.ON) return rotateTowards_mulAdd(targetX, targetY, targetZ, targetW, step);
+        float _t9, _t10, _t11, _t12;
+        if (-java.lang.Math.fma(this.w, targetW, java.lang.Math.fma(this.z, targetZ, java.lang.Math.fma(this.x, targetX, this.y * targetY))) > 0.0f) {
+            _t9 = -targetW;
+            _t10 = -targetZ;
+            _t11 = -targetX;
+            _t12 = -targetY;
+        } else {
+            _t9 = targetW;
+            _t10 = targetZ;
+            _t11 = targetX;
+            _t12 = targetY;
+        }
+        float _t13 = this.w + _t9;
+        float _t14 = this.z + _t10;
+        float _t15 = this.x + _t11;
+        float _t16 = this.y + _t12;
+        float _t17 = this.w - _t9;
+        float _t18 = this.z - _t10;
+        float _t19 = this.x - _t11;
+        float _t20 = this.y - _t12;
+        float _t30 = java.lang.Math.fma(_t15, _t15, _t16 * _t16);
+        return rotateTowards_s6b684b4e_tail_fma(java.lang.Math.fma(_t13, _t13, java.lang.Math.fma(_t14, _t14, _t30)), java.lang.Math.fma(_t17, _t17, java.lang.Math.fma(_t18, _t18, java.lang.Math.fma(_t19, _t19, _t20 * _t20))), step, _t30, _t14, _t13, _t20, _t19, _t17, _t18, _t9, _t10, _t11, _t12);
+    }
+
+    /** Private tail of {@code rotateTowards}; reached only through it. */
+    private FloatQuat rotateTowards_s6b684b4e_tail_fma(float _t37, float _t38, float step, float _t30, float _t14, float _t13, float _t20, float _t19, float _t17, float _t18, float _t9, float _t10, float _t11, float _t12) {
+        float _t43 = _t37 * _t38;
+        float _t46 = Math.atan2((float) java.lang.Math.sqrt(_t38), (float) java.lang.Math.sqrt(_t37));
+        float _t49 = 4.0f * _t46;
+        float _t55 = _t49 > 0.0f ? Math.min(1.0f, step / _t49) : 0.0f;
+        float _t61 = (_t46 + _t46) * _t55;
+        float _t65 = 2.0f * Math.sinWithCos(_t61) * (1.0f / (float) java.lang.Math.sqrt(_t43));
+        return rotateTowards_s6b684b4e_tail2_fma(0.5f * (float) java.lang.Math.sqrt(_t43), java.lang.Math.fma(-0.25f * (_t30 + java.lang.Math.fma(_t14, _t14, _t13 * _t13) + (java.lang.Math.fma(-_t20, _t20, -_t19 * _t19) + java.lang.Math.fma(-_t17, _t17, -_t18 * _t18))), _t65, Math.cosWithSin(_t61)), _t65, _t9, 1.0f - _t55, _t55, _t10, _t11, _t12);
+    }
+
+    /** Private tail of {@code rotateTowards}; reached only through it. */
+    private FloatQuat rotateTowards_s6b684b4e_tail_mulAdd(float _t37, float _t38, float step, float _t30, float _t14, float _t13, float _t20, float _t19, float _t17, float _t18, float _t9, float _t10, float _t11, float _t12) {
+        float _t43 = _t37 * _t38;
+        float _t46 = Math.atan2((float) java.lang.Math.sqrt(_t38), (float) java.lang.Math.sqrt(_t37));
+        float _t49 = 4.0f * _t46;
+        float _t55 = _t49 > 0.0f ? Math.min(1.0f, step / _t49) : 0.0f;
+        float _t61 = (_t46 + _t46) * _t55;
+        float _t65 = 2.0f * Math.sinWithCos(_t61) * (1.0f / (float) java.lang.Math.sqrt(_t43));
+        return rotateTowards_s6b684b4e_tail2_mulAdd(0.5f * (float) java.lang.Math.sqrt(_t43), ((-0.25f * (_t30 + ((_t14) * (_t14) + (_t13 * _t13)) + (((-_t20) * (_t20) - (_t19 * _t19)) + ((-_t17) * (_t17) - (_t18 * _t18))))) * (_t65) + (Math.cosWithSin(_t61))), _t65, _t9, 1.0f - _t55, _t55, _t10, _t11, _t12);
+    }
+
+    /** Private tail of {@code rotateTowards}; reached only through it. */
+    private FloatQuat rotateTowards_s6b684b4e_tail2_fma(float _t47, float _t74, float _t65, float _t9, float _t56, float _t55, float _t10, float _t11, float _t12) {
+        float _t79, _t80, _t81, _t82;
+        if (_t47 > 0.0f) {
+            _t79 = java.lang.Math.fma(this.w, _t74, _t65 * _t9);
+            _t80 = java.lang.Math.fma(this.z, _t74, _t65 * _t10);
+            _t81 = java.lang.Math.fma(this.x, _t74, _t65 * _t11);
+            _t82 = java.lang.Math.fma(this.y, _t74, _t65 * _t12);
+        } else {
+            _t79 = java.lang.Math.fma(this.w, _t56, _t9 * _t55);
+            _t80 = java.lang.Math.fma(this.z, _t56, _t10 * _t55);
+            _t81 = java.lang.Math.fma(this.x, _t56, _t11 * _t55);
+            _t82 = java.lang.Math.fma(this.y, _t56, _t12 * _t55);
+        }
+        float _t86 = java.lang.Math.fma(_t79, _t79, java.lang.Math.fma(_t80, _t80, java.lang.Math.fma(_t81, _t81, _t82 * _t82)));
+        float _t87 = (1.0f / (float) java.lang.Math.sqrt(_t86));
+        float _sfx0, _sfx1, _sfx2, _sfx3;
+        if (_t86 != 0.0f) {
+            _sfx0 = _t87 * _t81;
+            _sfx1 = _t87 * _t82;
+            _sfx2 = _t87 * _t80;
+            _sfx3 = _t87 * _t79;
+        } else {
+            _sfx0 = 0.0f;
+            _sfx1 = 0.0f;
+            _sfx2 = 0.0f;
+            _sfx3 = 0.0f;
+        }
+        return new FloatQuat(_sfx0, _sfx1, _sfx2, _sfx3);
+    }
+
+    /** Private tail of {@code rotateTowards}; reached only through it. */
+    private FloatQuat rotateTowards_s6b684b4e_tail2_mulAdd(float _t47, float _t74, float _t65, float _t9, float _t56, float _t55, float _t10, float _t11, float _t12) {
+        float _t79, _t80, _t81, _t82;
+        if (_t47 > 0.0f) {
+            _t79 = ((this.w) * (_t74) + (_t65 * _t9));
+            _t80 = ((this.z) * (_t74) + (_t65 * _t10));
+            _t81 = ((this.x) * (_t74) + (_t65 * _t11));
+            _t82 = ((this.y) * (_t74) + (_t65 * _t12));
+        } else {
+            _t79 = ((this.w) * (_t56) + (_t9 * _t55));
+            _t80 = ((this.z) * (_t56) + (_t10 * _t55));
+            _t81 = ((this.x) * (_t56) + (_t11 * _t55));
+            _t82 = ((this.y) * (_t56) + (_t12 * _t55));
+        }
+        float _t86 = ((_t79) * (_t79) + (((_t80) * (_t80) + (((_t81) * (_t81) + (_t82 * _t82))))));
+        float _t87 = (1.0f / (float) java.lang.Math.sqrt(_t86));
+        float _sfx0, _sfx1, _sfx2, _sfx3;
+        if (_t86 != 0.0f) {
+            _sfx0 = _t87 * _t81;
+            _sfx1 = _t87 * _t82;
+            _sfx2 = _t87 * _t80;
+            _sfx3 = _t87 * _t79;
+        } else {
+            _sfx0 = 0.0f;
+            _sfx1 = 0.0f;
+            _sfx2 = 0.0f;
+            _sfx3 = 0.0f;
+        }
+        return new FloatQuat(_sfx0, _sfx1, _sfx2, _sfx3);
+    }
+
+    /**
+     * Rotate this quaternion towards ({@code targetX}, {@code targetY}, {@code targetZ},
+     * {@code targetW}), by at most the given maximum angle, returning the result as a value.
+     * <p>
+     * The rotation angle is recovered with {@code atan2}, so it keeps full {@code float} resolution
+     * down to 0 - small rotations are not truncated.
+     * <p>
+     * Valid input: this quaternion must have unit length;
+     * {@code (targetX, targetY, targetZ, targetW)} must have unit length.
+     *
+     * @param targetX the {@code x} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param targetY the {@code y} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param targetZ the {@code z} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param targetW the {@code w} component of the quaternion
+     *        {@code (targetX, targetY, targetZ, targetW)}
+     * @param step the maximum rotation angle in radians
+     * @return the resulting quaternion
+     */
+    public FloatQuat rotateTowards(float targetX, float targetY, float targetZ, float targetW, float step) {
+        if (!org.joml2.internal.FmaSwitch.ON) return rotateTowards_mulAdd(targetX, targetY, targetZ, targetW, step);
+        float _t9, _t10, _t11, _t12;
+        if (-java.lang.Math.fma(this.w, targetW, java.lang.Math.fma(this.z, targetZ, java.lang.Math.fma(this.x, targetX, this.y * targetY))) > 0.0f) {
+            _t9 = -targetW;
+            _t10 = -targetZ;
+            _t11 = -targetX;
+            _t12 = -targetY;
+        } else {
+            _t9 = targetW;
+            _t10 = targetZ;
+            _t11 = targetX;
+            _t12 = targetY;
+        }
+        float _t13 = this.w + _t9;
+        float _t14 = this.z + _t10;
+        float _t15 = this.x + _t11;
+        float _t16 = this.y + _t12;
+        float _t17 = this.w - _t9;
+        float _t18 = this.z - _t10;
+        float _t19 = this.x - _t11;
+        float _t20 = this.y - _t12;
+        float _t30 = java.lang.Math.fma(_t15, _t15, _t16 * _t16);
+        return rotateTowards_s6b684b4e_tail_fma(java.lang.Math.fma(_t13, _t13, java.lang.Math.fma(_t14, _t14, _t30)), java.lang.Math.fma(_t17, _t17, java.lang.Math.fma(_t18, _t18, java.lang.Math.fma(_t19, _t19, _t20 * _t20))), step, _t30, _t14, _t13, _t20, _t19, _t17, _t18, _t9, _t10, _t11, _t12);
+    }
+
+    /** {@code rotateTowards} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private FloatQuat rotateTowards_mulAdd(float targetX, float targetY, float targetZ, float targetW, float step) {
+        float _t9, _t10, _t11, _t12;
+        if (-((this.w) * (targetW) + (((this.z) * (targetZ) + (((this.x) * (targetX) + (this.y * targetY)))))) > 0.0f) {
+            _t9 = -targetW;
+            _t10 = -targetZ;
+            _t11 = -targetX;
+            _t12 = -targetY;
+        } else {
+            _t9 = targetW;
+            _t10 = targetZ;
+            _t11 = targetX;
+            _t12 = targetY;
+        }
+        float _t13 = this.w + _t9;
+        float _t14 = this.z + _t10;
+        float _t15 = this.x + _t11;
+        float _t16 = this.y + _t12;
+        float _t17 = this.w - _t9;
+        float _t18 = this.z - _t10;
+        float _t19 = this.x - _t11;
+        float _t20 = this.y - _t12;
+        float _t30 = ((_t15) * (_t15) + (_t16 * _t16));
+        return rotateTowards_s6b684b4e_tail_mulAdd(((_t13) * (_t13) + (((_t14) * (_t14) + (_t30)))), ((_t17) * (_t17) + (((_t18) * (_t18) + (((_t19) * (_t19) + (_t20 * _t20)))))), step, _t30, _t14, _t13, _t20, _t19, _t17, _t18, _t9, _t10, _t11, _t12);
+    }
+
+    /**
+     * Get the normalized rotation axis of this quaternion, unless the rotation angle is zero.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the rotation axis, or an empty {@code Optional} when the rotation angle is zero
+     */
+    public java.util.Optional<Float3> tryAxis() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _ct0 = java.lang.Math.fma(this.z, this.z, java.lang.Math.fma(this.x, this.x, this.y * this.y));
+            if (!(_ct0 > 0.0f)) return java.util.Optional.empty();
+            float _t4 = (1.0f / (float) java.lang.Math.sqrt(_ct0));
+            return java.util.Optional.of(new Float3(this.x * _t4, this.y * _t4, this.z * _t4));
+        } else {
+            float _ct0 = ((this.z) * (this.z) + (((this.x) * (this.x) + (this.y * this.y))));
+            if (!(_ct0 > 0.0f)) return java.util.Optional.empty();
+            float _t4 = (1.0f / (float) java.lang.Math.sqrt(_ct0));
+            return java.util.Optional.of(new Float3(this.x * _t4, this.y * _t4, this.z * _t4));
+        }
+    }
+
+    /**
+     * Recompute the {@code w} component of this quaternion from {@code x}, {@code y} and {@code z},
+     * assuming unit length (the positive square root is chosen), unless no unit quaternion has
+     * these {@code x}, {@code y} and {@code z}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return this quaternion with the recomputed {@code w}, or an empty {@code Optional} when
+     *        {@code x² + y² + z²} exceeds 1 by more than 8 units in the last place of 1 (no unit
+     *        quaternion has these components); within that tolerance, {@code w} is 0
+     */
+    public java.util.Optional<FloatQuat> tryCalculateW() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _ct0 = java.lang.Math.fma(-this.x, this.x, java.lang.Math.fma(-this.y, this.y, java.lang.Math.fma(-this.z, this.z, 1.0f)));
+            if (!(_ct0 > -9.536743E-7f && _ct0 < Float.POSITIVE_INFINITY)) return java.util.Optional.empty();
+            return java.util.Optional.of(new FloatQuat(this.x, this.y, this.z, (float) java.lang.Math.sqrt(Math.max(0.0f, _ct0))));
+        } else {
+            float _ct0 = ((((((1.0f) - (this.z) * (this.z))) - (this.y) * (this.y))) - (this.x) * (this.x));
+            if (!(_ct0 > -9.536743E-7f && _ct0 < Float.POSITIVE_INFINITY)) return java.util.Optional.empty();
+            return java.util.Optional.of(new FloatQuat(this.x, this.y, this.z, (float) java.lang.Math.sqrt(Math.max(0.0f, _ct0))));
+        }
+    }
+
+    /**
+     * Recompute the {@code w} component of this quaternion from {@code x}, {@code y} and {@code z},
+     * assuming unit length (the positive square root is chosen), unless no unit quaternion has
+     * these {@code x}, {@code y} and {@code z}.
+     * <p>
+     * Valid input: {@code epsilon} must not be negative.
+     *
+     * @param epsilon how far {@code x² + y² + z²} may exceed 1 for {@code w} to be 0 rather than
+     *        the result empty; the overload without it uses {@code 8 * 2^-23}
+     * @return this quaternion with the recomputed {@code w}, or an empty {@code Optional} when
+     *        {@code x² + y² + z²} exceeds 1 by more than {@code epsilon} (no unit quaternion has
+     *        these components); within that tolerance, {@code w} is 0
+     */
+    public java.util.Optional<FloatQuat> tryCalculateW(float epsilon) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _ct0 = java.lang.Math.fma(-this.x, this.x, java.lang.Math.fma(-this.y, this.y, java.lang.Math.fma(-this.z, this.z, 1.0f)));
+            if (!(_ct0 > -epsilon && _ct0 < Float.POSITIVE_INFINITY)) return java.util.Optional.empty();
+            return java.util.Optional.of(new FloatQuat(this.x, this.y, this.z, (float) java.lang.Math.sqrt(Math.max(0.0f, _ct0))));
+        } else {
+            float _ct0 = ((((((1.0f) - (this.z) * (this.z))) - (this.y) * (this.y))) - (this.x) * (this.x));
+            if (!(_ct0 > -epsilon && _ct0 < Float.POSITIVE_INFINITY)) return java.util.Optional.empty();
+            return java.util.Optional.of(new FloatQuat(this.x, this.y, this.z, (float) java.lang.Math.sqrt(Math.max(0.0f, _ct0))));
+        }
+    }
+
+    /**
+     * Normalize this quaternion to unit length, unless it has zero length.
+     * <p>
+     * Valid input: nonzero magnitudes must lie between {@code 1e-19} and {@code 5e18}.
+     *
+     * @return the normalized quaternion, or an empty {@code Optional} when this quaternion has zero
+     *        length
+     */
+    public java.util.Optional<FloatQuat> tryNormalize() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _ct0 = java.lang.Math.fma(this.w, this.w, java.lang.Math.fma(this.z, this.z, java.lang.Math.fma(this.x, this.x, this.y * this.y)));
+            if (!(_ct0 > 0.0f)) return java.util.Optional.empty();
+            float _t5 = (1.0f / (float) java.lang.Math.sqrt(_ct0));
+            return java.util.Optional.of(new FloatQuat(this.x * _t5, this.y * _t5, this.z * _t5, this.w * _t5));
+        } else {
+            float _ct0 = ((this.w) * (this.w) + (((this.z) * (this.z) + (((this.x) * (this.x) + (this.y * this.y))))));
+            if (!(_ct0 > 0.0f)) return java.util.Optional.empty();
+            float _t5 = (1.0f / (float) java.lang.Math.sqrt(_ct0));
+            return java.util.Optional.of(new FloatQuat(this.x * _t5, this.y * _t5, this.z * _t5, this.w * _t5));
+        }
+    }
+
+    /**
+     * Private body of {@code lookAlong} for {@code Handedness.LEFT_HANDED}; reached only through
+     * the public {@code lookAlong} dispatcher.
+     */
+    private FloatQuat lookAlong_lh_fma(Float3 dir, Float3 up) {
+        return lookAlong_lh_fma(dir.x(), dir.y(), dir.z(), up.x(), up.y(), up.z());
+    }
+
+    /**
+     * Private body of {@code lookAlong} for {@code Handedness.LEFT_HANDED}; reached only through
+     * the public {@code lookAlong} dispatcher.
+     */
+    private FloatQuat lookAlong_lh_mulAdd(Float3 dir, Float3 up) {
+        return lookAlong_lh_mulAdd(dir.x(), dir.y(), dir.z(), up.x(), up.y(), up.z());
+    }
+
+    /**
+     * Private body of {@code lookAlong} for {@code Handedness.LEFT_HANDED}; reached only through
+     * the public {@code lookAlong} dispatcher.
+     */
+    private FloatQuat lookAlong_lh_fma(float dirX, float dirY, float dirZ, float upX, float upY, float upZ) {
+        float _t7 = java.lang.Math.fma(dirZ, dirZ, java.lang.Math.fma(dirX, dirX, dirY * dirY));
+        float _sp0 = java.lang.Math.fma(dirZ, upZ, java.lang.Math.fma(dirX, upX, dirY * upY)) / _t7;
+        if (!(_t7 > 1.1754944E-38f && _t7 < Float.POSITIVE_INFINITY)) return lookAlong_lh_degenerate_fma(dirX, dirY, dirZ, upX, upY, upZ);
+        float _t15 = (1.0f / (float) java.lang.Math.sqrt(_t7));
+        float _t27 = java.lang.Math.fma(-dirY, _sp0, upY);
+        float _t28 = java.lang.Math.fma(-dirZ, _sp0, upZ);
+        float _t29 = java.lang.Math.fma(-dirX, _sp0, upX);
+        float _t36 = java.lang.Math.fma(dirZ, _t27, -dirY * _t28);
+        float _t37 = java.lang.Math.fma(dirY, _t29, -(dirX * _t27));
+        float _t38 = java.lang.Math.fma(dirX, _t28, -(dirZ * _t29));
+        float _ct0 = java.lang.Math.fma(_t37, _t37, java.lang.Math.fma(_t38, _t38, _t36 * _t36));
+        if (!(_ct0 > java.lang.Math.fma(_t7, java.lang.Math.fma(upZ, upZ, java.lang.Math.fma(upX, upX, upY * upY)) * 1.4551915E-11f, 1.1754944E-38f) && _ct0 < Float.POSITIVE_INFINITY)) return lookAlong_lh_degenerate_fma(dirX, dirY, dirZ, upX, upY, upZ);
+        float _t45 = (1.0f / (float) java.lang.Math.sqrt(_ct0));
+        float _t16 = dirZ * _t15;
+        float _t17 = dirX * _t15;
+        return lookAlong_lh_s5402847e_1_fma(dirX, dirY, dirZ, _t15, _t36, _t37, _t38, _t45, -dirZ, _t16, _t17, dirY * _t15, -_t17, -_t16, _t36 * _t45, _t37 * _t45, _t38 * _t45, java.lang.Math.fma(-_t36, _t45, 1.0f));
+    }
+
+    /**
+     * Private body of {@code lookAlong} for {@code Handedness.LEFT_HANDED}; reached only through
+     * the public {@code lookAlong} dispatcher.
+     */
+    private FloatQuat lookAlong_lh_mulAdd(float dirX, float dirY, float dirZ, float upX, float upY, float upZ) {
+        float _t7 = ((dirZ) * (dirZ) + (((dirX) * (dirX) + (dirY * dirY))));
+        float _sp0 = ((dirZ) * (upZ) + (((dirX) * (upX) + (dirY * upY)))) / _t7;
+        if (!(_t7 > 1.1754944E-38f && _t7 < Float.POSITIVE_INFINITY)) return lookAlong_lh_degenerate_mulAdd(dirX, dirY, dirZ, upX, upY, upZ);
+        float _t15 = (1.0f / (float) java.lang.Math.sqrt(_t7));
+        float _t27 = ((upY) - (dirY) * (_sp0));
+        float _t28 = ((upZ) - (dirZ) * (_sp0));
+        float _t29 = ((upX) - (dirX) * (_sp0));
+        float _t36 = ((dirZ) * (_t27) - (dirY * _t28));
+        float _t37 = ((dirY) * (_t29) - (dirX * _t27));
+        float _t38 = ((dirX) * (_t28) - (dirZ * _t29));
+        float _ct0 = ((_t37) * (_t37) + (((_t38) * (_t38) + (_t36 * _t36))));
+        if (!(_ct0 > ((_t7) * (((upZ) * (upZ) + (((upX) * (upX) + (upY * upY)))) * 1.4551915E-11f) + (1.1754944E-38f)) && _ct0 < Float.POSITIVE_INFINITY)) return lookAlong_lh_degenerate_mulAdd(dirX, dirY, dirZ, upX, upY, upZ);
+        float _t45 = (1.0f / (float) java.lang.Math.sqrt(_ct0));
+        float _t16 = dirZ * _t15;
+        float _t17 = dirX * _t15;
+        return lookAlong_lh_s5402847e_1_mulAdd(dirX, dirY, dirZ, _t15, _t36, _t37, _t38, _t45, -dirZ, _t16, _t17, dirY * _t15, -_t17, -_t16, _t36 * _t45, _t37 * _t45, _t38 * _t45, ((1.0f) - (_t36) * (_t45)));
+    }
+
+    /** Piece 2 of {@code lookAlong_lh}, split to fit the inline budget; reached only through it. */
+    private FloatQuat lookAlong_lh_s5402847e_1_fma(float dirX, float dirY, float dirZ, float _t15, float _t36, float _t37, float _t38, float _t45, float _t0, float _t16, float _t17, float _t18, float _t19, float _t21, float _t46, float _t47, float _t48, float _t49) {
+        float _t64 = java.lang.Math.fma(_t17, _t48, -(_t18 * _t46));
+        float _t65 = java.lang.Math.fma(_t18, _t47, -(_t16 * _t48));
+        float _t77 = java.lang.Math.fma(_t16, _t46, java.lang.Math.fma(_t19, _t47, java.lang.Math.fma(_t36, _t45, java.lang.Math.fma(dirZ, _t15, 1.0f))));
+        float _t79 = java.lang.Math.fma(_t36, _t45, java.lang.Math.fma(_t21, _t46, java.lang.Math.fma(_t17, _t47, java.lang.Math.fma(_t0, _t15, 1.0f))));
+        float _t80 = java.lang.Math.fma(dirZ, _t15, java.lang.Math.fma(_t21, _t46, java.lang.Math.fma(_t17, _t47, _t49)));
+        float _t83 = java.lang.Math.fma(_t16, _t46, java.lang.Math.fma(_t19, _t47, java.lang.Math.fma(_t0, _t15, _t49)));
+        return lookAlong_lh_s5402847e_2_fma(dirZ, _t15, _t36, _t45, _t16, _t46, java.lang.Math.fma(dirX, _t15, _t47), java.lang.Math.fma(_t37, _t45, _t19), java.lang.Math.fma(_t16, _t46, -(_t17 * _t47)), java.lang.Math.fma(dirY, _t15, _t64), java.lang.Math.fma(dirY, _t15, -_t64), java.lang.Math.fma(_t38, _t45, _t65), java.lang.Math.fma(-_t38, _t45, _t65), _t77, _t79, _t80, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t77)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t79)), _t83, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t80)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t83)));
+    }
+
+    /** Piece 2 of {@code lookAlong_lh}, split to fit the inline budget; reached only through it. */
+    private FloatQuat lookAlong_lh_s5402847e_1_mulAdd(float dirX, float dirY, float dirZ, float _t15, float _t36, float _t37, float _t38, float _t45, float _t0, float _t16, float _t17, float _t18, float _t19, float _t21, float _t46, float _t47, float _t48, float _t49) {
+        float _t64 = ((_t17) * (_t48) - (_t18 * _t46));
+        float _t65 = ((_t18) * (_t47) - (_t16 * _t48));
+        float _t77 = ((_t16) * (_t46) + (((_t19) * (_t47) + (((_t36) * (_t45) + (((dirZ) * (_t15) + (1.0f))))))));
+        float _t79 = ((_t36) * (_t45) + (((_t21) * (_t46) + (((_t17) * (_t47) + (((_t0) * (_t15) + (1.0f))))))));
+        float _t80 = ((dirZ) * (_t15) + (((_t21) * (_t46) + (((_t17) * (_t47) + (_t49))))));
+        float _t83 = ((_t16) * (_t46) + (((_t19) * (_t47) + (((_t0) * (_t15) + (_t49))))));
+        return lookAlong_lh_s5402847e_2_mulAdd(dirZ, _t15, _t36, _t45, _t16, _t46, ((dirX) * (_t15) + (_t47)), ((_t37) * (_t45) + (_t19)), ((_t16) * (_t46) - (_t17 * _t47)), ((dirY) * (_t15) + (_t64)), ((dirY) * (_t15) - (_t64)), ((_t38) * (_t45) + (_t65)), ((_t65) - (_t38) * (_t45)), _t77, _t79, _t80, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t77)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t79)), _t83, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t80)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t83)));
+    }
+
+    /**
+     * Piece 3 of {@code lookAlong_lh}, split to fit the inline budget. Shared by 2 identical
+     * private paths of {@code lookAlong}; reached only through it.
+     */
+    private FloatQuat lookAlong_lh_s5402847e_2_fma(float dirZ, float _t15, float _t36, float _t45, float _t16, float _t46, float _t50, float _t54, float _t62, float _t68, float _t70, float _t73, float _t74, float _t77, float _t79, float _t80, float _sp1, float _sp4, float _t83, float _sp3, float _sp2) {
+        float _t125, _t126, _t127, _t128;
+        if (java.lang.Math.fma(dirZ, _t15, java.lang.Math.fma(_t36, _t45, _t62)) > 0.0f) {
+            _t125 = _sp1 * _t70;
+            _t126 = _sp1 * _t74;
+            _t127 = _sp1 * _t54;
+            _t128 = 0.5f * (float) java.lang.Math.sqrt(_t77);
+        } else {
+            if (_t46 > Math.max(_t62, _t16)) {
+                _t125 = 0.5f * (float) java.lang.Math.sqrt(_t79);
+                _t126 = _sp4 * _t50;
+                _t127 = _sp4 * _t73;
+                _t128 = _sp4 * _t70;
+            } else {
+                if (_t62 > _t16) {
+                    _t125 = _sp2 * _t73;
+                    _t126 = _sp2 * _t68;
+                    _t127 = 0.5f * (float) java.lang.Math.sqrt(_t83);
+                    _t128 = _sp2 * _t54;
+                } else {
+                    _t125 = _sp3 * _t50;
+                    _t126 = 0.5f * (float) java.lang.Math.sqrt(_t80);
+                    _t127 = _sp3 * _t68;
+                    _t128 = _sp3 * _t74;
+                }
+            }
+        }
+        return lookAlong_lh_s5402847e_3_fma(_t125, _t126, _t127, _t128, java.lang.Math.fma(this.x, _t128, this.w * _t125) + java.lang.Math.fma(this.y, _t126, -(this.z * _t127)), java.lang.Math.fma(this.y, _t128, this.z * _t125) + java.lang.Math.fma(this.w, _t127, -this.x * _t126), java.lang.Math.fma(this.x, _t127, this.w * _t126) + java.lang.Math.fma(this.z, _t128, -(this.y * _t125)));
+    }
+
+    /**
+     * Piece 3 of {@code lookAlong_lh}, split to fit the inline budget. Shared by 2 identical
+     * private paths of {@code lookAlong}; reached only through it.
+     */
+    private FloatQuat lookAlong_lh_s5402847e_2_mulAdd(float dirZ, float _t15, float _t36, float _t45, float _t16, float _t46, float _t50, float _t54, float _t62, float _t68, float _t70, float _t73, float _t74, float _t77, float _t79, float _t80, float _sp1, float _sp4, float _t83, float _sp3, float _sp2) {
+        float _t125, _t126, _t127, _t128;
+        if (((dirZ) * (_t15) + (((_t36) * (_t45) + (_t62)))) > 0.0f) {
+            _t125 = _sp1 * _t70;
+            _t126 = _sp1 * _t74;
+            _t127 = _sp1 * _t54;
+            _t128 = 0.5f * (float) java.lang.Math.sqrt(_t77);
+        } else {
+            if (_t46 > Math.max(_t62, _t16)) {
+                _t125 = 0.5f * (float) java.lang.Math.sqrt(_t79);
+                _t126 = _sp4 * _t50;
+                _t127 = _sp4 * _t73;
+                _t128 = _sp4 * _t70;
+            } else {
+                if (_t62 > _t16) {
+                    _t125 = _sp2 * _t73;
+                    _t126 = _sp2 * _t68;
+                    _t127 = 0.5f * (float) java.lang.Math.sqrt(_t83);
+                    _t128 = _sp2 * _t54;
+                } else {
+                    _t125 = _sp3 * _t50;
+                    _t126 = 0.5f * (float) java.lang.Math.sqrt(_t80);
+                    _t127 = _sp3 * _t68;
+                    _t128 = _sp3 * _t74;
+                }
+            }
+        }
+        return lookAlong_lh_s5402847e_3_mulAdd(_t125, _t126, _t127, _t128, ((this.x) * (_t128) + (this.w * _t125)) + ((this.y) * (_t126) - (this.z * _t127)), ((this.y) * (_t128) + (this.z * _t125)) + ((this.w) * (_t127) - (this.x * _t126)), ((this.x) * (_t127) + (this.w * _t126)) + ((this.z) * (_t128) - (this.y * _t125)));
+    }
+
+    /**
+     * Piece 4 of {@code lookAlong_lh}, split to fit the inline budget. Shared by 2 identical
+     * private paths of {@code lookAlong}; reached only through it.
+     */
+    private FloatQuat lookAlong_lh_s5402847e_3_fma(float _t125, float _t126, float _t127, float _t128, float _sfx0, float _sfx1, float _sfx2) {
+        float _sfx3 = java.lang.Math.fma(this.w, _t128, -this.x * _t125) - java.lang.Math.fma(this.y, _t127, this.z * _t126);
+        return new FloatQuat(_sfx0, _sfx1, _sfx2, _sfx3);
+    }
+
+    /**
+     * Piece 4 of {@code lookAlong_lh}, split to fit the inline budget. Shared by 2 identical
+     * private paths of {@code lookAlong}; reached only through it.
+     */
+    private FloatQuat lookAlong_lh_s5402847e_3_mulAdd(float _t125, float _t126, float _t127, float _t128, float _sfx0, float _sfx1, float _sfx2) {
+        float _el3 = ((this.w) * (_t128) - (this.x * _t125)) - ((this.y) * (_t127) + (this.z * _t126));
+        return new FloatQuat(_sfx0, _sfx1, _sfx2, _el3);
+    }
+
+    /**
+     * Degenerate-input path of {@code lookAlong}: its methods leave here when their input spans no
+     * proper basis (a zero direction, an up vector parallel to it or zero, NaN); reached only
+     * through them.
+     */
+    private FloatQuat lookAlong_lh_degenerate_fma(float dirX, float dirY, float dirZ, float upX, float upY, float upZ) {
+        float _t0 = unitScale(dirX, dirY, dirZ);
+        float _t1 = unitScale(upX, upY, upZ);
+        float _t8 = dirZ * _t0;
+        float _t9 = dirX * _t0;
+        float _t10 = dirY * _t0;
+        float _t16 = java.lang.Math.fma(_t8, _t8, java.lang.Math.fma(_t9, _t9, _t10 * _t10));
+        float _t17 = (1.0f / (float) java.lang.Math.sqrt(_t16));
+        float _t21, _t22, _t23, _t24, _t25, _t26;
+        if (_t16 == 0.0f) {
+            _t21 = 0.0f;
+            _t22 = 0.0f;
+            _t23 = 1.0f;
+            _t24 = 1.0f;
+            _t25 = 0.0f;
+            _t26 = 0.0f;
+        } else {
+            _t21 = upZ * _t1;
+            _t22 = upX * _t1;
+            _t23 = upY * _t1;
+            _t24 = _t17 * _t8;
+            _t25 = _t17 * _t9;
+            _t26 = _t17 * _t10;
+        }
+        float _t37, _t38, _t42;
+        if (java.lang.Math.abs(_t25) > java.lang.Math.abs(_t24)) {
+            _t37 = 0.0f;
+            _t38 = -_t26;
+            _t42 = _t25;
+        } else {
+            _t37 = _t26;
+            _t38 = 0.0f;
+            _t42 = -_t24;
+        }
+        float _t44 = -java.lang.Math.fma(_t21, _t24, java.lang.Math.fma(_t25, _t22, _t26 * _t23));
+        float _t45 = java.lang.Math.fma(_t44, _t25, _t22);
+        float _t46 = java.lang.Math.fma(_t44, _t26, _t23);
+        float _t47 = java.lang.Math.fma(_t44, _t24, _t21);
+        return lookAlong_lh_degenerate_sae57cfe3_1_fma(_t21, _t22, _t23, _t24, _t25, _t26, 1.0f + _t24, 1.0f - _t24, _t37, _t38, _t42, java.lang.Math.fma(_t45, _t26, -(_t46 * _t25)), java.lang.Math.fma(_t47, _t25, _t45 * -_t24), java.lang.Math.fma(_t46, _t24, _t47 * -_t26));
+    }
+
+    /**
+     * Degenerate-input path of {@code lookAlong}: its methods leave here when their input spans no
+     * proper basis (a zero direction, an up vector parallel to it or zero, NaN); reached only
+     * through them.
+     */
+    private FloatQuat lookAlong_lh_degenerate_mulAdd(float dirX, float dirY, float dirZ, float upX, float upY, float upZ) {
+        float _t0 = unitScale(dirX, dirY, dirZ);
+        float _t1 = unitScale(upX, upY, upZ);
+        float _t8 = dirZ * _t0;
+        float _t9 = dirX * _t0;
+        float _t10 = dirY * _t0;
+        float _t16 = ((_t8) * (_t8) + (((_t9) * (_t9) + (_t10 * _t10))));
+        float _t17 = (1.0f / (float) java.lang.Math.sqrt(_t16));
+        float _t21, _t22, _t23, _t24, _t25, _t26;
+        if (_t16 == 0.0f) {
+            _t21 = 0.0f;
+            _t22 = 0.0f;
+            _t23 = 1.0f;
+            _t24 = 1.0f;
+            _t25 = 0.0f;
+            _t26 = 0.0f;
+        } else {
+            _t21 = upZ * _t1;
+            _t22 = upX * _t1;
+            _t23 = upY * _t1;
+            _t24 = _t17 * _t8;
+            _t25 = _t17 * _t9;
+            _t26 = _t17 * _t10;
+        }
+        float _t37, _t38, _t42;
+        if (java.lang.Math.abs(_t25) > java.lang.Math.abs(_t24)) {
+            _t37 = 0.0f;
+            _t38 = -_t26;
+            _t42 = _t25;
+        } else {
+            _t37 = _t26;
+            _t38 = 0.0f;
+            _t42 = -_t24;
+        }
+        float _t44 = -((_t21) * (_t24) + (((_t25) * (_t22) + (_t26 * _t23))));
+        float _t45 = ((_t44) * (_t25) + (_t22));
+        float _t46 = ((_t44) * (_t26) + (_t23));
+        float _t47 = ((_t44) * (_t24) + (_t21));
+        return lookAlong_lh_degenerate_sae57cfe3_1_mulAdd(_t21, _t22, _t23, _t24, _t25, _t26, 1.0f + _t24, 1.0f - _t24, _t37, _t38, _t42, ((_t45) * (_t26) - (_t46 * _t25)), ((_t47) * (_t25) - (_t45 * _t24)), ((_t46) * (_t24) - (_t47 * _t26)));
+    }
+
+    /** Piece 2 of {@code lookAlong_lh_degenerate}, split to fit the inline budget; reached only through it. */
+    private FloatQuat lookAlong_lh_degenerate_sae57cfe3_1_fma(float _t21, float _t22, float _t23, float _t24, float _t25, float _t26, float _t32, float _t33, float _t37, float _t38, float _t42, float _t56, float _t57, float _t58) {
+        float _t62 = java.lang.Math.fma(_t56, _t56, java.lang.Math.fma(_t57, _t57, _t58 * _t58));
+        float _t63, _t64, _t65, _t67;
+        if (_t62 <= java.lang.Math.fma(_t21, _t21, java.lang.Math.fma(_t22, _t22, _t23 * _t23)) * 1.4551915E-11f) {
+            _t63 = _t37;
+            _t64 = _t38;
+            _t65 = _t42;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(java.lang.Math.fma(_t37, _t37, java.lang.Math.fma(_t38, _t38, _t42 * _t42))));
+        } else {
+            _t63 = _t56;
+            _t64 = _t58;
+            _t65 = _t57;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(_t62));
+        }
+        float _t69 = _t67 * _t63;
+        float _t70 = _t67 * _t64;
+        float _t71 = -_t69;
+        float _t72 = -_t70;
+        float _t73 = _t67 * _t65;
+        float _t100 = java.lang.Math.fma(_t67, _t64, java.lang.Math.fma(_t72, _t24, java.lang.Math.fma(_t69, _t25, _t33)));
+        return lookAlong_lh_degenerate_sae57cfe3_2_fma(_t24, _t25, _t32, _t33, _t64, _t65, _t67, -_t67, _t69, _t70, _t71, _t72, java.lang.Math.fma(_t67, _t63, _t25), java.lang.Math.fma(_t67, _t63, -_t25), java.lang.Math.fma(_t70, _t24, -(_t69 * _t25)), java.lang.Math.fma(_t69, _t26, -(_t73 * _t24)), java.lang.Math.fma(_t73, -_t25, java.lang.Math.fma(_t70, _t26, _t26)), java.lang.Math.fma(_t73, _t25, java.lang.Math.fma(_t72, _t26, _t26)), java.lang.Math.fma(_t70, _t24, java.lang.Math.fma(_t71, _t25, java.lang.Math.fma(_t67, _t64, _t32))), _t100, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t100)));
+    }
+
+    /** Piece 2 of {@code lookAlong_lh_degenerate}, split to fit the inline budget; reached only through it. */
+    private FloatQuat lookAlong_lh_degenerate_sae57cfe3_1_mulAdd(float _t21, float _t22, float _t23, float _t24, float _t25, float _t26, float _t32, float _t33, float _t37, float _t38, float _t42, float _t56, float _t57, float _t58) {
+        float _t62 = ((_t56) * (_t56) + (((_t57) * (_t57) + (_t58 * _t58))));
+        float _t63, _t64, _t65, _t67;
+        if (_t62 <= ((_t21) * (_t21) + (((_t22) * (_t22) + (_t23 * _t23)))) * 1.4551915E-11f) {
+            _t63 = _t37;
+            _t64 = _t38;
+            _t65 = _t42;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(((_t37) * (_t37) + (((_t38) * (_t38) + (_t42 * _t42))))));
+        } else {
+            _t63 = _t56;
+            _t64 = _t58;
+            _t65 = _t57;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(_t62));
+        }
+        float _t69 = _t67 * _t63;
+        float _t70 = _t67 * _t64;
+        float _t71 = -_t69;
+        float _t72 = -_t70;
+        float _t73 = _t67 * _t65;
+        float _t100 = ((_t67) * (_t64) + (((_t72) * (_t24) + (((_t69) * (_t25) + (_t33))))));
+        return lookAlong_lh_degenerate_sae57cfe3_2_mulAdd(_t24, _t25, _t32, _t33, _t64, _t65, _t67, -_t67, _t69, _t70, _t71, _t72, ((_t67) * (_t63) + (_t25)), ((_t67) * (_t63) - (_t25)), ((_t70) * (_t24) - (_t69 * _t25)), ((_t69) * (_t26) - (_t73 * _t24)), ((((_t70) * (_t26) + (_t26))) - (_t73) * (_t25)), ((_t73) * (_t25) + (((_t72) * (_t26) + (_t26)))), ((_t70) * (_t24) + (((_t71) * (_t25) + (((_t67) * (_t64) + (_t32)))))), _t100, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t100)));
+    }
+
+    /**
+     * Piece 3 of {@code lookAlong_lh_degenerate}, split to fit the inline budget. Shared by 2
+     * identical private paths of {@code lookAlong}; reached only through it.
+     */
+    private FloatQuat lookAlong_lh_degenerate_sae57cfe3_2_fma(float _t24, float _t25, float _t32, float _t33, float _t64, float _t65, float _t67, float _t68, float _t69, float _t70, float _t71, float _t72, float _t74, float _t78, float _t89, float _t93, float _t96, float _t97, float _t99, float _t100, float _sp3) {
+        float _t103 = java.lang.Math.fma(_t70, _t24, java.lang.Math.fma(_t71, _t25, java.lang.Math.fma(_t68, _t64, _t33)));
+        float _t104 = java.lang.Math.fma(_t72, _t24, java.lang.Math.fma(_t69, _t25, java.lang.Math.fma(_t68, _t64, _t32)));
+        float _sp0 = 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t99));
+        float _sp1 = 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t103));
+        float _sp2 = 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t104));
+        float _t115 = java.lang.Math.fma(_t67, _t65, _t93);
+        float _t116 = java.lang.Math.fma(_t68, _t65, _t93);
+        float _t149, _t150, _t151, _t152;
+        if (java.lang.Math.fma(_t70, _t24, java.lang.Math.fma(_t71, _t25, java.lang.Math.fma(_t67, _t64, _t24))) > 0.0f) {
+            _t149 = _sp0 * _t96;
+            _t150 = _sp0 * _t116;
+            _t151 = _sp0 * _t78;
+            _t152 = 0.5f * (float) java.lang.Math.sqrt(_t99);
+        } else {
+            if (_t70 > Math.max(_t89, _t24)) {
+                _t149 = 0.5f * (float) java.lang.Math.sqrt(_t100);
+                _t150 = _sp3 * _t74;
+                _t151 = _sp3 * _t115;
+                _t152 = _sp3 * _t96;
+            } else {
+                if (_t89 > _t24) {
+                    _t149 = _sp1 * _t115;
+                    _t150 = _sp1 * _t97;
+                    _t151 = 0.5f * (float) java.lang.Math.sqrt(_t103);
+                    _t152 = _sp1 * _t78;
+                } else {
+                    _t149 = _sp2 * _t74;
+                    _t150 = 0.5f * (float) java.lang.Math.sqrt(_t104);
+                    _t151 = _sp2 * _t97;
+                    _t152 = _sp2 * _t116;
+                }
+            }
+        }
+        return lookAlong_lh_degenerate_sae57cfe3_3_fma(_t149, _t150, _t151, _t152);
+    }
+
+    /**
+     * Piece 3 of {@code lookAlong_lh_degenerate}, split to fit the inline budget. Shared by 2
+     * identical private paths of {@code lookAlong}; reached only through it.
+     */
+    private FloatQuat lookAlong_lh_degenerate_sae57cfe3_2_mulAdd(float _t24, float _t25, float _t32, float _t33, float _t64, float _t65, float _t67, float _t68, float _t69, float _t70, float _t71, float _t72, float _t74, float _t78, float _t89, float _t93, float _t96, float _t97, float _t99, float _t100, float _sp3) {
+        float _t103 = ((_t70) * (_t24) + (((_t71) * (_t25) + (((_t68) * (_t64) + (_t33))))));
+        float _t104 = ((_t72) * (_t24) + (((_t69) * (_t25) + (((_t68) * (_t64) + (_t32))))));
+        float _sp0 = 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t99));
+        float _sp1 = 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t103));
+        float _sp2 = 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t104));
+        float _t115 = ((_t67) * (_t65) + (_t93));
+        float _t116 = ((_t68) * (_t65) + (_t93));
+        float _t149, _t150, _t151, _t152;
+        if (((_t70) * (_t24) + (((_t71) * (_t25) + (((_t67) * (_t64) + (_t24)))))) > 0.0f) {
+            _t149 = _sp0 * _t96;
+            _t150 = _sp0 * _t116;
+            _t151 = _sp0 * _t78;
+            _t152 = 0.5f * (float) java.lang.Math.sqrt(_t99);
+        } else {
+            if (_t70 > Math.max(_t89, _t24)) {
+                _t149 = 0.5f * (float) java.lang.Math.sqrt(_t100);
+                _t150 = _sp3 * _t74;
+                _t151 = _sp3 * _t115;
+                _t152 = _sp3 * _t96;
+            } else {
+                if (_t89 > _t24) {
+                    _t149 = _sp1 * _t115;
+                    _t150 = _sp1 * _t97;
+                    _t151 = 0.5f * (float) java.lang.Math.sqrt(_t103);
+                    _t152 = _sp1 * _t78;
+                } else {
+                    _t149 = _sp2 * _t74;
+                    _t150 = 0.5f * (float) java.lang.Math.sqrt(_t104);
+                    _t151 = _sp2 * _t97;
+                    _t152 = _sp2 * _t116;
+                }
+            }
+        }
+        return lookAlong_lh_degenerate_sae57cfe3_3_mulAdd(_t149, _t150, _t151, _t152);
+    }
+
+    /**
+     * Piece 4 of {@code lookAlong_lh_degenerate}, split to fit the inline budget. Shared by 2
+     * identical private paths of {@code lookAlong}; reached only through it.
+     */
+    private FloatQuat lookAlong_lh_degenerate_sae57cfe3_3_fma(float _t149, float _t150, float _t151, float _t152) {
+        float _sfx0 = java.lang.Math.fma(this.x, _t152, this.w * _t149) + java.lang.Math.fma(this.y, _t150, -(this.z * _t151));
+        float _sfx1 = java.lang.Math.fma(this.y, _t152, this.z * _t149) + java.lang.Math.fma(this.w, _t151, -this.x * _t150);
+        float _sfx2 = java.lang.Math.fma(this.x, _t151, this.w * _t150) + java.lang.Math.fma(this.z, _t152, -(this.y * _t149));
+        float _sfx3 = java.lang.Math.fma(this.w, _t152, -this.x * _t149) - java.lang.Math.fma(this.y, _t151, this.z * _t150);
+        return new FloatQuat(_sfx0, _sfx1, _sfx2, _sfx3);
+    }
+
+    /**
+     * Piece 4 of {@code lookAlong_lh_degenerate}, split to fit the inline budget. Shared by 2
+     * identical private paths of {@code lookAlong}; reached only through it.
+     */
+    private FloatQuat lookAlong_lh_degenerate_sae57cfe3_3_mulAdd(float _t149, float _t150, float _t151, float _t152) {
+        float _el0 = ((this.x) * (_t152) + (this.w * _t149)) + ((this.y) * (_t150) - (this.z * _t151));
+        float _el1 = ((this.y) * (_t152) + (this.z * _t149)) + ((this.w) * (_t151) - (this.x * _t150));
+        float _el2 = ((this.x) * (_t151) + (this.w * _t150)) + ((this.z) * (_t152) - (this.y * _t149));
+        float _el3 = ((this.w) * (_t152) - (this.x * _t149)) - ((this.y) * (_t151) + (this.z * _t150));
+        return new FloatQuat(_el0, _el1, _el2, _el3);
+    }
+
+    /**
+     * Private body of {@code lookAlong} for {@code Handedness.RIGHT_HANDED}; reached only through
+     * the public {@code lookAlong} dispatcher.
+     */
+    private FloatQuat lookAlong_rh_fma(Float3 dir, Float3 up) {
+        return lookAlong_rh_fma(dir.x(), dir.y(), dir.z(), up.x(), up.y(), up.z());
+    }
+
+    /**
+     * Private body of {@code lookAlong} for {@code Handedness.RIGHT_HANDED}; reached only through
+     * the public {@code lookAlong} dispatcher.
+     */
+    private FloatQuat lookAlong_rh_mulAdd(Float3 dir, Float3 up) {
+        return lookAlong_rh_mulAdd(dir.x(), dir.y(), dir.z(), up.x(), up.y(), up.z());
+    }
+
+    /**
+     * Private body of {@code lookAlong} for {@code Handedness.RIGHT_HANDED}; reached only through
+     * the public {@code lookAlong} dispatcher.
+     */
+    private FloatQuat lookAlong_rh_fma(float dirX, float dirY, float dirZ, float upX, float upY, float upZ) {
+        float _t8 = java.lang.Math.fma(dirZ, dirZ, java.lang.Math.fma(dirX, dirX, dirY * dirY));
+        float _sp0 = java.lang.Math.fma(dirZ, upZ, java.lang.Math.fma(dirX, upX, dirY * upY)) / _t8;
+        if (!(_t8 > 1.1754944E-38f && _t8 < Float.POSITIVE_INFINITY)) return lookAlong_rh_degenerate_fma(dirX, dirY, dirZ, upX, upY, upZ);
+        float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t8));
+        float _t29 = java.lang.Math.fma(-dirZ, _sp0, upZ);
+        float _t30 = java.lang.Math.fma(-dirY, _sp0, upY);
+        float _t31 = java.lang.Math.fma(-dirX, _sp0, upX);
+        float _t38 = java.lang.Math.fma(dirY, _t29, -(dirZ * _t30));
+        float _t39 = java.lang.Math.fma(dirX, _t30, -(dirY * _t31));
+        float _t40 = java.lang.Math.fma(dirZ, _t31, -dirX * _t29);
+        float _ct0 = java.lang.Math.fma(_t39, _t39, java.lang.Math.fma(_t38, _t38, _t40 * _t40));
+        if (!(_ct0 > java.lang.Math.fma(_t8, java.lang.Math.fma(upZ, upZ, java.lang.Math.fma(upX, upX, upY * upY)) * 1.4551915E-11f, 1.1754944E-38f) && _ct0 < Float.POSITIVE_INFINITY)) return lookAlong_rh_degenerate_fma(dirX, dirY, dirZ, upX, upY, upZ);
+        float _t47 = (1.0f / (float) java.lang.Math.sqrt(_ct0));
+        float _t17 = dirX * _t16;
+        float _t18 = dirZ * _t16;
+        return lookAlong_rh_sa6198d78_1_fma(dirX, dirY, _t16, _t38, _t39, _t40, _t47, -dirZ, _t17, _t18, dirY * _t16, -_t18, -_t17, java.lang.Math.fma(dirZ, _t16, 1.0f), -_t38, _t39 * _t47, _t38 * _t47, _t40 * _t47);
+    }
+
+    /**
+     * Private body of {@code lookAlong} for {@code Handedness.RIGHT_HANDED}; reached only through
+     * the public {@code lookAlong} dispatcher.
+     */
+    private FloatQuat lookAlong_rh_mulAdd(float dirX, float dirY, float dirZ, float upX, float upY, float upZ) {
+        float _t8 = ((dirZ) * (dirZ) + (((dirX) * (dirX) + (dirY * dirY))));
+        float _sp0 = ((dirZ) * (upZ) + (((dirX) * (upX) + (dirY * upY)))) / _t8;
+        if (!(_t8 > 1.1754944E-38f && _t8 < Float.POSITIVE_INFINITY)) return lookAlong_rh_degenerate_mulAdd(dirX, dirY, dirZ, upX, upY, upZ);
+        float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t8));
+        float _t29 = ((upZ) - (dirZ) * (_sp0));
+        float _t30 = ((upY) - (dirY) * (_sp0));
+        float _t31 = ((upX) - (dirX) * (_sp0));
+        float _t38 = ((dirY) * (_t29) - (dirZ * _t30));
+        float _t39 = ((dirX) * (_t30) - (dirY * _t31));
+        float _t40 = ((dirZ) * (_t31) - (dirX * _t29));
+        float _ct0 = ((_t39) * (_t39) + (((_t38) * (_t38) + (_t40 * _t40))));
+        if (!(_ct0 > ((_t8) * (((upZ) * (upZ) + (((upX) * (upX) + (upY * upY)))) * 1.4551915E-11f) + (1.1754944E-38f)) && _ct0 < Float.POSITIVE_INFINITY)) return lookAlong_rh_degenerate_mulAdd(dirX, dirY, dirZ, upX, upY, upZ);
+        float _t47 = (1.0f / (float) java.lang.Math.sqrt(_ct0));
+        float _t17 = dirX * _t16;
+        float _t18 = dirZ * _t16;
+        return lookAlong_rh_sa6198d78_1_mulAdd(dirX, dirY, _t16, _t38, _t39, _t40, _t47, -dirZ, _t17, _t18, dirY * _t16, -_t18, -_t17, ((dirZ) * (_t16) + (1.0f)), -_t38, _t39 * _t47, _t38 * _t47, _t40 * _t47);
+    }
+
+    /** Piece 2 of {@code lookAlong_rh}, split to fit the inline budget; reached only through it. */
+    private FloatQuat lookAlong_rh_sa6198d78_1_fma(float dirX, float dirY, float _t16, float _t38, float _t39, float _t40, float _t47, float _t0, float _t17, float _t18, float _t19, float _t20, float _t22, float _t23, float _t41, float _t48, float _t49, float _t50) {
+        float _t65 = java.lang.Math.fma(_t19, _t49, -(_t17 * _t50));
+        float _t66 = java.lang.Math.fma(_t18, _t50, -_t19 * _t48);
+        float _t78 = java.lang.Math.fma(_t38, _t47, java.lang.Math.fma(_t22, _t48, java.lang.Math.fma(_t18, _t49, _t23)));
+        float _t79 = java.lang.Math.fma(_t17, _t48, java.lang.Math.fma(_t20, _t49, java.lang.Math.fma(_t38, _t47, java.lang.Math.fma(_t0, _t16, 1.0f))));
+        float _t81 = java.lang.Math.fma(_t17, _t48, java.lang.Math.fma(_t20, _t49, java.lang.Math.fma(_t41, _t47, _t23)));
+        float _t85 = java.lang.Math.fma(_t0, _t16, java.lang.Math.fma(_t22, _t48, java.lang.Math.fma(_t18, _t49, java.lang.Math.fma(_t41, _t47, 1.0f))));
+        return lookAlong_rh_sa6198d78_2_fma(_t16, _t38, _t47, _t0, _t20, _t49, java.lang.Math.fma(dirX, _t16, _t48), java.lang.Math.fma(_t39, _t47, _t22), java.lang.Math.fma(_t17, _t48, -(_t18 * _t49)), java.lang.Math.fma(-dirY, _t16, _t65), -_t19 - _t65, java.lang.Math.fma(_t40, _t47, _t66), java.lang.Math.fma(-_t40, _t47, _t66), _t78, _t79, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t78)), _t81, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t81)), _t85, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t79)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t85)));
+    }
+
+    /** Piece 2 of {@code lookAlong_rh}, split to fit the inline budget; reached only through it. */
+    private FloatQuat lookAlong_rh_sa6198d78_1_mulAdd(float dirX, float dirY, float _t16, float _t38, float _t39, float _t40, float _t47, float _t0, float _t17, float _t18, float _t19, float _t20, float _t22, float _t23, float _t41, float _t48, float _t49, float _t50) {
+        float _t65 = ((_t19) * (_t49) - (_t17 * _t50));
+        float _t66 = ((_t18) * (_t50) - (_t19 * _t48));
+        float _t78 = ((_t38) * (_t47) + (((_t22) * (_t48) + (((_t18) * (_t49) + (_t23))))));
+        float _t79 = ((_t17) * (_t48) + (((_t20) * (_t49) + (((_t38) * (_t47) + (((_t0) * (_t16) + (1.0f))))))));
+        float _t81 = ((_t17) * (_t48) + (((_t20) * (_t49) + (((_t41) * (_t47) + (_t23))))));
+        float _t85 = ((_t0) * (_t16) + (((_t22) * (_t48) + (((_t18) * (_t49) + (((_t41) * (_t47) + (1.0f))))))));
+        return lookAlong_rh_sa6198d78_2_mulAdd(_t16, _t38, _t47, _t0, _t20, _t49, ((dirX) * (_t16) + (_t48)), ((_t39) * (_t47) + (_t22)), ((_t17) * (_t48) - (_t18 * _t49)), ((_t65) - (dirY) * (_t16)), -_t19 - _t65, ((_t40) * (_t47) + (_t66)), ((_t66) - (_t40) * (_t47)), _t78, _t79, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t78)), _t81, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t81)), _t85, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t79)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t85)));
+    }
+
+    /**
+     * Piece 3 of {@code lookAlong_rh}, split to fit the inline budget. Shared by 2 identical
+     * private paths of {@code lookAlong}; reached only through it.
+     */
+    private FloatQuat lookAlong_rh_sa6198d78_2_fma(float _t16, float _t38, float _t47, float _t0, float _t20, float _t49, float _t52, float _t56, float _t64, float _t70, float _t72, float _t74, float _t75, float _t78, float _t79, float _sp2, float _t81, float _sp4, float _t85, float _sp1, float _sp3) {
+        float _t126, _t127, _t128, _t129;
+        if (java.lang.Math.fma(_t0, _t16, java.lang.Math.fma(_t38, _t47, _t64)) > 0.0f) {
+            _t126 = _sp1 * _t52;
+            _t127 = 0.5f * (float) java.lang.Math.sqrt(_t79);
+            _t128 = _sp1 * _t72;
+            _t129 = _sp1 * _t75;
+        } else {
+            if (_t49 > Math.max(_t64, _t20)) {
+                _t126 = _sp2 * _t74;
+                _t127 = _sp2 * _t72;
+                _t128 = 0.5f * (float) java.lang.Math.sqrt(_t78);
+                _t129 = _sp2 * _t56;
+            } else {
+                if (_t64 > _t20) {
+                    _t126 = 0.5f * (float) java.lang.Math.sqrt(_t81);
+                    _t127 = _sp4 * _t52;
+                    _t128 = _sp4 * _t74;
+                    _t129 = _sp4 * _t70;
+                } else {
+                    _t126 = _sp3 * _t70;
+                    _t127 = _sp3 * _t75;
+                    _t128 = _sp3 * _t56;
+                    _t129 = 0.5f * (float) java.lang.Math.sqrt(_t85);
+                }
+            }
+        }
+        return lookAlong_rh_sa6198d78_3_fma(_t126, _t127, _t128, _t129, java.lang.Math.fma(this.x, _t127, this.w * _t128) + java.lang.Math.fma(this.y, _t129, -(this.z * _t126)), java.lang.Math.fma(this.y, _t127, this.z * _t128) + java.lang.Math.fma(this.w, _t126, -this.x * _t129), java.lang.Math.fma(this.x, _t126, this.w * _t129) + java.lang.Math.fma(this.z, _t127, -(this.y * _t128)));
+    }
+
+    /**
+     * Piece 3 of {@code lookAlong_rh}, split to fit the inline budget. Shared by 2 identical
+     * private paths of {@code lookAlong}; reached only through it.
+     */
+    private FloatQuat lookAlong_rh_sa6198d78_2_mulAdd(float _t16, float _t38, float _t47, float _t0, float _t20, float _t49, float _t52, float _t56, float _t64, float _t70, float _t72, float _t74, float _t75, float _t78, float _t79, float _sp2, float _t81, float _sp4, float _t85, float _sp1, float _sp3) {
+        float _t126, _t127, _t128, _t129;
+        if (((_t0) * (_t16) + (((_t38) * (_t47) + (_t64)))) > 0.0f) {
+            _t126 = _sp1 * _t52;
+            _t127 = 0.5f * (float) java.lang.Math.sqrt(_t79);
+            _t128 = _sp1 * _t72;
+            _t129 = _sp1 * _t75;
+        } else {
+            if (_t49 > Math.max(_t64, _t20)) {
+                _t126 = _sp2 * _t74;
+                _t127 = _sp2 * _t72;
+                _t128 = 0.5f * (float) java.lang.Math.sqrt(_t78);
+                _t129 = _sp2 * _t56;
+            } else {
+                if (_t64 > _t20) {
+                    _t126 = 0.5f * (float) java.lang.Math.sqrt(_t81);
+                    _t127 = _sp4 * _t52;
+                    _t128 = _sp4 * _t74;
+                    _t129 = _sp4 * _t70;
+                } else {
+                    _t126 = _sp3 * _t70;
+                    _t127 = _sp3 * _t75;
+                    _t128 = _sp3 * _t56;
+                    _t129 = 0.5f * (float) java.lang.Math.sqrt(_t85);
+                }
+            }
+        }
+        return lookAlong_rh_sa6198d78_3_mulAdd(_t126, _t127, _t128, _t129, ((this.x) * (_t127) + (this.w * _t128)) + ((this.y) * (_t129) - (this.z * _t126)), ((this.y) * (_t127) + (this.z * _t128)) + ((this.w) * (_t126) - (this.x * _t129)), ((this.x) * (_t126) + (this.w * _t129)) + ((this.z) * (_t127) - (this.y * _t128)));
+    }
+
+    /**
+     * Piece 4 of {@code lookAlong_rh}, split to fit the inline budget. Shared by 4 identical
+     * private paths of {@code lookAlong}; reached only through it.
+     */
+    private FloatQuat lookAlong_rh_sa6198d78_3_fma(float _t126, float _t127, float _t128, float _t129, float _sfx0, float _sfx1, float _sfx2) {
+        float _sfx3 = java.lang.Math.fma(this.w, _t127, -this.x * _t128) - java.lang.Math.fma(this.y, _t126, this.z * _t129);
+        return new FloatQuat(_sfx0, _sfx1, _sfx2, _sfx3);
+    }
+
+    /**
+     * Piece 4 of {@code lookAlong_rh}, split to fit the inline budget. Shared by 4 identical
+     * private paths of {@code lookAlong}; reached only through it.
+     */
+    private FloatQuat lookAlong_rh_sa6198d78_3_mulAdd(float _t126, float _t127, float _t128, float _t129, float _sfx0, float _sfx1, float _sfx2) {
+        float _el3 = ((this.w) * (_t127) - (this.x * _t128)) - ((this.y) * (_t126) + (this.z * _t129));
+        return new FloatQuat(_sfx0, _sfx1, _sfx2, _el3);
+    }
+
+    /**
+     * Degenerate-input path of {@code lookAlong}: its methods leave here when their input spans no
+     * proper basis (a zero direction, an up vector parallel to it or zero, NaN); reached only
+     * through them.
+     */
+    private FloatQuat lookAlong_rh_degenerate_fma(float dirX, float dirY, float dirZ, float upX, float upY, float upZ) {
+        float _t0 = unitScale(dirX, dirY, dirZ);
+        float _t1 = unitScale(upX, upY, upZ);
+        float _t8 = dirZ * _t0;
+        float _t9 = dirX * _t0;
+        float _t10 = dirY * _t0;
+        float _t16 = java.lang.Math.fma(_t8, _t8, java.lang.Math.fma(_t9, _t9, _t10 * _t10));
+        float _t17 = (1.0f / (float) java.lang.Math.sqrt(_t16));
+        float _t21, _t22, _t23, _t24, _t25, _t26;
+        if (_t16 == 0.0f) {
+            _t21 = 0.0f;
+            _t22 = 0.0f;
+            _t23 = 1.0f;
+            _t24 = -1.0f;
+            _t25 = 0.0f;
+            _t26 = 0.0f;
+        } else {
+            _t21 = upZ * _t1;
+            _t22 = upX * _t1;
+            _t23 = upY * _t1;
+            _t24 = _t17 * _t8;
+            _t25 = _t17 * _t9;
+            _t26 = _t17 * _t10;
+        }
+        float _t29 = -_t26;
+        float _t30 = -_t24;
+        float _t37, _t38, _t42;
+        if (java.lang.Math.abs(_t25) > java.lang.Math.abs(_t24)) {
+            _t37 = 0.0f;
+            _t38 = _t29;
+            _t42 = _t25;
+        } else {
+            _t37 = _t26;
+            _t38 = 0.0f;
+            _t42 = _t30;
+        }
+        float _t44 = -java.lang.Math.fma(_t24, _t21, java.lang.Math.fma(_t25, _t22, _t26 * _t23));
+        float _t45 = java.lang.Math.fma(_t44, _t26, _t23);
+        float _t46 = java.lang.Math.fma(_t44, _t25, _t22);
+        float _t47 = java.lang.Math.fma(_t44, _t24, _t21);
+        return lookAlong_rh_degenerate_sd3e64a41_1_fma(_t21, _t22, _t23, _t24, _t25, _t26, _t29, _t30, 1.0f - _t24, 1.0f + _t24, _t37, _t38, _t42, _t45, _t47, java.lang.Math.fma(_t45, _t25, _t46 * -_t26), java.lang.Math.fma(_t46, _t24, -(_t47 * _t25)));
+    }
+
+    /**
+     * Degenerate-input path of {@code lookAlong}: its methods leave here when their input spans no
+     * proper basis (a zero direction, an up vector parallel to it or zero, NaN); reached only
+     * through them.
+     */
+    private FloatQuat lookAlong_rh_degenerate_mulAdd(float dirX, float dirY, float dirZ, float upX, float upY, float upZ) {
+        float _t0 = unitScale(dirX, dirY, dirZ);
+        float _t1 = unitScale(upX, upY, upZ);
+        float _t8 = dirZ * _t0;
+        float _t9 = dirX * _t0;
+        float _t10 = dirY * _t0;
+        float _t16 = ((_t8) * (_t8) + (((_t9) * (_t9) + (_t10 * _t10))));
+        float _t17 = (1.0f / (float) java.lang.Math.sqrt(_t16));
+        float _t21, _t22, _t23, _t24, _t25, _t26;
+        if (_t16 == 0.0f) {
+            _t21 = 0.0f;
+            _t22 = 0.0f;
+            _t23 = 1.0f;
+            _t24 = -1.0f;
+            _t25 = 0.0f;
+            _t26 = 0.0f;
+        } else {
+            _t21 = upZ * _t1;
+            _t22 = upX * _t1;
+            _t23 = upY * _t1;
+            _t24 = _t17 * _t8;
+            _t25 = _t17 * _t9;
+            _t26 = _t17 * _t10;
+        }
+        float _t29 = -_t26;
+        float _t30 = -_t24;
+        float _t37, _t38, _t42;
+        if (java.lang.Math.abs(_t25) > java.lang.Math.abs(_t24)) {
+            _t37 = 0.0f;
+            _t38 = _t29;
+            _t42 = _t25;
+        } else {
+            _t37 = _t26;
+            _t38 = 0.0f;
+            _t42 = _t30;
+        }
+        float _t44 = -((_t24) * (_t21) + (((_t25) * (_t22) + (_t26 * _t23))));
+        float _t45 = ((_t44) * (_t26) + (_t23));
+        float _t46 = ((_t44) * (_t25) + (_t22));
+        float _t47 = ((_t44) * (_t24) + (_t21));
+        return lookAlong_rh_degenerate_sd3e64a41_1_mulAdd(_t21, _t22, _t23, _t24, _t25, _t26, _t29, _t30, 1.0f - _t24, 1.0f + _t24, _t37, _t38, _t42, _t45, _t47, ((_t45) * (_t25) - (_t46 * _t26)), ((_t46) * (_t24) - (_t47 * _t25)));
+    }
+
+    /** Piece 2 of {@code lookAlong_rh_degenerate}, split to fit the inline budget; reached only through it. */
+    private FloatQuat lookAlong_rh_degenerate_sd3e64a41_1_fma(float _t21, float _t22, float _t23, float _t24, float _t25, float _t26, float _t29, float _t30, float _t32, float _t33, float _t37, float _t38, float _t42, float _t45, float _t47, float _t56, float _t57) {
+        float _t58 = java.lang.Math.fma(_t47, _t26, _t45 * -_t24);
+        float _t62 = java.lang.Math.fma(_t56, _t56, java.lang.Math.fma(_t57, _t57, _t58 * _t58));
+        float _t63, _t64, _t65, _t67;
+        if (_t62 <= java.lang.Math.fma(_t21, _t21, java.lang.Math.fma(_t22, _t22, _t23 * _t23)) * 1.4551915E-11f) {
+            _t63 = _t37;
+            _t64 = _t38;
+            _t65 = _t42;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(java.lang.Math.fma(_t37, _t37, java.lang.Math.fma(_t38, _t38, _t42 * _t42))));
+        } else {
+            _t63 = _t56;
+            _t64 = _t58;
+            _t65 = _t57;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(_t62));
+        }
+        float _t69 = _t67 * _t63;
+        float _t70 = _t67 * _t64;
+        float _t71 = -_t69;
+        float _t72 = -_t70;
+        float _t73 = _t67 * _t65;
+        return lookAlong_rh_degenerate_sd3e64a41_2_fma(_t24, _t25, _t30, _t32, _t33, _t64, _t65, _t67, -_t67, _t69, _t70, _t71, _t72, java.lang.Math.fma(_t67, _t63, _t25), java.lang.Math.fma(_t67, _t63, -_t25), java.lang.Math.fma(_t69, _t25, -(_t70 * _t24)), java.lang.Math.fma(_t73, _t24, -(_t69 * _t26)), java.lang.Math.fma(_t72, _t26, java.lang.Math.fma(_t73, _t25, _t29)), java.lang.Math.fma(_t70, _t26, java.lang.Math.fma(_t73, -_t25, _t29)), java.lang.Math.fma(_t69, _t25, java.lang.Math.fma(_t72, _t24, java.lang.Math.fma(_t67, _t64, _t32))), java.lang.Math.fma(_t67, _t64, java.lang.Math.fma(_t71, _t25, java.lang.Math.fma(_t70, _t24, _t33))));
+    }
+
+    /** Piece 2 of {@code lookAlong_rh_degenerate}, split to fit the inline budget; reached only through it. */
+    private FloatQuat lookAlong_rh_degenerate_sd3e64a41_1_mulAdd(float _t21, float _t22, float _t23, float _t24, float _t25, float _t26, float _t29, float _t30, float _t32, float _t33, float _t37, float _t38, float _t42, float _t45, float _t47, float _t56, float _t57) {
+        float _t58 = ((_t47) * (_t26) - (_t45 * _t24));
+        float _t62 = ((_t56) * (_t56) + (((_t57) * (_t57) + (_t58 * _t58))));
+        float _t63, _t64, _t65, _t67;
+        if (_t62 <= ((_t21) * (_t21) + (((_t22) * (_t22) + (_t23 * _t23)))) * 1.4551915E-11f) {
+            _t63 = _t37;
+            _t64 = _t38;
+            _t65 = _t42;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(((_t37) * (_t37) + (((_t38) * (_t38) + (_t42 * _t42))))));
+        } else {
+            _t63 = _t56;
+            _t64 = _t58;
+            _t65 = _t57;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(_t62));
+        }
+        float _t69 = _t67 * _t63;
+        float _t70 = _t67 * _t64;
+        float _t71 = -_t69;
+        float _t72 = -_t70;
+        float _t73 = _t67 * _t65;
+        return lookAlong_rh_degenerate_sd3e64a41_2_mulAdd(_t24, _t25, _t30, _t32, _t33, _t64, _t65, _t67, -_t67, _t69, _t70, _t71, _t72, ((_t67) * (_t63) + (_t25)), ((_t67) * (_t63) - (_t25)), ((_t69) * (_t25) - (_t70 * _t24)), ((_t73) * (_t24) - (_t69 * _t26)), ((_t72) * (_t26) + (((_t73) * (_t25) + (_t29)))), ((_t70) * (_t26) + (((_t29) - (_t73) * (_t25)))), ((_t69) * (_t25) + (((_t72) * (_t24) + (((_t67) * (_t64) + (_t32)))))), ((_t67) * (_t64) + (((_t71) * (_t25) + (((_t70) * (_t24) + (_t33)))))));
+    }
+
+    /** Piece 3 of {@code lookAlong_rh_degenerate}, split to fit the inline budget; reached only through it. */
+    private FloatQuat lookAlong_rh_degenerate_sd3e64a41_2_fma(float _t24, float _t25, float _t30, float _t32, float _t33, float _t64, float _t65, float _t67, float _t68, float _t69, float _t70, float _t71, float _t72, float _t74, float _t76, float _t88, float _t93, float _t96, float _t97, float _t99, float _t100) {
+        float _t103 = java.lang.Math.fma(_t69, _t25, java.lang.Math.fma(_t72, _t24, java.lang.Math.fma(_t68, _t64, _t33)));
+        float _t104 = java.lang.Math.fma(_t71, _t25, java.lang.Math.fma(_t70, _t24, java.lang.Math.fma(_t68, _t64, _t32)));
+        return lookAlong_rh_degenerate_sd3e64a41_3_fma(_t24, _t25, _t30, _t64, _t67, _t69, _t70, _t72, _t74, _t76, _t88, _t96, _t97, _t99, _t100, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t100)), _t103, _t104, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t99)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t103)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t104)), java.lang.Math.fma(_t67, _t65, _t93), java.lang.Math.fma(_t68, _t65, _t93));
+    }
+
+    /** Piece 3 of {@code lookAlong_rh_degenerate}, split to fit the inline budget; reached only through it. */
+    private FloatQuat lookAlong_rh_degenerate_sd3e64a41_2_mulAdd(float _t24, float _t25, float _t30, float _t32, float _t33, float _t64, float _t65, float _t67, float _t68, float _t69, float _t70, float _t71, float _t72, float _t74, float _t76, float _t88, float _t93, float _t96, float _t97, float _t99, float _t100) {
+        float _t103 = ((_t69) * (_t25) + (((_t72) * (_t24) + (((_t68) * (_t64) + (_t33))))));
+        float _t104 = ((_t71) * (_t25) + (((_t70) * (_t24) + (((_t68) * (_t64) + (_t32))))));
+        return lookAlong_rh_degenerate_sd3e64a41_3_mulAdd(_t24, _t25, _t30, _t64, _t67, _t69, _t70, _t72, _t74, _t76, _t88, _t96, _t97, _t99, _t100, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t100)), _t103, _t104, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t99)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t103)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t104)), ((_t67) * (_t65) + (_t93)), ((_t68) * (_t65) + (_t93)));
+    }
+
+    /**
+     * Piece 4 of {@code lookAlong_rh_degenerate}, split to fit the inline budget. Shared by 2
+     * identical private paths of {@code lookAlong}; reached only through it.
+     */
+    private FloatQuat lookAlong_rh_degenerate_sd3e64a41_3_fma(float _t24, float _t25, float _t30, float _t64, float _t67, float _t69, float _t70, float _t72, float _t74, float _t76, float _t88, float _t96, float _t97, float _t99, float _t100, float _sp1, float _t103, float _t104, float _sp0, float _sp3, float _sp2, float _t115, float _t116) {
+        float _t149, _t150, _t151, _t152;
+        if (java.lang.Math.fma(_t69, _t25, java.lang.Math.fma(_t72, _t24, java.lang.Math.fma(_t67, _t64, _t30))) > 0.0f) {
+            _t149 = _sp0 * _t74;
+            _t150 = 0.5f * (float) java.lang.Math.sqrt(_t99);
+            _t151 = _sp0 * _t96;
+            _t152 = _sp0 * _t116;
+        } else {
+            if (_t70 > Math.max(_t88, _t30)) {
+                _t149 = _sp1 * _t115;
+                _t150 = _sp1 * _t96;
+                _t151 = 0.5f * (float) java.lang.Math.sqrt(_t100);
+                _t152 = _sp1 * _t76;
+            } else {
+                if (_t88 > _t30) {
+                    _t149 = 0.5f * (float) java.lang.Math.sqrt(_t103);
+                    _t150 = _sp3 * _t74;
+                    _t151 = _sp3 * _t115;
+                    _t152 = _sp3 * _t97;
+                } else {
+                    _t149 = _sp2 * _t97;
+                    _t150 = _sp2 * _t116;
+                    _t151 = _sp2 * _t76;
+                    _t152 = 0.5f * (float) java.lang.Math.sqrt(_t104);
+                }
+            }
+        }
+        return lookAlong_rh_sa6198d78_3_fma(_t149, _t150, _t151, _t152, java.lang.Math.fma(this.x, _t150, this.w * _t151) + java.lang.Math.fma(this.y, _t152, -(this.z * _t149)), java.lang.Math.fma(this.y, _t150, this.z * _t151) + java.lang.Math.fma(this.w, _t149, -this.x * _t152), java.lang.Math.fma(this.x, _t149, this.w * _t152) + java.lang.Math.fma(this.z, _t150, -(this.y * _t151)));
+    }
+
+    /**
+     * Piece 4 of {@code lookAlong_rh_degenerate}, split to fit the inline budget. Shared by 2
+     * identical private paths of {@code lookAlong}; reached only through it.
+     */
+    private FloatQuat lookAlong_rh_degenerate_sd3e64a41_3_mulAdd(float _t24, float _t25, float _t30, float _t64, float _t67, float _t69, float _t70, float _t72, float _t74, float _t76, float _t88, float _t96, float _t97, float _t99, float _t100, float _sp1, float _t103, float _t104, float _sp0, float _sp3, float _sp2, float _t115, float _t116) {
+        float _t149, _t150, _t151, _t152;
+        if (((_t69) * (_t25) + (((_t72) * (_t24) + (((_t67) * (_t64) + (_t30)))))) > 0.0f) {
+            _t149 = _sp0 * _t74;
+            _t150 = 0.5f * (float) java.lang.Math.sqrt(_t99);
+            _t151 = _sp0 * _t96;
+            _t152 = _sp0 * _t116;
+        } else {
+            if (_t70 > Math.max(_t88, _t30)) {
+                _t149 = _sp1 * _t115;
+                _t150 = _sp1 * _t96;
+                _t151 = 0.5f * (float) java.lang.Math.sqrt(_t100);
+                _t152 = _sp1 * _t76;
+            } else {
+                if (_t88 > _t30) {
+                    _t149 = 0.5f * (float) java.lang.Math.sqrt(_t103);
+                    _t150 = _sp3 * _t74;
+                    _t151 = _sp3 * _t115;
+                    _t152 = _sp3 * _t97;
+                } else {
+                    _t149 = _sp2 * _t97;
+                    _t150 = _sp2 * _t116;
+                    _t151 = _sp2 * _t76;
+                    _t152 = 0.5f * (float) java.lang.Math.sqrt(_t104);
+                }
+            }
+        }
+        return lookAlong_rh_sa6198d78_3_mulAdd(_t149, _t150, _t151, _t152, ((this.x) * (_t150) + (this.w * _t151)) + ((this.y) * (_t152) - (this.z * _t149)), ((this.y) * (_t150) + (this.z * _t151)) + ((this.w) * (_t149) - (this.x * _t152)), ((this.x) * (_t149) + (this.w * _t152)) + ((this.z) * (_t150) - (this.y * _t151)));
+    }
+
+    /**
+     * Apply a "look along" view rotation looking along {@code dir} (the rotation of a "look at"
+     * view transformation with the eye at the origin) to this quaternion, returning the result as a
+     * value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code L} the "look along" quaternion, then the
+     * new quaternion will be {@code Q * L}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code Q * L * v}, the "look along" will be applied first.
+     * <p>
+     * Degenerate input still gives a proper rotation: an up vector parallel to the view direction
+     * (to within an angle of about 32 units in the last place of 1) or zero is replaced by one
+     * perpendicular to it, and a zero view direction gives the identity orientation; NaN input
+     * gives NaN. The rotation is orthonormal to working precision for vectors of any finite length,
+     * an up vector however close to the view direction included. (The raw-storage {@code *Ops}
+     * kernels need a non-zero direction and up vector that are not parallel.)
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dir the direction to look along, i.e. the direction mapped to {@code -z}
+     *        (right-handed) or {@code +z} (left-handed)
+     * @param up the direction of "up"
+     * @param handedness the handedness of the coordinate system to map into
+     * @return the resulting quaternion
+     */
+    public FloatQuat lookAlong(Float3 dir, Float3 up, Handedness handedness) {
+        switch (handedness) {
+            case LEFT_HANDED -> { return (org.joml2.internal.FmaSwitch.ON ? lookAlong_lh_fma(dir, up) : lookAlong_lh_mulAdd(dir, up)); }
+            default -> { return (org.joml2.internal.FmaSwitch.ON ? lookAlong_rh_fma(dir, up) : lookAlong_rh_mulAdd(dir, up)); }
+        }
+    }
+
+    /**
+     * Apply a "look along" view rotation looking along ({@code dirX}, {@code dirY}, {@code dirZ})
+     * (the rotation of a "look at" view transformation with the eye at the origin) to this
+     * quaternion, returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code L} the "look along" quaternion, then the
+     * new quaternion will be {@code Q * L}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code Q * L * v}, the "look along" will be applied first.
+     * <p>
+     * Degenerate input still gives a proper rotation: an up vector parallel to the view direction
+     * (to within an angle of about 32 units in the last place of 1) or zero is replaced by one
+     * perpendicular to it, and a zero view direction gives the identity orientation; NaN input
+     * gives NaN. The rotation is orthonormal to working precision for vectors of any finite length,
+     * an up vector however close to the view direction included. (The raw-storage {@code *Ops}
+     * kernels need a non-zero direction and up vector that are not parallel.)
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dirX the {@code x} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param dirY the {@code y} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param dirZ the {@code z} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param upX the {@code x} component of the vector {@code (upX, upY, upZ)}
+     * @param upY the {@code y} component of the vector {@code (upX, upY, upZ)}
+     * @param upZ the {@code z} component of the vector {@code (upX, upY, upZ)}
+     * @param handedness the handedness of the coordinate system to map into
+     * @return the resulting quaternion
+     */
+    public FloatQuat lookAlong(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, Handedness handedness) {
+        switch (handedness) {
+            case LEFT_HANDED -> { return (org.joml2.internal.FmaSwitch.ON ? lookAlong_lh_fma(dirX, dirY, dirZ, upX, upY, upZ) : lookAlong_lh_mulAdd(dirX, dirY, dirZ, upX, upY, upZ)); }
+            default -> { return (org.joml2.internal.FmaSwitch.ON ? lookAlong_rh_fma(dirX, dirY, dirZ, upX, upY, upZ) : lookAlong_rh_mulAdd(dirX, dirY, dirZ, upX, upY, upZ)); }
+        }
+    }
+
+    /**
+     * Apply a "look along" view rotation looking along {@code dir} (the rotation of a "look at"
+     * view transformation with the eye at the origin) to this quaternion, returning the result as a
+     * value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code L} the "look along" quaternion, then the
+     * new quaternion will be {@code Q * L}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code Q * L * v}, the "look along" will be applied first.
+     * <p>
+     * Degenerate input still gives a proper rotation: an up vector parallel to the view direction
+     * (to within an angle of about 32 units in the last place of 1) or zero is replaced by one
+     * perpendicular to it, and a zero view direction gives the identity orientation; NaN input
+     * gives NaN. The rotation is orthonormal to working precision for vectors of any finite length,
+     * an up vector however close to the view direction included. (The raw-storage {@code *Ops}
+     * kernels need a non-zero direction and up vector that are not parallel.)
+     * <p>
+     * Uses {@link Handedness#RIGHT_HANDED} for {@code handedness}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dir the direction to look along, i.e. the direction mapped to {@code -z}
+     *        (right-handed) or {@code +z} (left-handed)
+     * @param up the direction of "up"
+     * @return the resulting quaternion
+     */
+    public FloatQuat lookAlong(Float3 dir, Float3 up) { return (org.joml2.internal.FmaSwitch.ON ? lookAlong_rh_fma(dir, up) : lookAlong_rh_mulAdd(dir, up)); }
+
+    /**
+     * Apply a "look along" view rotation looking along ({@code dirX}, {@code dirY}, {@code dirZ})
+     * (the rotation of a "look at" view transformation with the eye at the origin) to this
+     * quaternion, returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code L} the "look along" quaternion, then the
+     * new quaternion will be {@code Q * L}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code Q * L * v}, the "look along" will be applied first.
+     * <p>
+     * Degenerate input still gives a proper rotation: an up vector parallel to the view direction
+     * (to within an angle of about 32 units in the last place of 1) or zero is replaced by one
+     * perpendicular to it, and a zero view direction gives the identity orientation; NaN input
+     * gives NaN. The rotation is orthonormal to working precision for vectors of any finite length,
+     * an up vector however close to the view direction included. (The raw-storage {@code *Ops}
+     * kernels need a non-zero direction and up vector that are not parallel.)
+     * <p>
+     * Uses {@link Handedness#RIGHT_HANDED} for {@code handedness}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dirX the {@code x} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param dirY the {@code y} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param dirZ the {@code z} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param upX the {@code x} component of the vector {@code (upX, upY, upZ)}
+     * @param upY the {@code y} component of the vector {@code (upX, upY, upZ)}
+     * @param upZ the {@code z} component of the vector {@code (upX, upY, upZ)}
+     * @return the resulting quaternion
+     */
+    public FloatQuat lookAlong(float dirX, float dirY, float dirZ, float upX, float upY, float upZ) { return (org.joml2.internal.FmaSwitch.ON ? lookAlong_rh_fma(dirX, dirY, dirZ, upX, upY, upZ) : lookAlong_rh_mulAdd(dirX, dirY, dirZ, upX, upY, upZ)); }
+
+    /**
+     * Private body of {@code lookAlong} for {@code Handedness.LEFT_HANDED}; reached only through
+     * the public {@code lookAlong} dispatcher.
+     */
+    private FloatQuat lookAlong_lh_fma(Float3 dir, Float3 up, float epsilon) {
+        return lookAlong_lh_fma(dir.x(), dir.y(), dir.z(), up.x(), up.y(), up.z(), epsilon);
+    }
+
+    /**
+     * Private body of {@code lookAlong} for {@code Handedness.LEFT_HANDED}; reached only through
+     * the public {@code lookAlong} dispatcher.
+     */
+    private FloatQuat lookAlong_lh_mulAdd(Float3 dir, Float3 up, float epsilon) {
+        return lookAlong_lh_mulAdd(dir.x(), dir.y(), dir.z(), up.x(), up.y(), up.z(), epsilon);
+    }
+
+    /**
+     * Private body of {@code lookAlong} for {@code Handedness.LEFT_HANDED}; reached only through
+     * the public {@code lookAlong} dispatcher.
+     */
+    private FloatQuat lookAlong_lh_fma(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, float epsilon) {
+        float _t7 = java.lang.Math.fma(dirZ, dirZ, java.lang.Math.fma(dirX, dirX, dirY * dirY));
+        float _sp0 = java.lang.Math.fma(dirZ, upZ, java.lang.Math.fma(dirX, upX, dirY * upY)) / _t7;
+        if (!(_t7 > 1.1754944E-38f && _t7 < Float.POSITIVE_INFINITY)) return lookAlong_lh_degenerate_fma(dirX, dirY, dirZ, upX, upY, upZ, epsilon);
+        float _t15 = (1.0f / (float) java.lang.Math.sqrt(_t7));
+        float _t27 = java.lang.Math.fma(-dirY, _sp0, upY);
+        float _t28 = java.lang.Math.fma(-dirZ, _sp0, upZ);
+        float _t29 = java.lang.Math.fma(-dirX, _sp0, upX);
+        float _t36 = java.lang.Math.fma(dirZ, _t27, -dirY * _t28);
+        float _t37 = java.lang.Math.fma(dirY, _t29, -(dirX * _t27));
+        float _t38 = java.lang.Math.fma(dirX, _t28, -(dirZ * _t29));
+        float _ct0 = java.lang.Math.fma(_t37, _t37, java.lang.Math.fma(_t38, _t38, _t36 * _t36));
+        if (!(_ct0 > java.lang.Math.fma(_t7, epsilon * java.lang.Math.fma(upZ, upZ, java.lang.Math.fma(upX, upX, upY * upY)), 1.1754944E-38f) && _ct0 < Float.POSITIVE_INFINITY)) return lookAlong_lh_degenerate_fma(dirX, dirY, dirZ, upX, upY, upZ, epsilon);
+        float _t45 = (1.0f / (float) java.lang.Math.sqrt(_ct0));
+        float _t16 = dirZ * _t15;
+        float _t17 = dirX * _t15;
+        return lookAlong_lh_sb225bd8a_1_fma(dirX, dirY, dirZ, _t15, _t36, _t37, _t38, _t45, -dirZ, _t16, _t17, dirY * _t15, -_t17, -_t16, _t36 * _t45, _t37 * _t45, _t38 * _t45);
+    }
+
+    /**
+     * Private body of {@code lookAlong} for {@code Handedness.LEFT_HANDED}; reached only through
+     * the public {@code lookAlong} dispatcher.
+     */
+    private FloatQuat lookAlong_lh_mulAdd(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, float epsilon) {
+        float _t7 = ((dirZ) * (dirZ) + (((dirX) * (dirX) + (dirY * dirY))));
+        float _sp0 = ((dirZ) * (upZ) + (((dirX) * (upX) + (dirY * upY)))) / _t7;
+        if (!(_t7 > 1.1754944E-38f && _t7 < Float.POSITIVE_INFINITY)) return lookAlong_lh_degenerate_mulAdd(dirX, dirY, dirZ, upX, upY, upZ, epsilon);
+        float _t15 = (1.0f / (float) java.lang.Math.sqrt(_t7));
+        float _t27 = ((upY) - (dirY) * (_sp0));
+        float _t28 = ((upZ) - (dirZ) * (_sp0));
+        float _t29 = ((upX) - (dirX) * (_sp0));
+        float _t36 = ((dirZ) * (_t27) - (dirY * _t28));
+        float _t37 = ((dirY) * (_t29) - (dirX * _t27));
+        float _t38 = ((dirX) * (_t28) - (dirZ * _t29));
+        float _ct0 = ((_t37) * (_t37) + (((_t38) * (_t38) + (_t36 * _t36))));
+        if (!(_ct0 > ((_t7) * (epsilon * ((upZ) * (upZ) + (((upX) * (upX) + (upY * upY))))) + (1.1754944E-38f)) && _ct0 < Float.POSITIVE_INFINITY)) return lookAlong_lh_degenerate_mulAdd(dirX, dirY, dirZ, upX, upY, upZ, epsilon);
+        float _t45 = (1.0f / (float) java.lang.Math.sqrt(_ct0));
+        float _t16 = dirZ * _t15;
+        float _t17 = dirX * _t15;
+        return lookAlong_lh_sb225bd8a_1_mulAdd(dirX, dirY, dirZ, _t15, _t36, _t37, _t38, _t45, -dirZ, _t16, _t17, dirY * _t15, -_t17, -_t16, _t36 * _t45, _t37 * _t45, _t38 * _t45);
+    }
+
+    /** Piece 2 of {@code lookAlong_lh}, split to fit the inline budget; reached only through it. */
+    private FloatQuat lookAlong_lh_sb225bd8a_1_fma(float dirX, float dirY, float dirZ, float _t15, float _t36, float _t37, float _t38, float _t45, float _t0, float _t16, float _t17, float _t18, float _t19, float _t21, float _t46, float _t47, float _t48) {
+        float _t49 = java.lang.Math.fma(-_t36, _t45, 1.0f);
+        float _t64 = java.lang.Math.fma(_t17, _t48, -(_t18 * _t46));
+        float _t65 = java.lang.Math.fma(_t18, _t47, -(_t16 * _t48));
+        float _t77 = java.lang.Math.fma(_t16, _t46, java.lang.Math.fma(_t19, _t47, java.lang.Math.fma(_t36, _t45, java.lang.Math.fma(dirZ, _t15, 1.0f))));
+        float _t79 = java.lang.Math.fma(_t36, _t45, java.lang.Math.fma(_t21, _t46, java.lang.Math.fma(_t17, _t47, java.lang.Math.fma(_t0, _t15, 1.0f))));
+        float _t80 = java.lang.Math.fma(dirZ, _t15, java.lang.Math.fma(_t21, _t46, java.lang.Math.fma(_t17, _t47, _t49)));
+        float _t83 = java.lang.Math.fma(_t16, _t46, java.lang.Math.fma(_t19, _t47, java.lang.Math.fma(_t0, _t15, _t49)));
+        return lookAlong_lh_s5402847e_2_fma(dirZ, _t15, _t36, _t45, _t16, _t46, java.lang.Math.fma(dirX, _t15, _t47), java.lang.Math.fma(_t37, _t45, _t19), java.lang.Math.fma(_t16, _t46, -(_t17 * _t47)), java.lang.Math.fma(dirY, _t15, _t64), java.lang.Math.fma(dirY, _t15, -_t64), java.lang.Math.fma(_t38, _t45, _t65), java.lang.Math.fma(-_t38, _t45, _t65), _t77, _t79, _t80, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t77)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t79)), _t83, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t80)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t83)));
+    }
+
+    /** Piece 2 of {@code lookAlong_lh}, split to fit the inline budget; reached only through it. */
+    private FloatQuat lookAlong_lh_sb225bd8a_1_mulAdd(float dirX, float dirY, float dirZ, float _t15, float _t36, float _t37, float _t38, float _t45, float _t0, float _t16, float _t17, float _t18, float _t19, float _t21, float _t46, float _t47, float _t48) {
+        float _t49 = ((1.0f) - (_t36) * (_t45));
+        float _t64 = ((_t17) * (_t48) - (_t18 * _t46));
+        float _t65 = ((_t18) * (_t47) - (_t16 * _t48));
+        float _t77 = ((_t16) * (_t46) + (((_t19) * (_t47) + (((_t36) * (_t45) + (((dirZ) * (_t15) + (1.0f))))))));
+        float _t79 = ((_t36) * (_t45) + (((_t21) * (_t46) + (((_t17) * (_t47) + (((_t0) * (_t15) + (1.0f))))))));
+        float _t80 = ((dirZ) * (_t15) + (((_t21) * (_t46) + (((_t17) * (_t47) + (_t49))))));
+        float _t83 = ((_t16) * (_t46) + (((_t19) * (_t47) + (((_t0) * (_t15) + (_t49))))));
+        return lookAlong_lh_s5402847e_2_mulAdd(dirZ, _t15, _t36, _t45, _t16, _t46, ((dirX) * (_t15) + (_t47)), ((_t37) * (_t45) + (_t19)), ((_t16) * (_t46) - (_t17 * _t47)), ((dirY) * (_t15) + (_t64)), ((dirY) * (_t15) - (_t64)), ((_t38) * (_t45) + (_t65)), ((_t65) - (_t38) * (_t45)), _t77, _t79, _t80, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t77)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t79)), _t83, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t80)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t83)));
+    }
+
+    /**
+     * Degenerate-input path of {@code lookAlong}: its methods leave here when their input spans no
+     * proper basis (a zero direction, an up vector parallel to it or zero, NaN); reached only
+     * through them.
+     */
+    private FloatQuat lookAlong_lh_degenerate_fma(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, float epsilon) {
+        float _t0 = unitScale(dirX, dirY, dirZ);
+        float _t1 = unitScale(upX, upY, upZ);
+        float _t8 = dirZ * _t0;
+        float _t9 = dirX * _t0;
+        float _t10 = dirY * _t0;
+        float _t16 = java.lang.Math.fma(_t8, _t8, java.lang.Math.fma(_t9, _t9, _t10 * _t10));
+        float _t17 = (1.0f / (float) java.lang.Math.sqrt(_t16));
+        float _t21, _t22, _t23, _t24, _t25, _t26;
+        if (_t16 == 0.0f) {
+            _t21 = 0.0f;
+            _t22 = 0.0f;
+            _t23 = 1.0f;
+            _t24 = 1.0f;
+            _t25 = 0.0f;
+            _t26 = 0.0f;
+        } else {
+            _t21 = upZ * _t1;
+            _t22 = upX * _t1;
+            _t23 = upY * _t1;
+            _t24 = _t17 * _t8;
+            _t25 = _t17 * _t9;
+            _t26 = _t17 * _t10;
+        }
+        float _t37, _t38, _t42;
+        if (java.lang.Math.abs(_t25) > java.lang.Math.abs(_t24)) {
+            _t37 = 0.0f;
+            _t38 = -_t26;
+            _t42 = _t25;
+        } else {
+            _t37 = _t26;
+            _t38 = 0.0f;
+            _t42 = -_t24;
+        }
+        float _t44 = -java.lang.Math.fma(_t21, _t24, java.lang.Math.fma(_t25, _t22, _t26 * _t23));
+        float _t45 = java.lang.Math.fma(_t44, _t25, _t22);
+        float _t46 = java.lang.Math.fma(_t44, _t26, _t23);
+        float _t47 = java.lang.Math.fma(_t44, _t24, _t21);
+        return lookAlong_lh_degenerate_scb91a409_1_fma(epsilon, _t21, _t22, _t23, _t24, _t25, _t26, 1.0f + _t24, 1.0f - _t24, _t37, _t38, _t42, java.lang.Math.fma(_t45, _t26, -(_t46 * _t25)), java.lang.Math.fma(_t47, _t25, _t45 * -_t24), java.lang.Math.fma(_t46, _t24, _t47 * -_t26));
+    }
+
+    /**
+     * Degenerate-input path of {@code lookAlong}: its methods leave here when their input spans no
+     * proper basis (a zero direction, an up vector parallel to it or zero, NaN); reached only
+     * through them.
+     */
+    private FloatQuat lookAlong_lh_degenerate_mulAdd(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, float epsilon) {
+        float _t0 = unitScale(dirX, dirY, dirZ);
+        float _t1 = unitScale(upX, upY, upZ);
+        float _t8 = dirZ * _t0;
+        float _t9 = dirX * _t0;
+        float _t10 = dirY * _t0;
+        float _t16 = ((_t8) * (_t8) + (((_t9) * (_t9) + (_t10 * _t10))));
+        float _t17 = (1.0f / (float) java.lang.Math.sqrt(_t16));
+        float _t21, _t22, _t23, _t24, _t25, _t26;
+        if (_t16 == 0.0f) {
+            _t21 = 0.0f;
+            _t22 = 0.0f;
+            _t23 = 1.0f;
+            _t24 = 1.0f;
+            _t25 = 0.0f;
+            _t26 = 0.0f;
+        } else {
+            _t21 = upZ * _t1;
+            _t22 = upX * _t1;
+            _t23 = upY * _t1;
+            _t24 = _t17 * _t8;
+            _t25 = _t17 * _t9;
+            _t26 = _t17 * _t10;
+        }
+        float _t37, _t38, _t42;
+        if (java.lang.Math.abs(_t25) > java.lang.Math.abs(_t24)) {
+            _t37 = 0.0f;
+            _t38 = -_t26;
+            _t42 = _t25;
+        } else {
+            _t37 = _t26;
+            _t38 = 0.0f;
+            _t42 = -_t24;
+        }
+        float _t44 = -((_t21) * (_t24) + (((_t25) * (_t22) + (_t26 * _t23))));
+        float _t45 = ((_t44) * (_t25) + (_t22));
+        float _t46 = ((_t44) * (_t26) + (_t23));
+        float _t47 = ((_t44) * (_t24) + (_t21));
+        return lookAlong_lh_degenerate_scb91a409_1_mulAdd(epsilon, _t21, _t22, _t23, _t24, _t25, _t26, 1.0f + _t24, 1.0f - _t24, _t37, _t38, _t42, ((_t45) * (_t26) - (_t46 * _t25)), ((_t47) * (_t25) - (_t45 * _t24)), ((_t46) * (_t24) - (_t47 * _t26)));
+    }
+
+    /** Piece 2 of {@code lookAlong_lh_degenerate}, split to fit the inline budget; reached only through it. */
+    private FloatQuat lookAlong_lh_degenerate_scb91a409_1_fma(float epsilon, float _t21, float _t22, float _t23, float _t24, float _t25, float _t26, float _t32, float _t33, float _t37, float _t38, float _t42, float _t56, float _t57, float _t58) {
+        float _t62 = java.lang.Math.fma(_t56, _t56, java.lang.Math.fma(_t57, _t57, _t58 * _t58));
+        float _t63, _t64, _t65, _t67;
+        if (_t62 <= epsilon * java.lang.Math.fma(_t21, _t21, java.lang.Math.fma(_t22, _t22, _t23 * _t23))) {
+            _t63 = _t37;
+            _t64 = _t38;
+            _t65 = _t42;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(java.lang.Math.fma(_t37, _t37, java.lang.Math.fma(_t38, _t38, _t42 * _t42))));
+        } else {
+            _t63 = _t56;
+            _t64 = _t58;
+            _t65 = _t57;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(_t62));
+        }
+        float _t69 = _t67 * _t63;
+        float _t70 = _t67 * _t64;
+        float _t71 = -_t69;
+        float _t72 = -_t70;
+        float _t73 = _t67 * _t65;
+        float _t100 = java.lang.Math.fma(_t67, _t64, java.lang.Math.fma(_t72, _t24, java.lang.Math.fma(_t69, _t25, _t33)));
+        return lookAlong_lh_degenerate_sae57cfe3_2_fma(_t24, _t25, _t32, _t33, _t64, _t65, _t67, -_t67, _t69, _t70, _t71, _t72, java.lang.Math.fma(_t67, _t63, _t25), java.lang.Math.fma(_t67, _t63, -_t25), java.lang.Math.fma(_t70, _t24, -(_t69 * _t25)), java.lang.Math.fma(_t69, _t26, -(_t73 * _t24)), java.lang.Math.fma(_t73, -_t25, java.lang.Math.fma(_t70, _t26, _t26)), java.lang.Math.fma(_t73, _t25, java.lang.Math.fma(_t72, _t26, _t26)), java.lang.Math.fma(_t70, _t24, java.lang.Math.fma(_t71, _t25, java.lang.Math.fma(_t67, _t64, _t32))), _t100, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t100)));
+    }
+
+    /** Piece 2 of {@code lookAlong_lh_degenerate}, split to fit the inline budget; reached only through it. */
+    private FloatQuat lookAlong_lh_degenerate_scb91a409_1_mulAdd(float epsilon, float _t21, float _t22, float _t23, float _t24, float _t25, float _t26, float _t32, float _t33, float _t37, float _t38, float _t42, float _t56, float _t57, float _t58) {
+        float _t62 = ((_t56) * (_t56) + (((_t57) * (_t57) + (_t58 * _t58))));
+        float _t63, _t64, _t65, _t67;
+        if (_t62 <= epsilon * ((_t21) * (_t21) + (((_t22) * (_t22) + (_t23 * _t23))))) {
+            _t63 = _t37;
+            _t64 = _t38;
+            _t65 = _t42;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(((_t37) * (_t37) + (((_t38) * (_t38) + (_t42 * _t42))))));
+        } else {
+            _t63 = _t56;
+            _t64 = _t58;
+            _t65 = _t57;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(_t62));
+        }
+        float _t69 = _t67 * _t63;
+        float _t70 = _t67 * _t64;
+        float _t71 = -_t69;
+        float _t72 = -_t70;
+        float _t73 = _t67 * _t65;
+        float _t100 = ((_t67) * (_t64) + (((_t72) * (_t24) + (((_t69) * (_t25) + (_t33))))));
+        return lookAlong_lh_degenerate_sae57cfe3_2_mulAdd(_t24, _t25, _t32, _t33, _t64, _t65, _t67, -_t67, _t69, _t70, _t71, _t72, ((_t67) * (_t63) + (_t25)), ((_t67) * (_t63) - (_t25)), ((_t70) * (_t24) - (_t69 * _t25)), ((_t69) * (_t26) - (_t73 * _t24)), ((((_t70) * (_t26) + (_t26))) - (_t73) * (_t25)), ((_t73) * (_t25) + (((_t72) * (_t26) + (_t26)))), ((_t70) * (_t24) + (((_t71) * (_t25) + (((_t67) * (_t64) + (_t32)))))), _t100, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t100)));
+    }
+
+    /**
+     * Private body of {@code lookAlong} for {@code Handedness.RIGHT_HANDED}; reached only through
+     * the public {@code lookAlong} dispatcher.
+     */
+    private FloatQuat lookAlong_rh_fma(Float3 dir, Float3 up, float epsilon) {
+        return lookAlong_rh_fma(dir.x(), dir.y(), dir.z(), up.x(), up.y(), up.z(), epsilon);
+    }
+
+    /**
+     * Private body of {@code lookAlong} for {@code Handedness.RIGHT_HANDED}; reached only through
+     * the public {@code lookAlong} dispatcher.
+     */
+    private FloatQuat lookAlong_rh_mulAdd(Float3 dir, Float3 up, float epsilon) {
+        return lookAlong_rh_mulAdd(dir.x(), dir.y(), dir.z(), up.x(), up.y(), up.z(), epsilon);
+    }
+
+    /**
+     * Private body of {@code lookAlong} for {@code Handedness.RIGHT_HANDED}; reached only through
+     * the public {@code lookAlong} dispatcher.
+     */
+    private FloatQuat lookAlong_rh_fma(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, float epsilon) {
+        float _t8 = java.lang.Math.fma(dirZ, dirZ, java.lang.Math.fma(dirX, dirX, dirY * dirY));
+        float _sp0 = java.lang.Math.fma(dirZ, upZ, java.lang.Math.fma(dirX, upX, dirY * upY)) / _t8;
+        if (!(_t8 > 1.1754944E-38f && _t8 < Float.POSITIVE_INFINITY)) return lookAlong_rh_degenerate_fma(dirX, dirY, dirZ, upX, upY, upZ, epsilon);
+        float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t8));
+        float _t29 = java.lang.Math.fma(-dirZ, _sp0, upZ);
+        float _t30 = java.lang.Math.fma(-dirY, _sp0, upY);
+        float _t31 = java.lang.Math.fma(-dirX, _sp0, upX);
+        float _t38 = java.lang.Math.fma(dirY, _t29, -(dirZ * _t30));
+        float _t39 = java.lang.Math.fma(dirX, _t30, -(dirY * _t31));
+        float _t40 = java.lang.Math.fma(dirZ, _t31, -dirX * _t29);
+        float _ct0 = java.lang.Math.fma(_t39, _t39, java.lang.Math.fma(_t38, _t38, _t40 * _t40));
+        if (!(_ct0 > java.lang.Math.fma(_t8, epsilon * java.lang.Math.fma(upZ, upZ, java.lang.Math.fma(upX, upX, upY * upY)), 1.1754944E-38f) && _ct0 < Float.POSITIVE_INFINITY)) return lookAlong_rh_degenerate_fma(dirX, dirY, dirZ, upX, upY, upZ, epsilon);
+        float _t47 = (1.0f / (float) java.lang.Math.sqrt(_ct0));
+        float _t17 = dirX * _t16;
+        float _t18 = dirZ * _t16;
+        return lookAlong_rh_sa76f63ac_1_fma(dirX, dirY, _t16, _t38, _t39, _t40, _t47, -dirZ, _t17, _t18, dirY * _t16, -_t18, -_t17, java.lang.Math.fma(dirZ, _t16, 1.0f), -_t38, _t39 * _t47, _t38 * _t47);
+    }
+
+    /**
+     * Private body of {@code lookAlong} for {@code Handedness.RIGHT_HANDED}; reached only through
+     * the public {@code lookAlong} dispatcher.
+     */
+    private FloatQuat lookAlong_rh_mulAdd(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, float epsilon) {
+        float _t8 = ((dirZ) * (dirZ) + (((dirX) * (dirX) + (dirY * dirY))));
+        float _sp0 = ((dirZ) * (upZ) + (((dirX) * (upX) + (dirY * upY)))) / _t8;
+        if (!(_t8 > 1.1754944E-38f && _t8 < Float.POSITIVE_INFINITY)) return lookAlong_rh_degenerate_mulAdd(dirX, dirY, dirZ, upX, upY, upZ, epsilon);
+        float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t8));
+        float _t29 = ((upZ) - (dirZ) * (_sp0));
+        float _t30 = ((upY) - (dirY) * (_sp0));
+        float _t31 = ((upX) - (dirX) * (_sp0));
+        float _t38 = ((dirY) * (_t29) - (dirZ * _t30));
+        float _t39 = ((dirX) * (_t30) - (dirY * _t31));
+        float _t40 = ((dirZ) * (_t31) - (dirX * _t29));
+        float _ct0 = ((_t39) * (_t39) + (((_t38) * (_t38) + (_t40 * _t40))));
+        if (!(_ct0 > ((_t8) * (epsilon * ((upZ) * (upZ) + (((upX) * (upX) + (upY * upY))))) + (1.1754944E-38f)) && _ct0 < Float.POSITIVE_INFINITY)) return lookAlong_rh_degenerate_mulAdd(dirX, dirY, dirZ, upX, upY, upZ, epsilon);
+        float _t47 = (1.0f / (float) java.lang.Math.sqrt(_ct0));
+        float _t17 = dirX * _t16;
+        float _t18 = dirZ * _t16;
+        return lookAlong_rh_sa76f63ac_1_mulAdd(dirX, dirY, _t16, _t38, _t39, _t40, _t47, -dirZ, _t17, _t18, dirY * _t16, -_t18, -_t17, ((dirZ) * (_t16) + (1.0f)), -_t38, _t39 * _t47, _t38 * _t47);
+    }
+
+    /** Piece 2 of {@code lookAlong_rh}, split to fit the inline budget; reached only through it. */
+    private FloatQuat lookAlong_rh_sa76f63ac_1_fma(float dirX, float dirY, float _t16, float _t38, float _t39, float _t40, float _t47, float _t0, float _t17, float _t18, float _t19, float _t20, float _t22, float _t23, float _t41, float _t48, float _t49) {
+        float _t50 = _t40 * _t47;
+        float _t65 = java.lang.Math.fma(_t19, _t49, -(_t17 * _t50));
+        float _t66 = java.lang.Math.fma(_t18, _t50, -_t19 * _t48);
+        float _t78 = java.lang.Math.fma(_t38, _t47, java.lang.Math.fma(_t22, _t48, java.lang.Math.fma(_t18, _t49, _t23)));
+        float _t79 = java.lang.Math.fma(_t17, _t48, java.lang.Math.fma(_t20, _t49, java.lang.Math.fma(_t38, _t47, java.lang.Math.fma(_t0, _t16, 1.0f))));
+        float _t81 = java.lang.Math.fma(_t17, _t48, java.lang.Math.fma(_t20, _t49, java.lang.Math.fma(_t41, _t47, _t23)));
+        float _t85 = java.lang.Math.fma(_t0, _t16, java.lang.Math.fma(_t22, _t48, java.lang.Math.fma(_t18, _t49, java.lang.Math.fma(_t41, _t47, 1.0f))));
+        return lookAlong_rh_sa6198d78_2_fma(_t16, _t38, _t47, _t0, _t20, _t49, java.lang.Math.fma(dirX, _t16, _t48), java.lang.Math.fma(_t39, _t47, _t22), java.lang.Math.fma(_t17, _t48, -(_t18 * _t49)), java.lang.Math.fma(-dirY, _t16, _t65), -_t19 - _t65, java.lang.Math.fma(_t40, _t47, _t66), java.lang.Math.fma(-_t40, _t47, _t66), _t78, _t79, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t78)), _t81, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t81)), _t85, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t79)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t85)));
+    }
+
+    /** Piece 2 of {@code lookAlong_rh}, split to fit the inline budget; reached only through it. */
+    private FloatQuat lookAlong_rh_sa76f63ac_1_mulAdd(float dirX, float dirY, float _t16, float _t38, float _t39, float _t40, float _t47, float _t0, float _t17, float _t18, float _t19, float _t20, float _t22, float _t23, float _t41, float _t48, float _t49) {
+        float _t50 = _t40 * _t47;
+        float _t65 = ((_t19) * (_t49) - (_t17 * _t50));
+        float _t66 = ((_t18) * (_t50) - (_t19 * _t48));
+        float _t78 = ((_t38) * (_t47) + (((_t22) * (_t48) + (((_t18) * (_t49) + (_t23))))));
+        float _t79 = ((_t17) * (_t48) + (((_t20) * (_t49) + (((_t38) * (_t47) + (((_t0) * (_t16) + (1.0f))))))));
+        float _t81 = ((_t17) * (_t48) + (((_t20) * (_t49) + (((_t41) * (_t47) + (_t23))))));
+        float _t85 = ((_t0) * (_t16) + (((_t22) * (_t48) + (((_t18) * (_t49) + (((_t41) * (_t47) + (1.0f))))))));
+        return lookAlong_rh_sa6198d78_2_mulAdd(_t16, _t38, _t47, _t0, _t20, _t49, ((dirX) * (_t16) + (_t48)), ((_t39) * (_t47) + (_t22)), ((_t17) * (_t48) - (_t18 * _t49)), ((_t65) - (dirY) * (_t16)), -_t19 - _t65, ((_t40) * (_t47) + (_t66)), ((_t66) - (_t40) * (_t47)), _t78, _t79, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t78)), _t81, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t81)), _t85, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t79)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t85)));
+    }
+
+    /**
+     * Degenerate-input path of {@code lookAlong}: its methods leave here when their input spans no
+     * proper basis (a zero direction, an up vector parallel to it or zero, NaN); reached only
+     * through them.
+     */
+    private FloatQuat lookAlong_rh_degenerate_fma(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, float epsilon) {
+        float _t0 = unitScale(dirX, dirY, dirZ);
+        float _t1 = unitScale(upX, upY, upZ);
+        float _t8 = dirZ * _t0;
+        float _t9 = dirX * _t0;
+        float _t10 = dirY * _t0;
+        float _t16 = java.lang.Math.fma(_t8, _t8, java.lang.Math.fma(_t9, _t9, _t10 * _t10));
+        float _t17 = (1.0f / (float) java.lang.Math.sqrt(_t16));
+        float _t21, _t22, _t23, _t24, _t25, _t26;
+        if (_t16 == 0.0f) {
+            _t21 = 0.0f;
+            _t22 = 0.0f;
+            _t23 = 1.0f;
+            _t24 = -1.0f;
+            _t25 = 0.0f;
+            _t26 = 0.0f;
+        } else {
+            _t21 = upZ * _t1;
+            _t22 = upX * _t1;
+            _t23 = upY * _t1;
+            _t24 = _t17 * _t8;
+            _t25 = _t17 * _t9;
+            _t26 = _t17 * _t10;
+        }
+        float _t29 = -_t26;
+        float _t30 = -_t24;
+        float _t37, _t38, _t42;
+        if (java.lang.Math.abs(_t25) > java.lang.Math.abs(_t24)) {
+            _t37 = 0.0f;
+            _t38 = _t29;
+            _t42 = _t25;
+        } else {
+            _t37 = _t26;
+            _t38 = 0.0f;
+            _t42 = _t30;
+        }
+        float _t44 = -java.lang.Math.fma(_t24, _t21, java.lang.Math.fma(_t25, _t22, _t26 * _t23));
+        float _t45 = java.lang.Math.fma(_t44, _t26, _t23);
+        float _t46 = java.lang.Math.fma(_t44, _t25, _t22);
+        return lookAlong_rh_degenerate_s31c84b27_1_fma(epsilon, _t21, _t22, _t23, _t24, _t25, _t26, _t29, _t30, 1.0f - _t24, 1.0f + _t24, _t37, _t38, _t42, _t45, _t46, java.lang.Math.fma(_t44, _t24, _t21), java.lang.Math.fma(_t45, _t25, _t46 * -_t26));
+    }
+
+    /**
+     * Degenerate-input path of {@code lookAlong}: its methods leave here when their input spans no
+     * proper basis (a zero direction, an up vector parallel to it or zero, NaN); reached only
+     * through them.
+     */
+    private FloatQuat lookAlong_rh_degenerate_mulAdd(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, float epsilon) {
+        float _t0 = unitScale(dirX, dirY, dirZ);
+        float _t1 = unitScale(upX, upY, upZ);
+        float _t8 = dirZ * _t0;
+        float _t9 = dirX * _t0;
+        float _t10 = dirY * _t0;
+        float _t16 = ((_t8) * (_t8) + (((_t9) * (_t9) + (_t10 * _t10))));
+        float _t17 = (1.0f / (float) java.lang.Math.sqrt(_t16));
+        float _t21, _t22, _t23, _t24, _t25, _t26;
+        if (_t16 == 0.0f) {
+            _t21 = 0.0f;
+            _t22 = 0.0f;
+            _t23 = 1.0f;
+            _t24 = -1.0f;
+            _t25 = 0.0f;
+            _t26 = 0.0f;
+        } else {
+            _t21 = upZ * _t1;
+            _t22 = upX * _t1;
+            _t23 = upY * _t1;
+            _t24 = _t17 * _t8;
+            _t25 = _t17 * _t9;
+            _t26 = _t17 * _t10;
+        }
+        float _t29 = -_t26;
+        float _t30 = -_t24;
+        float _t37, _t38, _t42;
+        if (java.lang.Math.abs(_t25) > java.lang.Math.abs(_t24)) {
+            _t37 = 0.0f;
+            _t38 = _t29;
+            _t42 = _t25;
+        } else {
+            _t37 = _t26;
+            _t38 = 0.0f;
+            _t42 = _t30;
+        }
+        float _t44 = -((_t24) * (_t21) + (((_t25) * (_t22) + (_t26 * _t23))));
+        float _t45 = ((_t44) * (_t26) + (_t23));
+        float _t46 = ((_t44) * (_t25) + (_t22));
+        return lookAlong_rh_degenerate_s31c84b27_1_mulAdd(epsilon, _t21, _t22, _t23, _t24, _t25, _t26, _t29, _t30, 1.0f - _t24, 1.0f + _t24, _t37, _t38, _t42, _t45, _t46, ((_t44) * (_t24) + (_t21)), ((_t45) * (_t25) - (_t46 * _t26)));
+    }
+
+    /** Piece 2 of {@code lookAlong_rh_degenerate}, split to fit the inline budget; reached only through it. */
+    private FloatQuat lookAlong_rh_degenerate_s31c84b27_1_fma(float epsilon, float _t21, float _t22, float _t23, float _t24, float _t25, float _t26, float _t29, float _t30, float _t32, float _t33, float _t37, float _t38, float _t42, float _t45, float _t46, float _t47, float _t56) {
+        float _t57 = java.lang.Math.fma(_t46, _t24, -(_t47 * _t25));
+        float _t58 = java.lang.Math.fma(_t47, _t26, _t45 * -_t24);
+        float _t62 = java.lang.Math.fma(_t56, _t56, java.lang.Math.fma(_t57, _t57, _t58 * _t58));
+        float _t63, _t64, _t65, _t67;
+        if (_t62 <= epsilon * java.lang.Math.fma(_t21, _t21, java.lang.Math.fma(_t22, _t22, _t23 * _t23))) {
+            _t63 = _t37;
+            _t64 = _t38;
+            _t65 = _t42;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(java.lang.Math.fma(_t37, _t37, java.lang.Math.fma(_t38, _t38, _t42 * _t42))));
+        } else {
+            _t63 = _t56;
+            _t64 = _t58;
+            _t65 = _t57;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(_t62));
+        }
+        float _t69 = _t67 * _t63;
+        float _t70 = _t67 * _t64;
+        float _t72 = -_t70;
+        float _t73 = _t67 * _t65;
+        return lookAlong_rh_degenerate_s31c84b27_2_fma(_t24, _t25, _t30, _t32, _t33, _t64, _t65, _t67, -_t67, _t69, _t70, -_t69, _t72, java.lang.Math.fma(_t67, _t63, _t25), java.lang.Math.fma(_t67, _t63, -_t25), java.lang.Math.fma(_t69, _t25, -(_t70 * _t24)), java.lang.Math.fma(_t73, _t24, -(_t69 * _t26)), java.lang.Math.fma(_t72, _t26, java.lang.Math.fma(_t73, _t25, _t29)), java.lang.Math.fma(_t70, _t26, java.lang.Math.fma(_t73, -_t25, _t29)), java.lang.Math.fma(_t69, _t25, java.lang.Math.fma(_t72, _t24, java.lang.Math.fma(_t67, _t64, _t32))));
+    }
+
+    /** Piece 2 of {@code lookAlong_rh_degenerate}, split to fit the inline budget; reached only through it. */
+    private FloatQuat lookAlong_rh_degenerate_s31c84b27_1_mulAdd(float epsilon, float _t21, float _t22, float _t23, float _t24, float _t25, float _t26, float _t29, float _t30, float _t32, float _t33, float _t37, float _t38, float _t42, float _t45, float _t46, float _t47, float _t56) {
+        float _t57 = ((_t46) * (_t24) - (_t47 * _t25));
+        float _t58 = ((_t47) * (_t26) - (_t45 * _t24));
+        float _t62 = ((_t56) * (_t56) + (((_t57) * (_t57) + (_t58 * _t58))));
+        float _t63, _t64, _t65, _t67;
+        if (_t62 <= epsilon * ((_t21) * (_t21) + (((_t22) * (_t22) + (_t23 * _t23))))) {
+            _t63 = _t37;
+            _t64 = _t38;
+            _t65 = _t42;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(((_t37) * (_t37) + (((_t38) * (_t38) + (_t42 * _t42))))));
+        } else {
+            _t63 = _t56;
+            _t64 = _t58;
+            _t65 = _t57;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(_t62));
+        }
+        float _t69 = _t67 * _t63;
+        float _t70 = _t67 * _t64;
+        float _t72 = -_t70;
+        float _t73 = _t67 * _t65;
+        return lookAlong_rh_degenerate_s31c84b27_2_mulAdd(_t24, _t25, _t30, _t32, _t33, _t64, _t65, _t67, -_t67, _t69, _t70, -_t69, _t72, ((_t67) * (_t63) + (_t25)), ((_t67) * (_t63) - (_t25)), ((_t69) * (_t25) - (_t70 * _t24)), ((_t73) * (_t24) - (_t69 * _t26)), ((_t72) * (_t26) + (((_t73) * (_t25) + (_t29)))), ((_t70) * (_t26) + (((_t29) - (_t73) * (_t25)))), ((_t69) * (_t25) + (((_t72) * (_t24) + (((_t67) * (_t64) + (_t32)))))));
+    }
+
+    /** Piece 3 of {@code lookAlong_rh_degenerate}, split to fit the inline budget; reached only through it. */
+    private FloatQuat lookAlong_rh_degenerate_s31c84b27_2_fma(float _t24, float _t25, float _t30, float _t32, float _t33, float _t64, float _t65, float _t67, float _t68, float _t69, float _t70, float _t71, float _t72, float _t74, float _t76, float _t88, float _t93, float _t96, float _t97, float _t99) {
+        float _t100 = java.lang.Math.fma(_t67, _t64, java.lang.Math.fma(_t71, _t25, java.lang.Math.fma(_t70, _t24, _t33)));
+        float _t103 = java.lang.Math.fma(_t69, _t25, java.lang.Math.fma(_t72, _t24, java.lang.Math.fma(_t68, _t64, _t33)));
+        float _t104 = java.lang.Math.fma(_t71, _t25, java.lang.Math.fma(_t70, _t24, java.lang.Math.fma(_t68, _t64, _t32)));
+        return lookAlong_rh_degenerate_sd3e64a41_3_fma(_t24, _t25, _t30, _t64, _t67, _t69, _t70, _t72, _t74, _t76, _t88, _t96, _t97, _t99, _t100, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t100)), _t103, _t104, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t99)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t103)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t104)), java.lang.Math.fma(_t67, _t65, _t93), java.lang.Math.fma(_t68, _t65, _t93));
+    }
+
+    /** Piece 3 of {@code lookAlong_rh_degenerate}, split to fit the inline budget; reached only through it. */
+    private FloatQuat lookAlong_rh_degenerate_s31c84b27_2_mulAdd(float _t24, float _t25, float _t30, float _t32, float _t33, float _t64, float _t65, float _t67, float _t68, float _t69, float _t70, float _t71, float _t72, float _t74, float _t76, float _t88, float _t93, float _t96, float _t97, float _t99) {
+        float _t100 = ((_t67) * (_t64) + (((_t71) * (_t25) + (((_t70) * (_t24) + (_t33))))));
+        float _t103 = ((_t69) * (_t25) + (((_t72) * (_t24) + (((_t68) * (_t64) + (_t33))))));
+        float _t104 = ((_t71) * (_t25) + (((_t70) * (_t24) + (((_t68) * (_t64) + (_t32))))));
+        return lookAlong_rh_degenerate_sd3e64a41_3_mulAdd(_t24, _t25, _t30, _t64, _t67, _t69, _t70, _t72, _t74, _t76, _t88, _t96, _t97, _t99, _t100, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t100)), _t103, _t104, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t99)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t103)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t104)), ((_t67) * (_t65) + (_t93)), ((_t68) * (_t65) + (_t93)));
+    }
+
+    /**
+     * Apply a "look along" view rotation looking along {@code dir} (the rotation of a "look at"
+     * view transformation with the eye at the origin) to this quaternion, returning the result as a
+     * value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code L} the "look along" quaternion, then the
+     * new quaternion will be {@code Q * L}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code Q * L * v}, the "look along" will be applied first.
+     * <p>
+     * Degenerate input still gives a proper rotation: an up vector parallel to the view direction
+     * (to within the angle whose squared sine is {@code epsilon}) or zero is replaced by one
+     * perpendicular to it, and a zero view direction gives the identity orientation; NaN input
+     * gives NaN. The rotation is orthonormal to working precision for vectors of any finite length,
+     * an up vector however close to the view direction included. (The raw-storage {@code *Ops}
+     * kernels need a non-zero direction and up vector that are not parallel.)
+     * <p>
+     * Valid input: {@code epsilon} must not be negative.
+     *
+     * @param dir the direction to look along, i.e. the direction mapped to {@code -z}
+     *        (right-handed) or {@code +z} (left-handed)
+     * @param up the direction of "up"
+     * @param epsilon the squared sine of the angle between {@code up} and the direction at or below
+     *        which they count as parallel (a direction perpendicular to the view then takes the
+     *        place of {@code up}); the overload without it uses {@code 2^-36}
+     * @param handedness the handedness of the coordinate system to map into
+     * @return the resulting quaternion
+     */
+    public FloatQuat lookAlong(Float3 dir, Float3 up, float epsilon, Handedness handedness) {
+        switch (handedness) {
+            case LEFT_HANDED -> { return (org.joml2.internal.FmaSwitch.ON ? lookAlong_lh_fma(dir, up, epsilon) : lookAlong_lh_mulAdd(dir, up, epsilon)); }
+            default -> { return (org.joml2.internal.FmaSwitch.ON ? lookAlong_rh_fma(dir, up, epsilon) : lookAlong_rh_mulAdd(dir, up, epsilon)); }
+        }
+    }
+
+    /**
+     * Apply a "look along" view rotation looking along ({@code dirX}, {@code dirY}, {@code dirZ})
+     * (the rotation of a "look at" view transformation with the eye at the origin) to this
+     * quaternion, returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code L} the "look along" quaternion, then the
+     * new quaternion will be {@code Q * L}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code Q * L * v}, the "look along" will be applied first.
+     * <p>
+     * Degenerate input still gives a proper rotation: an up vector parallel to the view direction
+     * (to within the angle whose squared sine is {@code epsilon}) or zero is replaced by one
+     * perpendicular to it, and a zero view direction gives the identity orientation; NaN input
+     * gives NaN. The rotation is orthonormal to working precision for vectors of any finite length,
+     * an up vector however close to the view direction included. (The raw-storage {@code *Ops}
+     * kernels need a non-zero direction and up vector that are not parallel.)
+     * <p>
+     * Valid input: {@code epsilon} must not be negative.
+     *
+     * @param dirX the {@code x} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param dirY the {@code y} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param dirZ the {@code z} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param upX the {@code x} component of the vector {@code (upX, upY, upZ)}
+     * @param upY the {@code y} component of the vector {@code (upX, upY, upZ)}
+     * @param upZ the {@code z} component of the vector {@code (upX, upY, upZ)}
+     * @param epsilon the squared sine of the angle between {@code up} and the direction at or below
+     *        which they count as parallel (a direction perpendicular to the view then takes the
+     *        place of {@code up}); the overload without it uses {@code 2^-36}
+     * @param handedness the handedness of the coordinate system to map into
+     * @return the resulting quaternion
+     */
+    public FloatQuat lookAlong(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, float epsilon, Handedness handedness) {
+        switch (handedness) {
+            case LEFT_HANDED -> { return (org.joml2.internal.FmaSwitch.ON ? lookAlong_lh_fma(dirX, dirY, dirZ, upX, upY, upZ, epsilon) : lookAlong_lh_mulAdd(dirX, dirY, dirZ, upX, upY, upZ, epsilon)); }
+            default -> { return (org.joml2.internal.FmaSwitch.ON ? lookAlong_rh_fma(dirX, dirY, dirZ, upX, upY, upZ, epsilon) : lookAlong_rh_mulAdd(dirX, dirY, dirZ, upX, upY, upZ, epsilon)); }
+        }
+    }
+
+    /**
+     * Apply a "look along" view rotation looking along {@code dir} (the rotation of a "look at"
+     * view transformation with the eye at the origin) to this quaternion, returning the result as a
+     * value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code L} the "look along" quaternion, then the
+     * new quaternion will be {@code Q * L}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code Q * L * v}, the "look along" will be applied first.
+     * <p>
+     * Degenerate input still gives a proper rotation: an up vector parallel to the view direction
+     * (to within the angle whose squared sine is {@code epsilon}) or zero is replaced by one
+     * perpendicular to it, and a zero view direction gives the identity orientation; NaN input
+     * gives NaN. The rotation is orthonormal to working precision for vectors of any finite length,
+     * an up vector however close to the view direction included. (The raw-storage {@code *Ops}
+     * kernels need a non-zero direction and up vector that are not parallel.)
+     * <p>
+     * Uses {@link Handedness#RIGHT_HANDED} for {@code handedness}.
+     * <p>
+     * Valid input: {@code epsilon} must not be negative.
+     *
+     * @param dir the direction to look along, i.e. the direction mapped to {@code -z}
+     *        (right-handed) or {@code +z} (left-handed)
+     * @param up the direction of "up"
+     * @param epsilon the squared sine of the angle between {@code up} and the direction at or below
+     *        which they count as parallel (a direction perpendicular to the view then takes the
+     *        place of {@code up}); the overload without it uses {@code 2^-36}
+     * @return the resulting quaternion
+     */
+    public FloatQuat lookAlong(Float3 dir, Float3 up, float epsilon) { return (org.joml2.internal.FmaSwitch.ON ? lookAlong_rh_fma(dir, up, epsilon) : lookAlong_rh_mulAdd(dir, up, epsilon)); }
+
+    /**
+     * Apply a "look along" view rotation looking along ({@code dirX}, {@code dirY}, {@code dirZ})
+     * (the rotation of a "look at" view transformation with the eye at the origin) to this
+     * quaternion, returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code L} the "look along" quaternion, then the
+     * new quaternion will be {@code Q * L}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code Q * L * v}, the "look along" will be applied first.
+     * <p>
+     * Degenerate input still gives a proper rotation: an up vector parallel to the view direction
+     * (to within the angle whose squared sine is {@code epsilon}) or zero is replaced by one
+     * perpendicular to it, and a zero view direction gives the identity orientation; NaN input
+     * gives NaN. The rotation is orthonormal to working precision for vectors of any finite length,
+     * an up vector however close to the view direction included. (The raw-storage {@code *Ops}
+     * kernels need a non-zero direction and up vector that are not parallel.)
+     * <p>
+     * Uses {@link Handedness#RIGHT_HANDED} for {@code handedness}.
+     * <p>
+     * Valid input: {@code epsilon} must not be negative.
+     *
+     * @param dirX the {@code x} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param dirY the {@code y} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param dirZ the {@code z} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param upX the {@code x} component of the vector {@code (upX, upY, upZ)}
+     * @param upY the {@code y} component of the vector {@code (upX, upY, upZ)}
+     * @param upZ the {@code z} component of the vector {@code (upX, upY, upZ)}
+     * @param epsilon the squared sine of the angle between {@code up} and the direction at or below
+     *        which they count as parallel (a direction perpendicular to the view then takes the
+     *        place of {@code up}); the overload without it uses {@code 2^-36}
+     * @return the resulting quaternion
+     */
+    public FloatQuat lookAlong(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, float epsilon) { return (org.joml2.internal.FmaSwitch.ON ? lookAlong_rh_fma(dirX, dirY, dirZ, upX, upY, upZ, epsilon) : lookAlong_rh_mulAdd(dirX, dirY, dirZ, upX, upY, upZ, epsilon)); }
+
+    /**
+     * Create a rotation of {@code angle} radians about the axis {@code axis}.
+     * <p>
+     * Valid input: {@code axis} must have unit length.
+     *
+     * @param angle the angle in radians
+     * @param axis the rotation axis
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationAxis(float angle, Float3 axis) {
+        float axisX = axis.x();
+        float axisY = axis.y();
+        float axisZ = axis.z();
+        if (axisY == 0 && axisZ == 0 && java.lang.Math.abs(axisX) == 1) return makeRotationX(axisX * angle);
+        if (axisX == 0 && axisZ == 0 && java.lang.Math.abs(axisY) == 1) return makeRotationY(axisY * angle);
+        if (axisX == 0 && axisY == 0 && java.lang.Math.abs(axisZ) == 1) return makeRotationZ(axisZ * angle);
+        float _t0 = 0.5f * angle;
+        float _t1 = Math.sinWithCos(_t0);
+        return new FloatQuat(axisX * _t1, axisY * _t1, axisZ * _t1, Math.cosWithSin(_t0));
+    }
+
+    /**
+     * Create a rotation of {@code angle} radians about the axis ({@code axisX}, {@code axisY},
+     * {@code axisZ}).
+     * <p>
+     * Valid input: {@code (axisX, axisY, axisZ)} must have unit length.
+     *
+     * @param angle the angle in radians
+     * @param axisX the {@code x} component of the rotation axis {@code (axisX, axisY, axisZ)}
+     * @param axisY the {@code y} component of the rotation axis {@code (axisX, axisY, axisZ)}
+     * @param axisZ the {@code z} component of the rotation axis {@code (axisX, axisY, axisZ)}
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationAxis(float angle, float axisX, float axisY, float axisZ) {
+        if (axisY == 0 && axisZ == 0 && java.lang.Math.abs(axisX) == 1) return makeRotationX(axisX * angle);
+        if (axisX == 0 && axisZ == 0 && java.lang.Math.abs(axisY) == 1) return makeRotationY(axisY * angle);
+        if (axisX == 0 && axisY == 0 && java.lang.Math.abs(axisZ) == 1) return makeRotationZ(axisZ * angle);
+        float _t0 = 0.5f * angle;
+        float _t1 = Math.sinWithCos(_t0);
+        return new FloatQuat(axisX * _t1, axisY * _t1, axisZ * _t1, Math.cosWithSin(_t0));
+    }
+
+    /**
+     * Private body of {@code makeRotationLookAlong} for {@code Handedness.LEFT_HANDED}; reached
+     * only through the public {@code makeRotationLookAlong} dispatcher.
+     */
+    private static FloatQuat makeRotationLookAlong_lh_fma(Float3 dir, Float3 up) {
+        return makeRotationLookAlong_lh_fma(dir.x(), dir.y(), dir.z(), up.x(), up.y(), up.z());
+    }
+
+    /**
+     * Private body of {@code makeRotationLookAlong} for {@code Handedness.LEFT_HANDED}; reached
+     * only through the public {@code makeRotationLookAlong} dispatcher.
+     */
+    private static FloatQuat makeRotationLookAlong_lh_mulAdd(Float3 dir, Float3 up) {
+        return makeRotationLookAlong_lh_mulAdd(dir.x(), dir.y(), dir.z(), up.x(), up.y(), up.z());
+    }
+
+    /**
+     * Private body of {@code makeRotationLookAlong} for {@code Handedness.LEFT_HANDED}; reached
+     * only through the public {@code makeRotationLookAlong} dispatcher.
+     */
+    private static FloatQuat makeRotationLookAlong_lh_fma(float dirX, float dirY, float dirZ, float upX, float upY, float upZ) {
+        float _t7 = java.lang.Math.fma(dirZ, dirZ, java.lang.Math.fma(dirX, dirX, dirY * dirY));
+        float _sp0 = java.lang.Math.fma(dirZ, upZ, java.lang.Math.fma(dirX, upX, dirY * upY)) / _t7;
+        if (!(_t7 > 1.1754944E-38f && _t7 < Float.POSITIVE_INFINITY)) return makeRotationLookAlong_lh_degenerate_fma(dirX, dirY, dirZ, upX, upY, upZ);
+        float _t15 = (1.0f / (float) java.lang.Math.sqrt(_t7));
+        float _t27 = java.lang.Math.fma(-dirY, _sp0, upY);
+        float _t28 = java.lang.Math.fma(-dirZ, _sp0, upZ);
+        float _t29 = java.lang.Math.fma(-dirX, _sp0, upX);
+        float _t36 = java.lang.Math.fma(dirZ, _t27, -dirY * _t28);
+        float _t37 = java.lang.Math.fma(dirY, _t29, -(dirX * _t27));
+        float _t38 = java.lang.Math.fma(dirX, _t28, -(dirZ * _t29));
+        float _ct0 = java.lang.Math.fma(_t37, _t37, java.lang.Math.fma(_t38, _t38, _t36 * _t36));
+        if (!(_ct0 > java.lang.Math.fma(_t7, java.lang.Math.fma(upZ, upZ, java.lang.Math.fma(upX, upX, upY * upY)) * 1.4551915E-11f, 1.1754944E-38f) && _ct0 < Float.POSITIVE_INFINITY)) return makeRotationLookAlong_lh_degenerate_fma(dirX, dirY, dirZ, upX, upY, upZ);
+        float _t45 = (1.0f / (float) java.lang.Math.sqrt(_ct0));
+        float _t16 = dirZ * _t15;
+        float _t17 = dirX * _t15;
+        return makeRotationLookAlong_lh_s96c6b39a_1_fma(dirX, dirY, dirZ, _t15, _t36, _t37, _t38, _t45, -dirZ, _t16, _t17, dirY * _t15, -_t17, -_t16, _t36 * _t45, _t37 * _t45, _t38 * _t45, java.lang.Math.fma(-_t36, _t45, 1.0f));
+    }
+
+    /**
+     * Private body of {@code makeRotationLookAlong} for {@code Handedness.LEFT_HANDED}; reached
+     * only through the public {@code makeRotationLookAlong} dispatcher.
+     */
+    private static FloatQuat makeRotationLookAlong_lh_mulAdd(float dirX, float dirY, float dirZ, float upX, float upY, float upZ) {
+        float _t7 = ((dirZ) * (dirZ) + (((dirX) * (dirX) + (dirY * dirY))));
+        float _sp0 = ((dirZ) * (upZ) + (((dirX) * (upX) + (dirY * upY)))) / _t7;
+        if (!(_t7 > 1.1754944E-38f && _t7 < Float.POSITIVE_INFINITY)) return makeRotationLookAlong_lh_degenerate_mulAdd(dirX, dirY, dirZ, upX, upY, upZ);
+        float _t15 = (1.0f / (float) java.lang.Math.sqrt(_t7));
+        float _t27 = ((upY) - (dirY) * (_sp0));
+        float _t28 = ((upZ) - (dirZ) * (_sp0));
+        float _t29 = ((upX) - (dirX) * (_sp0));
+        float _t36 = ((dirZ) * (_t27) - (dirY * _t28));
+        float _t37 = ((dirY) * (_t29) - (dirX * _t27));
+        float _t38 = ((dirX) * (_t28) - (dirZ * _t29));
+        float _ct0 = ((_t37) * (_t37) + (((_t38) * (_t38) + (_t36 * _t36))));
+        if (!(_ct0 > ((_t7) * (((upZ) * (upZ) + (((upX) * (upX) + (upY * upY)))) * 1.4551915E-11f) + (1.1754944E-38f)) && _ct0 < Float.POSITIVE_INFINITY)) return makeRotationLookAlong_lh_degenerate_mulAdd(dirX, dirY, dirZ, upX, upY, upZ);
+        float _t45 = (1.0f / (float) java.lang.Math.sqrt(_ct0));
+        float _t16 = dirZ * _t15;
+        float _t17 = dirX * _t15;
+        return makeRotationLookAlong_lh_s96c6b39a_1_mulAdd(dirX, dirY, dirZ, _t15, _t36, _t37, _t38, _t45, -dirZ, _t16, _t17, dirY * _t15, -_t17, -_t16, _t36 * _t45, _t37 * _t45, _t38 * _t45, ((1.0f) - (_t36) * (_t45)));
+    }
+
+    /**
+     * Piece 2 of {@code makeRotationLookAlong_lh}, split to fit the inline budget. Shared by 2
+     * identical private paths of {@code makeRotationLookAlong}; reached only through it.
+     */
+    private static FloatQuat makeRotationLookAlong_lh_s96c6b39a_1_fma(float dirX, float dirY, float dirZ, float _t15, float _t36, float _t37, float _t38, float _t45, float _t0, float _t16, float _t17, float _t18, float _t19, float _t21, float _t46, float _t47, float _t48, float _t49) {
+        float _t63 = java.lang.Math.fma(_t17, _t48, -(_t18 * _t46));
+        float _t65 = java.lang.Math.fma(_t18, _t47, -(_t16 * _t48));
+        float _t77 = java.lang.Math.fma(_t16, _t46, java.lang.Math.fma(_t19, _t47, java.lang.Math.fma(_t36, _t45, java.lang.Math.fma(dirZ, _t15, 1.0f))));
+        float _t79 = java.lang.Math.fma(_t36, _t45, java.lang.Math.fma(_t21, _t46, java.lang.Math.fma(_t17, _t47, java.lang.Math.fma(_t0, _t15, 1.0f))));
+        float _t80 = java.lang.Math.fma(dirZ, _t15, java.lang.Math.fma(_t21, _t46, java.lang.Math.fma(_t17, _t47, _t49)));
+        float _t81 = java.lang.Math.fma(_t16, _t46, java.lang.Math.fma(_t19, _t47, java.lang.Math.fma(_t0, _t15, _t49)));
+        return makeRotationLookAlong_lh_s96c6b39a_2_fma(dirZ, _t15, _t36, _t45, _t16, _t46, java.lang.Math.fma(dirX, _t15, _t47), java.lang.Math.fma(_t37, _t45, _t19), java.lang.Math.fma(_t16, _t46, -(_t17 * _t47)), java.lang.Math.fma(dirY, _t15, _t63), java.lang.Math.fma(dirY, _t15, -_t63), java.lang.Math.fma(_t38, _t45, _t65), java.lang.Math.fma(-_t38, _t45, _t65), _t77, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t77)), _t79, _t80, _t81, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t80)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t79)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t81)));
+    }
+
+    /**
+     * Piece 2 of {@code makeRotationLookAlong_lh}, split to fit the inline budget. Shared by 2
+     * identical private paths of {@code makeRotationLookAlong}; reached only through it.
+     */
+    private static FloatQuat makeRotationLookAlong_lh_s96c6b39a_1_mulAdd(float dirX, float dirY, float dirZ, float _t15, float _t36, float _t37, float _t38, float _t45, float _t0, float _t16, float _t17, float _t18, float _t19, float _t21, float _t46, float _t47, float _t48, float _t49) {
+        float _t63 = ((_t17) * (_t48) - (_t18 * _t46));
+        float _t65 = ((_t18) * (_t47) - (_t16 * _t48));
+        float _t77 = ((_t16) * (_t46) + (((_t19) * (_t47) + (((_t36) * (_t45) + (((dirZ) * (_t15) + (1.0f))))))));
+        float _t79 = ((_t36) * (_t45) + (((_t21) * (_t46) + (((_t17) * (_t47) + (((_t0) * (_t15) + (1.0f))))))));
+        float _t80 = ((dirZ) * (_t15) + (((_t21) * (_t46) + (((_t17) * (_t47) + (_t49))))));
+        float _t81 = ((_t16) * (_t46) + (((_t19) * (_t47) + (((_t0) * (_t15) + (_t49))))));
+        return makeRotationLookAlong_lh_s96c6b39a_2_mulAdd(dirZ, _t15, _t36, _t45, _t16, _t46, ((dirX) * (_t15) + (_t47)), ((_t37) * (_t45) + (_t19)), ((_t16) * (_t46) - (_t17 * _t47)), ((dirY) * (_t15) + (_t63)), ((dirY) * (_t15) - (_t63)), ((_t38) * (_t45) + (_t65)), ((_t65) - (_t38) * (_t45)), _t77, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t77)), _t79, _t80, _t81, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t80)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t79)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t81)));
+    }
+
+    /**
+     * Piece 3 of {@code makeRotationLookAlong_lh}, split to fit the inline budget. Shared by 2
+     * identical private paths of {@code makeRotationLookAlong}; reached only through it.
+     */
+    private static FloatQuat makeRotationLookAlong_lh_s96c6b39a_2_fma(float dirZ, float _t15, float _t36, float _t45, float _t16, float _t46, float _t50, float _t55, float _t62, float _t68, float _t69, float _t73, float _t74, float _t77, float _sp1, float _t79, float _t80, float _t81, float _sp3, float _sp4, float _sp2) {
+        float _sfx0, _sfx1, _sfx2, _sfx3;
+        if (java.lang.Math.fma(dirZ, _t15, java.lang.Math.fma(_t36, _t45, _t62)) > 0.0f) {
+            _sfx0 = _sp1 * _t69;
+            _sfx1 = _sp1 * _t55;
+            _sfx2 = _sp1 * _t74;
+            _sfx3 = 0.5f * (float) java.lang.Math.sqrt(_t77);
+        } else {
+            if (_t46 > Math.max(_t62, _t16)) {
+                _sfx0 = 0.5f * (float) java.lang.Math.sqrt(_t79);
+                _sfx1 = _sp4 * _t73;
+                _sfx2 = _sp4 * _t50;
+                _sfx3 = _sp4 * _t69;
+            } else {
+                if (_t62 > _t16) {
+                    _sfx0 = _sp2 * _t73;
+                    _sfx1 = 0.5f * (float) java.lang.Math.sqrt(_t81);
+                    _sfx2 = _sp2 * _t68;
+                    _sfx3 = _sp2 * _t55;
+                } else {
+                    _sfx0 = _sp3 * _t50;
+                    _sfx1 = _sp3 * _t68;
+                    _sfx2 = 0.5f * (float) java.lang.Math.sqrt(_t80);
+                    _sfx3 = _sp3 * _t74;
+                }
+            }
+        }
+        return new FloatQuat(_sfx0, _sfx1, _sfx2, _sfx3);
+    }
+
+    /**
+     * Piece 3 of {@code makeRotationLookAlong_lh}, split to fit the inline budget. Shared by 2
+     * identical private paths of {@code makeRotationLookAlong}; reached only through it.
+     */
+    private static FloatQuat makeRotationLookAlong_lh_s96c6b39a_2_mulAdd(float dirZ, float _t15, float _t36, float _t45, float _t16, float _t46, float _t50, float _t55, float _t62, float _t68, float _t69, float _t73, float _t74, float _t77, float _sp1, float _t79, float _t80, float _t81, float _sp3, float _sp4, float _sp2) {
+        float _sfx0, _sfx1, _sfx2, _sfx3;
+        if (((dirZ) * (_t15) + (((_t36) * (_t45) + (_t62)))) > 0.0f) {
+            _sfx0 = _sp1 * _t69;
+            _sfx1 = _sp1 * _t55;
+            _sfx2 = _sp1 * _t74;
+            _sfx3 = 0.5f * (float) java.lang.Math.sqrt(_t77);
+        } else {
+            if (_t46 > Math.max(_t62, _t16)) {
+                _sfx0 = 0.5f * (float) java.lang.Math.sqrt(_t79);
+                _sfx1 = _sp4 * _t73;
+                _sfx2 = _sp4 * _t50;
+                _sfx3 = _sp4 * _t69;
+            } else {
+                if (_t62 > _t16) {
+                    _sfx0 = _sp2 * _t73;
+                    _sfx1 = 0.5f * (float) java.lang.Math.sqrt(_t81);
+                    _sfx2 = _sp2 * _t68;
+                    _sfx3 = _sp2 * _t55;
+                } else {
+                    _sfx0 = _sp3 * _t50;
+                    _sfx1 = _sp3 * _t68;
+                    _sfx2 = 0.5f * (float) java.lang.Math.sqrt(_t80);
+                    _sfx3 = _sp3 * _t74;
+                }
+            }
+        }
+        return new FloatQuat(_sfx0, _sfx1, _sfx2, _sfx3);
+    }
+
+    /**
+     * Degenerate-input path of {@code makeRotationLookAlong}: its methods leave here when their
+     * input spans no proper basis (a zero direction, an up vector parallel to it or zero, NaN);
+     * reached only through them.
+     */
+    private static FloatQuat makeRotationLookAlong_lh_degenerate_fma(float dirX, float dirY, float dirZ, float upX, float upY, float upZ) {
+        float _t0 = unitScale(dirX, dirY, dirZ);
+        float _t1 = unitScale(upX, upY, upZ);
+        float _t8 = dirZ * _t0;
+        float _t9 = dirX * _t0;
+        float _t10 = dirY * _t0;
+        float _t16 = java.lang.Math.fma(_t8, _t8, java.lang.Math.fma(_t9, _t9, _t10 * _t10));
+        float _t17 = (1.0f / (float) java.lang.Math.sqrt(_t16));
+        float _t21, _t22, _t23, _t24, _t25, _t26;
+        if (_t16 == 0.0f) {
+            _t21 = 0.0f;
+            _t22 = 0.0f;
+            _t23 = 1.0f;
+            _t24 = 1.0f;
+            _t25 = 0.0f;
+            _t26 = 0.0f;
+        } else {
+            _t21 = upZ * _t1;
+            _t22 = upX * _t1;
+            _t23 = upY * _t1;
+            _t24 = _t17 * _t8;
+            _t25 = _t17 * _t9;
+            _t26 = _t17 * _t10;
+        }
+        float _t37, _t38, _t42;
+        if (java.lang.Math.abs(_t25) > java.lang.Math.abs(_t24)) {
+            _t37 = 0.0f;
+            _t38 = -_t26;
+            _t42 = _t25;
+        } else {
+            _t37 = _t26;
+            _t38 = 0.0f;
+            _t42 = -_t24;
+        }
+        float _t44 = -java.lang.Math.fma(_t21, _t24, java.lang.Math.fma(_t25, _t22, _t26 * _t23));
+        float _t45 = java.lang.Math.fma(_t44, _t25, _t22);
+        float _t46 = java.lang.Math.fma(_t44, _t26, _t23);
+        float _t47 = java.lang.Math.fma(_t44, _t24, _t21);
+        return makeRotationLookAlong_lh_degenerate_s2c1aa5ef_1_fma(_t21, _t22, _t23, _t24, _t25, _t26, 1.0f + _t24, 1.0f - _t24, _t37, _t38, _t42, java.lang.Math.fma(_t45, _t26, -(_t46 * _t25)), java.lang.Math.fma(_t47, _t25, _t45 * -_t24), java.lang.Math.fma(_t46, _t24, _t47 * -_t26));
+    }
+
+    /**
+     * Degenerate-input path of {@code makeRotationLookAlong}: its methods leave here when their
+     * input spans no proper basis (a zero direction, an up vector parallel to it or zero, NaN);
+     * reached only through them.
+     */
+    private static FloatQuat makeRotationLookAlong_lh_degenerate_mulAdd(float dirX, float dirY, float dirZ, float upX, float upY, float upZ) {
+        float _t0 = unitScale(dirX, dirY, dirZ);
+        float _t1 = unitScale(upX, upY, upZ);
+        float _t8 = dirZ * _t0;
+        float _t9 = dirX * _t0;
+        float _t10 = dirY * _t0;
+        float _t16 = ((_t8) * (_t8) + (((_t9) * (_t9) + (_t10 * _t10))));
+        float _t17 = (1.0f / (float) java.lang.Math.sqrt(_t16));
+        float _t21, _t22, _t23, _t24, _t25, _t26;
+        if (_t16 == 0.0f) {
+            _t21 = 0.0f;
+            _t22 = 0.0f;
+            _t23 = 1.0f;
+            _t24 = 1.0f;
+            _t25 = 0.0f;
+            _t26 = 0.0f;
+        } else {
+            _t21 = upZ * _t1;
+            _t22 = upX * _t1;
+            _t23 = upY * _t1;
+            _t24 = _t17 * _t8;
+            _t25 = _t17 * _t9;
+            _t26 = _t17 * _t10;
+        }
+        float _t37, _t38, _t42;
+        if (java.lang.Math.abs(_t25) > java.lang.Math.abs(_t24)) {
+            _t37 = 0.0f;
+            _t38 = -_t26;
+            _t42 = _t25;
+        } else {
+            _t37 = _t26;
+            _t38 = 0.0f;
+            _t42 = -_t24;
+        }
+        float _t44 = -((_t21) * (_t24) + (((_t25) * (_t22) + (_t26 * _t23))));
+        float _t45 = ((_t44) * (_t25) + (_t22));
+        float _t46 = ((_t44) * (_t26) + (_t23));
+        float _t47 = ((_t44) * (_t24) + (_t21));
+        return makeRotationLookAlong_lh_degenerate_s2c1aa5ef_1_mulAdd(_t21, _t22, _t23, _t24, _t25, _t26, 1.0f + _t24, 1.0f - _t24, _t37, _t38, _t42, ((_t45) * (_t26) - (_t46 * _t25)), ((_t47) * (_t25) - (_t45 * _t24)), ((_t46) * (_t24) - (_t47 * _t26)));
+    }
+
+    /** Piece 2 of {@code makeRotationLookAlong_lh_degenerate}, split to fit the inline budget; reached only through it. */
+    private static FloatQuat makeRotationLookAlong_lh_degenerate_s2c1aa5ef_1_fma(float _t21, float _t22, float _t23, float _t24, float _t25, float _t26, float _t32, float _t33, float _t37, float _t38, float _t42, float _t56, float _t57, float _t58) {
+        float _t62 = java.lang.Math.fma(_t56, _t56, java.lang.Math.fma(_t57, _t57, _t58 * _t58));
+        float _t63, _t64, _t65, _t67;
+        if (_t62 <= java.lang.Math.fma(_t21, _t21, java.lang.Math.fma(_t22, _t22, _t23 * _t23)) * 1.4551915E-11f) {
+            _t63 = _t37;
+            _t64 = _t38;
+            _t65 = _t42;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(java.lang.Math.fma(_t37, _t37, java.lang.Math.fma(_t38, _t38, _t42 * _t42))));
+        } else {
+            _t63 = _t56;
+            _t64 = _t58;
+            _t65 = _t57;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(_t62));
+        }
+        float _t69 = _t67 * _t63;
+        float _t70 = _t67 * _t64;
+        float _t71 = -_t69;
+        float _t72 = -_t70;
+        float _t73 = _t67 * _t65;
+        float _t99 = java.lang.Math.fma(_t70, _t24, java.lang.Math.fma(_t71, _t25, java.lang.Math.fma(_t67, _t64, _t32)));
+        return makeRotationLookAlong_lh_degenerate_s2c1aa5ef_2_fma(_t24, _t25, _t32, _t33, _t64, _t65, _t67, -_t67, _t69, _t70, _t71, _t72, java.lang.Math.fma(_t67, _t63, _t25), java.lang.Math.fma(_t67, _t63, -_t25), java.lang.Math.fma(_t70, _t24, -(_t69 * _t25)), java.lang.Math.fma(_t69, _t26, -(_t73 * _t24)), java.lang.Math.fma(_t73, -_t25, java.lang.Math.fma(_t70, _t26, _t26)), java.lang.Math.fma(_t73, _t25, java.lang.Math.fma(_t72, _t26, _t26)), _t99, java.lang.Math.fma(_t67, _t64, java.lang.Math.fma(_t72, _t24, java.lang.Math.fma(_t69, _t25, _t33))), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t99)));
+    }
+
+    /** Piece 2 of {@code makeRotationLookAlong_lh_degenerate}, split to fit the inline budget; reached only through it. */
+    private static FloatQuat makeRotationLookAlong_lh_degenerate_s2c1aa5ef_1_mulAdd(float _t21, float _t22, float _t23, float _t24, float _t25, float _t26, float _t32, float _t33, float _t37, float _t38, float _t42, float _t56, float _t57, float _t58) {
+        float _t62 = ((_t56) * (_t56) + (((_t57) * (_t57) + (_t58 * _t58))));
+        float _t63, _t64, _t65, _t67;
+        if (_t62 <= ((_t21) * (_t21) + (((_t22) * (_t22) + (_t23 * _t23)))) * 1.4551915E-11f) {
+            _t63 = _t37;
+            _t64 = _t38;
+            _t65 = _t42;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(((_t37) * (_t37) + (((_t38) * (_t38) + (_t42 * _t42))))));
+        } else {
+            _t63 = _t56;
+            _t64 = _t58;
+            _t65 = _t57;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(_t62));
+        }
+        float _t69 = _t67 * _t63;
+        float _t70 = _t67 * _t64;
+        float _t71 = -_t69;
+        float _t72 = -_t70;
+        float _t73 = _t67 * _t65;
+        float _t99 = ((_t70) * (_t24) + (((_t71) * (_t25) + (((_t67) * (_t64) + (_t32))))));
+        return makeRotationLookAlong_lh_degenerate_s2c1aa5ef_2_mulAdd(_t24, _t25, _t32, _t33, _t64, _t65, _t67, -_t67, _t69, _t70, _t71, _t72, ((_t67) * (_t63) + (_t25)), ((_t67) * (_t63) - (_t25)), ((_t70) * (_t24) - (_t69 * _t25)), ((_t69) * (_t26) - (_t73 * _t24)), ((((_t70) * (_t26) + (_t26))) - (_t73) * (_t25)), ((_t73) * (_t25) + (((_t72) * (_t26) + (_t26)))), _t99, ((_t67) * (_t64) + (((_t72) * (_t24) + (((_t69) * (_t25) + (_t33)))))), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t99)));
+    }
+
+    /**
+     * Piece 3 of {@code makeRotationLookAlong_lh_degenerate}, split to fit the inline budget.
+     * Shared by 2 identical private paths of {@code makeRotationLookAlong}; reached only through
+     * it.
+     */
+    private static FloatQuat makeRotationLookAlong_lh_degenerate_s2c1aa5ef_2_fma(float _t24, float _t25, float _t32, float _t33, float _t64, float _t65, float _t67, float _t68, float _t69, float _t70, float _t71, float _t72, float _t74, float _t78, float _t89, float _t93, float _t96, float _t97, float _t99, float _t100, float _sp0) {
+        float _t102 = java.lang.Math.fma(_t70, _t24, java.lang.Math.fma(_t71, _t25, java.lang.Math.fma(_t68, _t64, _t33)));
+        float _t103 = java.lang.Math.fma(_t72, _t24, java.lang.Math.fma(_t69, _t25, java.lang.Math.fma(_t68, _t64, _t32)));
+        return makeRotationLookAlong_lh_degenerate_s2c1aa5ef_3_fma(_t24, _t25, _t64, _t67, _t70, _t71, _t74, _t78, _t89, _t96, _t97, _t99, _t100, _sp0, _t102, _t103, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t100)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t102)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t103)), java.lang.Math.fma(_t67, _t65, _t93), java.lang.Math.fma(_t68, _t65, _t93));
+    }
+
+    /**
+     * Piece 3 of {@code makeRotationLookAlong_lh_degenerate}, split to fit the inline budget.
+     * Shared by 2 identical private paths of {@code makeRotationLookAlong}; reached only through
+     * it.
+     */
+    private static FloatQuat makeRotationLookAlong_lh_degenerate_s2c1aa5ef_2_mulAdd(float _t24, float _t25, float _t32, float _t33, float _t64, float _t65, float _t67, float _t68, float _t69, float _t70, float _t71, float _t72, float _t74, float _t78, float _t89, float _t93, float _t96, float _t97, float _t99, float _t100, float _sp0) {
+        float _t102 = ((_t70) * (_t24) + (((_t71) * (_t25) + (((_t68) * (_t64) + (_t33))))));
+        float _t103 = ((_t72) * (_t24) + (((_t69) * (_t25) + (((_t68) * (_t64) + (_t32))))));
+        return makeRotationLookAlong_lh_degenerate_s2c1aa5ef_3_mulAdd(_t24, _t25, _t64, _t67, _t70, _t71, _t74, _t78, _t89, _t96, _t97, _t99, _t100, _sp0, _t102, _t103, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t100)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t102)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t103)), ((_t67) * (_t65) + (_t93)), ((_t68) * (_t65) + (_t93)));
+    }
+
+    /**
+     * Piece 4 of {@code makeRotationLookAlong_lh_degenerate}, split to fit the inline budget.
+     * Shared by 2 identical private paths of {@code makeRotationLookAlong}; reached only through
+     * it.
+     */
+    private static FloatQuat makeRotationLookAlong_lh_degenerate_s2c1aa5ef_3_fma(float _t24, float _t25, float _t64, float _t67, float _t70, float _t71, float _t74, float _t78, float _t89, float _t96, float _t97, float _t99, float _t100, float _sp0, float _t102, float _t103, float _sp3, float _sp1, float _sp2, float _t107, float _t108) {
+        float _sfx0, _sfx1, _sfx2, _sfx3;
+        if (java.lang.Math.fma(_t70, _t24, java.lang.Math.fma(_t71, _t25, java.lang.Math.fma(_t67, _t64, _t24))) > 0.0f) {
+            _sfx0 = _sp0 * _t96;
+            _sfx1 = _sp0 * _t78;
+            _sfx2 = _sp0 * _t108;
+            _sfx3 = 0.5f * (float) java.lang.Math.sqrt(_t99);
+        } else {
+            if (_t70 > Math.max(_t89, _t24)) {
+                _sfx0 = 0.5f * (float) java.lang.Math.sqrt(_t100);
+                _sfx1 = _sp3 * _t107;
+                _sfx2 = _sp3 * _t74;
+                _sfx3 = _sp3 * _t96;
+            } else {
+                if (_t89 > _t24) {
+                    _sfx0 = _sp1 * _t107;
+                    _sfx1 = 0.5f * (float) java.lang.Math.sqrt(_t102);
+                    _sfx2 = _sp1 * _t97;
+                    _sfx3 = _sp1 * _t78;
+                } else {
+                    _sfx0 = _sp2 * _t74;
+                    _sfx1 = _sp2 * _t97;
+                    _sfx2 = 0.5f * (float) java.lang.Math.sqrt(_t103);
+                    _sfx3 = _sp2 * _t108;
+                }
+            }
+        }
+        return new FloatQuat(_sfx0, _sfx1, _sfx2, _sfx3);
+    }
+
+    /**
+     * Piece 4 of {@code makeRotationLookAlong_lh_degenerate}, split to fit the inline budget.
+     * Shared by 2 identical private paths of {@code makeRotationLookAlong}; reached only through
+     * it.
+     */
+    private static FloatQuat makeRotationLookAlong_lh_degenerate_s2c1aa5ef_3_mulAdd(float _t24, float _t25, float _t64, float _t67, float _t70, float _t71, float _t74, float _t78, float _t89, float _t96, float _t97, float _t99, float _t100, float _sp0, float _t102, float _t103, float _sp3, float _sp1, float _sp2, float _t107, float _t108) {
+        float _sfx0, _sfx1, _sfx2, _sfx3;
+        if (((_t70) * (_t24) + (((_t71) * (_t25) + (((_t67) * (_t64) + (_t24)))))) > 0.0f) {
+            _sfx0 = _sp0 * _t96;
+            _sfx1 = _sp0 * _t78;
+            _sfx2 = _sp0 * _t108;
+            _sfx3 = 0.5f * (float) java.lang.Math.sqrt(_t99);
+        } else {
+            if (_t70 > Math.max(_t89, _t24)) {
+                _sfx0 = 0.5f * (float) java.lang.Math.sqrt(_t100);
+                _sfx1 = _sp3 * _t107;
+                _sfx2 = _sp3 * _t74;
+                _sfx3 = _sp3 * _t96;
+            } else {
+                if (_t89 > _t24) {
+                    _sfx0 = _sp1 * _t107;
+                    _sfx1 = 0.5f * (float) java.lang.Math.sqrt(_t102);
+                    _sfx2 = _sp1 * _t97;
+                    _sfx3 = _sp1 * _t78;
+                } else {
+                    _sfx0 = _sp2 * _t74;
+                    _sfx1 = _sp2 * _t97;
+                    _sfx2 = 0.5f * (float) java.lang.Math.sqrt(_t103);
+                    _sfx3 = _sp2 * _t108;
+                }
+            }
+        }
+        return new FloatQuat(_sfx0, _sfx1, _sfx2, _sfx3);
+    }
+
+    /**
+     * Private body of {@code makeRotationLookAlong} for {@code Handedness.RIGHT_HANDED}; reached
+     * only through the public {@code makeRotationLookAlong} dispatcher.
+     */
+    private static FloatQuat makeRotationLookAlong_rh_fma(Float3 dir, Float3 up) {
+        return makeRotationLookAlong_rh_fma(dir.x(), dir.y(), dir.z(), up.x(), up.y(), up.z());
+    }
+
+    /**
+     * Private body of {@code makeRotationLookAlong} for {@code Handedness.RIGHT_HANDED}; reached
+     * only through the public {@code makeRotationLookAlong} dispatcher.
+     */
+    private static FloatQuat makeRotationLookAlong_rh_mulAdd(Float3 dir, Float3 up) {
+        return makeRotationLookAlong_rh_mulAdd(dir.x(), dir.y(), dir.z(), up.x(), up.y(), up.z());
+    }
+
+    /**
+     * Private body of {@code makeRotationLookAlong} for {@code Handedness.RIGHT_HANDED}; reached
+     * only through the public {@code makeRotationLookAlong} dispatcher.
+     */
+    private static FloatQuat makeRotationLookAlong_rh_fma(float dirX, float dirY, float dirZ, float upX, float upY, float upZ) {
+        float _t8 = java.lang.Math.fma(dirZ, dirZ, java.lang.Math.fma(dirX, dirX, dirY * dirY));
+        float _sp0 = java.lang.Math.fma(dirZ, upZ, java.lang.Math.fma(dirX, upX, dirY * upY)) / _t8;
+        if (!(_t8 > 1.1754944E-38f && _t8 < Float.POSITIVE_INFINITY)) return makeRotationLookAlong_rh_degenerate_fma(dirX, dirY, dirZ, upX, upY, upZ);
+        float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t8));
+        float _t29 = java.lang.Math.fma(-dirZ, _sp0, upZ);
+        float _t30 = java.lang.Math.fma(-dirY, _sp0, upY);
+        float _t31 = java.lang.Math.fma(-dirX, _sp0, upX);
+        float _t38 = java.lang.Math.fma(dirY, _t29, -(dirZ * _t30));
+        float _t39 = java.lang.Math.fma(dirX, _t30, -(dirY * _t31));
+        float _t40 = java.lang.Math.fma(dirZ, _t31, -dirX * _t29);
+        float _ct0 = java.lang.Math.fma(_t39, _t39, java.lang.Math.fma(_t38, _t38, _t40 * _t40));
+        if (!(_ct0 > java.lang.Math.fma(_t8, java.lang.Math.fma(upZ, upZ, java.lang.Math.fma(upX, upX, upY * upY)) * 1.4551915E-11f, 1.1754944E-38f) && _ct0 < Float.POSITIVE_INFINITY)) return makeRotationLookAlong_rh_degenerate_fma(dirX, dirY, dirZ, upX, upY, upZ);
+        float _t47 = (1.0f / (float) java.lang.Math.sqrt(_ct0));
+        float _t17 = dirX * _t16;
+        float _t18 = dirZ * _t16;
+        return makeRotationLookAlong_rh_s1465dddc_1_fma(dirX, dirY, _t16, _t38, _t39, _t40, _t47, -dirZ, _t17, _t18, dirY * _t16, -_t18, -_t17, java.lang.Math.fma(dirZ, _t16, 1.0f), -_t38, _t39 * _t47, _t38 * _t47, _t40 * _t47);
+    }
+
+    /**
+     * Private body of {@code makeRotationLookAlong} for {@code Handedness.RIGHT_HANDED}; reached
+     * only through the public {@code makeRotationLookAlong} dispatcher.
+     */
+    private static FloatQuat makeRotationLookAlong_rh_mulAdd(float dirX, float dirY, float dirZ, float upX, float upY, float upZ) {
+        float _t8 = ((dirZ) * (dirZ) + (((dirX) * (dirX) + (dirY * dirY))));
+        float _sp0 = ((dirZ) * (upZ) + (((dirX) * (upX) + (dirY * upY)))) / _t8;
+        if (!(_t8 > 1.1754944E-38f && _t8 < Float.POSITIVE_INFINITY)) return makeRotationLookAlong_rh_degenerate_mulAdd(dirX, dirY, dirZ, upX, upY, upZ);
+        float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t8));
+        float _t29 = ((upZ) - (dirZ) * (_sp0));
+        float _t30 = ((upY) - (dirY) * (_sp0));
+        float _t31 = ((upX) - (dirX) * (_sp0));
+        float _t38 = ((dirY) * (_t29) - (dirZ * _t30));
+        float _t39 = ((dirX) * (_t30) - (dirY * _t31));
+        float _t40 = ((dirZ) * (_t31) - (dirX * _t29));
+        float _ct0 = ((_t39) * (_t39) + (((_t38) * (_t38) + (_t40 * _t40))));
+        if (!(_ct0 > ((_t8) * (((upZ) * (upZ) + (((upX) * (upX) + (upY * upY)))) * 1.4551915E-11f) + (1.1754944E-38f)) && _ct0 < Float.POSITIVE_INFINITY)) return makeRotationLookAlong_rh_degenerate_mulAdd(dirX, dirY, dirZ, upX, upY, upZ);
+        float _t47 = (1.0f / (float) java.lang.Math.sqrt(_ct0));
+        float _t17 = dirX * _t16;
+        float _t18 = dirZ * _t16;
+        return makeRotationLookAlong_rh_s1465dddc_1_mulAdd(dirX, dirY, _t16, _t38, _t39, _t40, _t47, -dirZ, _t17, _t18, dirY * _t16, -_t18, -_t17, ((dirZ) * (_t16) + (1.0f)), -_t38, _t39 * _t47, _t38 * _t47, _t40 * _t47);
+    }
+
+    /**
+     * Piece 2 of {@code makeRotationLookAlong_rh}, split to fit the inline budget. Shared by 2
+     * identical private paths of {@code makeRotationLookAlong}; reached only through it.
+     */
+    private static FloatQuat makeRotationLookAlong_rh_s1465dddc_1_fma(float dirX, float dirY, float _t16, float _t38, float _t39, float _t40, float _t47, float _t0, float _t17, float _t18, float _t19, float _t21, float _t22, float _t23, float _t41, float _t48, float _t49, float _t50) {
+        float _t65 = java.lang.Math.fma(_t19, _t49, -(_t17 * _t50));
+        float _t66 = java.lang.Math.fma(_t18, _t50, -_t19 * _t48);
+        float _t78 = java.lang.Math.fma(_t38, _t47, java.lang.Math.fma(_t22, _t48, java.lang.Math.fma(_t18, _t49, _t23)));
+        float _t79 = java.lang.Math.fma(_t17, _t48, java.lang.Math.fma(_t21, _t49, java.lang.Math.fma(_t38, _t47, java.lang.Math.fma(_t0, _t16, 1.0f))));
+        float _t80 = java.lang.Math.fma(_t17, _t48, java.lang.Math.fma(_t21, _t49, java.lang.Math.fma(_t41, _t47, _t23)));
+        float _t84 = java.lang.Math.fma(_t0, _t16, java.lang.Math.fma(_t22, _t48, java.lang.Math.fma(_t18, _t49, java.lang.Math.fma(_t41, _t47, 1.0f))));
+        return makeRotationLookAlong_rh_s1465dddc_2_fma(_t16, _t38, _t47, _t0, _t21, _t49, java.lang.Math.fma(dirX, _t16, _t48), java.lang.Math.fma(_t39, _t47, _t22), java.lang.Math.fma(_t17, _t48, -(_t18 * _t49)), java.lang.Math.fma(-dirY, _t16, _t65), -_t19 - _t65, java.lang.Math.fma(_t40, _t47, _t66), java.lang.Math.fma(-_t40, _t47, _t66), _t78, _t79, _t80, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t78)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t79)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t80)), _t84, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t84)));
+    }
+
+    /**
+     * Piece 2 of {@code makeRotationLookAlong_rh}, split to fit the inline budget. Shared by 2
+     * identical private paths of {@code makeRotationLookAlong}; reached only through it.
+     */
+    private static FloatQuat makeRotationLookAlong_rh_s1465dddc_1_mulAdd(float dirX, float dirY, float _t16, float _t38, float _t39, float _t40, float _t47, float _t0, float _t17, float _t18, float _t19, float _t21, float _t22, float _t23, float _t41, float _t48, float _t49, float _t50) {
+        float _t65 = ((_t19) * (_t49) - (_t17 * _t50));
+        float _t66 = ((_t18) * (_t50) - (_t19 * _t48));
+        float _t78 = ((_t38) * (_t47) + (((_t22) * (_t48) + (((_t18) * (_t49) + (_t23))))));
+        float _t79 = ((_t17) * (_t48) + (((_t21) * (_t49) + (((_t38) * (_t47) + (((_t0) * (_t16) + (1.0f))))))));
+        float _t80 = ((_t17) * (_t48) + (((_t21) * (_t49) + (((_t41) * (_t47) + (_t23))))));
+        float _t84 = ((_t0) * (_t16) + (((_t22) * (_t48) + (((_t18) * (_t49) + (((_t41) * (_t47) + (1.0f))))))));
+        return makeRotationLookAlong_rh_s1465dddc_2_mulAdd(_t16, _t38, _t47, _t0, _t21, _t49, ((dirX) * (_t16) + (_t48)), ((_t39) * (_t47) + (_t22)), ((_t17) * (_t48) - (_t18 * _t49)), ((_t65) - (dirY) * (_t16)), -_t19 - _t65, ((_t40) * (_t47) + (_t66)), ((_t66) - (_t40) * (_t47)), _t78, _t79, _t80, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t78)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t79)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t80)), _t84, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t84)));
+    }
+
+    /**
+     * Piece 3 of {@code makeRotationLookAlong_rh}, split to fit the inline budget. Shared by 2
+     * identical private paths of {@code makeRotationLookAlong}; reached only through it.
+     */
+    private static FloatQuat makeRotationLookAlong_rh_s1465dddc_2_fma(float _t16, float _t38, float _t47, float _t0, float _t21, float _t49, float _t52, float _t56, float _t64, float _t70, float _t71, float _t74, float _t75, float _t78, float _t79, float _t80, float _sp4, float _sp1, float _sp2, float _t84, float _sp3) {
+        float _sfx0, _sfx1, _sfx2, _sfx3;
+        if (java.lang.Math.fma(_t0, _t16, java.lang.Math.fma(_t38, _t47, _t64)) > 0.0f) {
+            _sfx0 = _sp1 * _t71;
+            _sfx1 = _sp1 * _t52;
+            _sfx2 = _sp1 * _t75;
+            _sfx3 = 0.5f * (float) java.lang.Math.sqrt(_t79);
+        } else {
+            if (_t49 > Math.max(_t64, _t21)) {
+                _sfx0 = 0.5f * (float) java.lang.Math.sqrt(_t78);
+                _sfx1 = _sp4 * _t74;
+                _sfx2 = _sp4 * _t56;
+                _sfx3 = _sp4 * _t71;
+            } else {
+                if (_t64 > _t21) {
+                    _sfx0 = _sp2 * _t74;
+                    _sfx1 = 0.5f * (float) java.lang.Math.sqrt(_t80);
+                    _sfx2 = _sp2 * _t70;
+                    _sfx3 = _sp2 * _t52;
+                } else {
+                    _sfx0 = _sp3 * _t56;
+                    _sfx1 = _sp3 * _t70;
+                    _sfx2 = 0.5f * (float) java.lang.Math.sqrt(_t84);
+                    _sfx3 = _sp3 * _t75;
+                }
+            }
+        }
+        return new FloatQuat(_sfx0, _sfx1, _sfx2, _sfx3);
+    }
+
+    /**
+     * Piece 3 of {@code makeRotationLookAlong_rh}, split to fit the inline budget. Shared by 2
+     * identical private paths of {@code makeRotationLookAlong}; reached only through it.
+     */
+    private static FloatQuat makeRotationLookAlong_rh_s1465dddc_2_mulAdd(float _t16, float _t38, float _t47, float _t0, float _t21, float _t49, float _t52, float _t56, float _t64, float _t70, float _t71, float _t74, float _t75, float _t78, float _t79, float _t80, float _sp4, float _sp1, float _sp2, float _t84, float _sp3) {
+        float _sfx0, _sfx1, _sfx2, _sfx3;
+        if (((_t0) * (_t16) + (((_t38) * (_t47) + (_t64)))) > 0.0f) {
+            _sfx0 = _sp1 * _t71;
+            _sfx1 = _sp1 * _t52;
+            _sfx2 = _sp1 * _t75;
+            _sfx3 = 0.5f * (float) java.lang.Math.sqrt(_t79);
+        } else {
+            if (_t49 > Math.max(_t64, _t21)) {
+                _sfx0 = 0.5f * (float) java.lang.Math.sqrt(_t78);
+                _sfx1 = _sp4 * _t74;
+                _sfx2 = _sp4 * _t56;
+                _sfx3 = _sp4 * _t71;
+            } else {
+                if (_t64 > _t21) {
+                    _sfx0 = _sp2 * _t74;
+                    _sfx1 = 0.5f * (float) java.lang.Math.sqrt(_t80);
+                    _sfx2 = _sp2 * _t70;
+                    _sfx3 = _sp2 * _t52;
+                } else {
+                    _sfx0 = _sp3 * _t56;
+                    _sfx1 = _sp3 * _t70;
+                    _sfx2 = 0.5f * (float) java.lang.Math.sqrt(_t84);
+                    _sfx3 = _sp3 * _t75;
+                }
+            }
+        }
+        return new FloatQuat(_sfx0, _sfx1, _sfx2, _sfx3);
+    }
+
+    /**
+     * Degenerate-input path of {@code makeRotationLookAlong}: its methods leave here when their
+     * input spans no proper basis (a zero direction, an up vector parallel to it or zero, NaN);
+     * reached only through them.
+     */
+    private static FloatQuat makeRotationLookAlong_rh_degenerate_fma(float dirX, float dirY, float dirZ, float upX, float upY, float upZ) {
+        float _t0 = unitScale(dirX, dirY, dirZ);
+        float _t1 = unitScale(upX, upY, upZ);
+        float _t8 = dirZ * _t0;
+        float _t9 = dirX * _t0;
+        float _t10 = dirY * _t0;
+        float _t16 = java.lang.Math.fma(_t8, _t8, java.lang.Math.fma(_t9, _t9, _t10 * _t10));
+        float _t17 = (1.0f / (float) java.lang.Math.sqrt(_t16));
+        float _t21, _t22, _t23, _t24, _t25, _t26;
+        if (_t16 == 0.0f) {
+            _t21 = 0.0f;
+            _t22 = 0.0f;
+            _t23 = 1.0f;
+            _t24 = -1.0f;
+            _t25 = 0.0f;
+            _t26 = 0.0f;
+        } else {
+            _t21 = upZ * _t1;
+            _t22 = upX * _t1;
+            _t23 = upY * _t1;
+            _t24 = _t17 * _t8;
+            _t25 = _t17 * _t9;
+            _t26 = _t17 * _t10;
+        }
+        float _t29 = -_t26;
+        float _t30 = -_t24;
+        float _t37, _t38, _t42;
+        if (java.lang.Math.abs(_t25) > java.lang.Math.abs(_t24)) {
+            _t37 = 0.0f;
+            _t38 = _t29;
+            _t42 = _t25;
+        } else {
+            _t37 = _t26;
+            _t38 = 0.0f;
+            _t42 = _t30;
+        }
+        float _t44 = -java.lang.Math.fma(_t24, _t21, java.lang.Math.fma(_t25, _t22, _t26 * _t23));
+        float _t45 = java.lang.Math.fma(_t44, _t26, _t23);
+        float _t46 = java.lang.Math.fma(_t44, _t25, _t22);
+        float _t47 = java.lang.Math.fma(_t44, _t24, _t21);
+        return makeRotationLookAlong_rh_degenerate_s57efa25_1_fma(_t21, _t22, _t23, _t24, _t25, _t26, _t29, _t30, 1.0f - _t24, 1.0f + _t24, _t37, _t38, _t42, _t45, _t47, java.lang.Math.fma(_t45, _t25, _t46 * -_t26), java.lang.Math.fma(_t46, _t24, -(_t47 * _t25)));
+    }
+
+    /**
+     * Degenerate-input path of {@code makeRotationLookAlong}: its methods leave here when their
+     * input spans no proper basis (a zero direction, an up vector parallel to it or zero, NaN);
+     * reached only through them.
+     */
+    private static FloatQuat makeRotationLookAlong_rh_degenerate_mulAdd(float dirX, float dirY, float dirZ, float upX, float upY, float upZ) {
+        float _t0 = unitScale(dirX, dirY, dirZ);
+        float _t1 = unitScale(upX, upY, upZ);
+        float _t8 = dirZ * _t0;
+        float _t9 = dirX * _t0;
+        float _t10 = dirY * _t0;
+        float _t16 = ((_t8) * (_t8) + (((_t9) * (_t9) + (_t10 * _t10))));
+        float _t17 = (1.0f / (float) java.lang.Math.sqrt(_t16));
+        float _t21, _t22, _t23, _t24, _t25, _t26;
+        if (_t16 == 0.0f) {
+            _t21 = 0.0f;
+            _t22 = 0.0f;
+            _t23 = 1.0f;
+            _t24 = -1.0f;
+            _t25 = 0.0f;
+            _t26 = 0.0f;
+        } else {
+            _t21 = upZ * _t1;
+            _t22 = upX * _t1;
+            _t23 = upY * _t1;
+            _t24 = _t17 * _t8;
+            _t25 = _t17 * _t9;
+            _t26 = _t17 * _t10;
+        }
+        float _t29 = -_t26;
+        float _t30 = -_t24;
+        float _t37, _t38, _t42;
+        if (java.lang.Math.abs(_t25) > java.lang.Math.abs(_t24)) {
+            _t37 = 0.0f;
+            _t38 = _t29;
+            _t42 = _t25;
+        } else {
+            _t37 = _t26;
+            _t38 = 0.0f;
+            _t42 = _t30;
+        }
+        float _t44 = -((_t24) * (_t21) + (((_t25) * (_t22) + (_t26 * _t23))));
+        float _t45 = ((_t44) * (_t26) + (_t23));
+        float _t46 = ((_t44) * (_t25) + (_t22));
+        float _t47 = ((_t44) * (_t24) + (_t21));
+        return makeRotationLookAlong_rh_degenerate_s57efa25_1_mulAdd(_t21, _t22, _t23, _t24, _t25, _t26, _t29, _t30, 1.0f - _t24, 1.0f + _t24, _t37, _t38, _t42, _t45, _t47, ((_t45) * (_t25) - (_t46 * _t26)), ((_t46) * (_t24) - (_t47 * _t25)));
+    }
+
+    /** Piece 2 of {@code makeRotationLookAlong_rh_degenerate}, split to fit the inline budget; reached only through it. */
+    private static FloatQuat makeRotationLookAlong_rh_degenerate_s57efa25_1_fma(float _t21, float _t22, float _t23, float _t24, float _t25, float _t26, float _t29, float _t30, float _t32, float _t33, float _t37, float _t38, float _t42, float _t45, float _t47, float _t56, float _t57) {
+        float _t58 = java.lang.Math.fma(_t47, _t26, _t45 * -_t24);
+        float _t62 = java.lang.Math.fma(_t56, _t56, java.lang.Math.fma(_t57, _t57, _t58 * _t58));
+        float _t63, _t64, _t65, _t67;
+        if (_t62 <= java.lang.Math.fma(_t21, _t21, java.lang.Math.fma(_t22, _t22, _t23 * _t23)) * 1.4551915E-11f) {
+            _t63 = _t37;
+            _t64 = _t38;
+            _t65 = _t42;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(java.lang.Math.fma(_t37, _t37, java.lang.Math.fma(_t38, _t38, _t42 * _t42))));
+        } else {
+            _t63 = _t56;
+            _t64 = _t58;
+            _t65 = _t57;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(_t62));
+        }
+        float _t69 = _t67 * _t63;
+        float _t70 = _t67 * _t64;
+        float _t71 = -_t69;
+        float _t72 = -_t70;
+        float _t73 = _t67 * _t65;
+        return makeRotationLookAlong_rh_degenerate_s57efa25_2_fma(_t24, _t25, _t30, _t32, _t33, _t64, _t65, _t67, -_t67, _t69, _t70, _t71, _t72, java.lang.Math.fma(_t67, _t63, _t25), java.lang.Math.fma(_t67, _t63, -_t25), java.lang.Math.fma(_t69, _t25, -(_t70 * _t24)), java.lang.Math.fma(_t73, _t24, -(_t69 * _t26)), java.lang.Math.fma(_t72, _t26, java.lang.Math.fma(_t73, _t25, _t29)), java.lang.Math.fma(_t70, _t26, java.lang.Math.fma(_t73, -_t25, _t29)), java.lang.Math.fma(_t69, _t25, java.lang.Math.fma(_t72, _t24, java.lang.Math.fma(_t67, _t64, _t32))), java.lang.Math.fma(_t67, _t64, java.lang.Math.fma(_t71, _t25, java.lang.Math.fma(_t70, _t24, _t33))));
+    }
+
+    /** Piece 2 of {@code makeRotationLookAlong_rh_degenerate}, split to fit the inline budget; reached only through it. */
+    private static FloatQuat makeRotationLookAlong_rh_degenerate_s57efa25_1_mulAdd(float _t21, float _t22, float _t23, float _t24, float _t25, float _t26, float _t29, float _t30, float _t32, float _t33, float _t37, float _t38, float _t42, float _t45, float _t47, float _t56, float _t57) {
+        float _t58 = ((_t47) * (_t26) - (_t45 * _t24));
+        float _t62 = ((_t56) * (_t56) + (((_t57) * (_t57) + (_t58 * _t58))));
+        float _t63, _t64, _t65, _t67;
+        if (_t62 <= ((_t21) * (_t21) + (((_t22) * (_t22) + (_t23 * _t23)))) * 1.4551915E-11f) {
+            _t63 = _t37;
+            _t64 = _t38;
+            _t65 = _t42;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(((_t37) * (_t37) + (((_t38) * (_t38) + (_t42 * _t42))))));
+        } else {
+            _t63 = _t56;
+            _t64 = _t58;
+            _t65 = _t57;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(_t62));
+        }
+        float _t69 = _t67 * _t63;
+        float _t70 = _t67 * _t64;
+        float _t71 = -_t69;
+        float _t72 = -_t70;
+        float _t73 = _t67 * _t65;
+        return makeRotationLookAlong_rh_degenerate_s57efa25_2_mulAdd(_t24, _t25, _t30, _t32, _t33, _t64, _t65, _t67, -_t67, _t69, _t70, _t71, _t72, ((_t67) * (_t63) + (_t25)), ((_t67) * (_t63) - (_t25)), ((_t69) * (_t25) - (_t70 * _t24)), ((_t73) * (_t24) - (_t69 * _t26)), ((_t72) * (_t26) + (((_t73) * (_t25) + (_t29)))), ((_t70) * (_t26) + (((_t29) - (_t73) * (_t25)))), ((_t69) * (_t25) + (((_t72) * (_t24) + (((_t67) * (_t64) + (_t32)))))), ((_t67) * (_t64) + (((_t71) * (_t25) + (((_t70) * (_t24) + (_t33)))))));
+    }
+
+    /**
+     * Piece 3 of {@code makeRotationLookAlong_rh_degenerate}, split to fit the inline budget.
+     * Shared by 2 identical private paths of {@code makeRotationLookAlong}; reached only through
+     * it.
+     */
+    private static FloatQuat makeRotationLookAlong_rh_degenerate_s57efa25_2_fma(float _t24, float _t25, float _t30, float _t32, float _t33, float _t64, float _t65, float _t67, float _t68, float _t69, float _t70, float _t71, float _t72, float _t74, float _t76, float _t88, float _t93, float _t96, float _t97, float _t99, float _t100) {
+        float _t102 = java.lang.Math.fma(_t69, _t25, java.lang.Math.fma(_t72, _t24, java.lang.Math.fma(_t68, _t64, _t33)));
+        float _t103 = java.lang.Math.fma(_t71, _t25, java.lang.Math.fma(_t70, _t24, java.lang.Math.fma(_t68, _t64, _t32)));
+        return makeRotationLookAlong_rh_degenerate_s57efa25_3_fma(_t24, _t25, _t30, _t64, _t67, _t69, _t70, _t72, _t74, _t76, _t88, _t96, _t97, _t99, _t100, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t99)), _t102, _t103, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t100)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t102)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t103)), java.lang.Math.fma(_t67, _t65, _t93), java.lang.Math.fma(_t68, _t65, _t93));
+    }
+
+    /**
+     * Piece 3 of {@code makeRotationLookAlong_rh_degenerate}, split to fit the inline budget.
+     * Shared by 2 identical private paths of {@code makeRotationLookAlong}; reached only through
+     * it.
+     */
+    private static FloatQuat makeRotationLookAlong_rh_degenerate_s57efa25_2_mulAdd(float _t24, float _t25, float _t30, float _t32, float _t33, float _t64, float _t65, float _t67, float _t68, float _t69, float _t70, float _t71, float _t72, float _t74, float _t76, float _t88, float _t93, float _t96, float _t97, float _t99, float _t100) {
+        float _t102 = ((_t69) * (_t25) + (((_t72) * (_t24) + (((_t68) * (_t64) + (_t33))))));
+        float _t103 = ((_t71) * (_t25) + (((_t70) * (_t24) + (((_t68) * (_t64) + (_t32))))));
+        return makeRotationLookAlong_rh_degenerate_s57efa25_3_mulAdd(_t24, _t25, _t30, _t64, _t67, _t69, _t70, _t72, _t74, _t76, _t88, _t96, _t97, _t99, _t100, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t99)), _t102, _t103, 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t100)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t102)), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t103)), ((_t67) * (_t65) + (_t93)), ((_t68) * (_t65) + (_t93)));
+    }
+
+    /**
+     * Piece 4 of {@code makeRotationLookAlong_rh_degenerate}, split to fit the inline budget.
+     * Shared by 2 identical private paths of {@code makeRotationLookAlong}; reached only through
+     * it.
+     */
+    private static FloatQuat makeRotationLookAlong_rh_degenerate_s57efa25_3_fma(float _t24, float _t25, float _t30, float _t64, float _t67, float _t69, float _t70, float _t72, float _t74, float _t76, float _t88, float _t96, float _t97, float _t99, float _t100, float _sp0, float _t102, float _t103, float _sp3, float _sp1, float _sp2, float _t107, float _t108) {
+        float _sfx0, _sfx1, _sfx2, _sfx3;
+        if (java.lang.Math.fma(_t69, _t25, java.lang.Math.fma(_t72, _t24, java.lang.Math.fma(_t67, _t64, _t30))) > 0.0f) {
+            _sfx0 = _sp0 * _t96;
+            _sfx1 = _sp0 * _t74;
+            _sfx2 = _sp0 * _t108;
+            _sfx3 = 0.5f * (float) java.lang.Math.sqrt(_t99);
+        } else {
+            if (_t70 > Math.max(_t88, _t30)) {
+                _sfx0 = 0.5f * (float) java.lang.Math.sqrt(_t100);
+                _sfx1 = _sp3 * _t107;
+                _sfx2 = _sp3 * _t76;
+                _sfx3 = _sp3 * _t96;
+            } else {
+                if (_t88 > _t30) {
+                    _sfx0 = _sp1 * _t107;
+                    _sfx1 = 0.5f * (float) java.lang.Math.sqrt(_t102);
+                    _sfx2 = _sp1 * _t97;
+                    _sfx3 = _sp1 * _t74;
+                } else {
+                    _sfx0 = _sp2 * _t76;
+                    _sfx1 = _sp2 * _t97;
+                    _sfx2 = 0.5f * (float) java.lang.Math.sqrt(_t103);
+                    _sfx3 = _sp2 * _t108;
+                }
+            }
+        }
+        return new FloatQuat(_sfx0, _sfx1, _sfx2, _sfx3);
+    }
+
+    /**
+     * Piece 4 of {@code makeRotationLookAlong_rh_degenerate}, split to fit the inline budget.
+     * Shared by 2 identical private paths of {@code makeRotationLookAlong}; reached only through
+     * it.
+     */
+    private static FloatQuat makeRotationLookAlong_rh_degenerate_s57efa25_3_mulAdd(float _t24, float _t25, float _t30, float _t64, float _t67, float _t69, float _t70, float _t72, float _t74, float _t76, float _t88, float _t96, float _t97, float _t99, float _t100, float _sp0, float _t102, float _t103, float _sp3, float _sp1, float _sp2, float _t107, float _t108) {
+        float _sfx0, _sfx1, _sfx2, _sfx3;
+        if (((_t69) * (_t25) + (((_t72) * (_t24) + (((_t67) * (_t64) + (_t30)))))) > 0.0f) {
+            _sfx0 = _sp0 * _t96;
+            _sfx1 = _sp0 * _t74;
+            _sfx2 = _sp0 * _t108;
+            _sfx3 = 0.5f * (float) java.lang.Math.sqrt(_t99);
+        } else {
+            if (_t70 > Math.max(_t88, _t30)) {
+                _sfx0 = 0.5f * (float) java.lang.Math.sqrt(_t100);
+                _sfx1 = _sp3 * _t107;
+                _sfx2 = _sp3 * _t76;
+                _sfx3 = _sp3 * _t96;
+            } else {
+                if (_t88 > _t30) {
+                    _sfx0 = _sp1 * _t107;
+                    _sfx1 = 0.5f * (float) java.lang.Math.sqrt(_t102);
+                    _sfx2 = _sp1 * _t97;
+                    _sfx3 = _sp1 * _t74;
+                } else {
+                    _sfx0 = _sp2 * _t76;
+                    _sfx1 = _sp2 * _t97;
+                    _sfx2 = 0.5f * (float) java.lang.Math.sqrt(_t103);
+                    _sfx3 = _sp2 * _t108;
+                }
+            }
+        }
+        return new FloatQuat(_sfx0, _sfx1, _sfx2, _sfx3);
+    }
+
+    /**
+     * Create a "look along" view rotation looking along {@code dir} (the rotation of a "look at"
+     * view transformation with the eye at the origin).
+     * <p>
+     * Degenerate input still gives a proper rotation: an up vector parallel to the view direction
+     * (to within an angle of about 32 units in the last place of 1) or zero is replaced by one
+     * perpendicular to it, and a zero view direction gives the identity orientation; NaN input
+     * gives NaN. The rotation is orthonormal to working precision for vectors of any finite length,
+     * an up vector however close to the view direction included. (The raw-storage {@code *Ops}
+     * kernels need a non-zero direction and up vector that are not parallel.)
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dir the direction to look along, i.e. the direction mapped to {@code -z}
+     *        (right-handed) or {@code +z} (left-handed)
+     * @param up the direction of "up"
+     * @param handedness the handedness of the coordinate system to map into
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationLookAlong(Float3 dir, Float3 up, Handedness handedness) {
+        switch (handedness) {
+            case LEFT_HANDED -> { return (org.joml2.internal.FmaSwitch.ON ? makeRotationLookAlong_lh_fma(dir, up) : makeRotationLookAlong_lh_mulAdd(dir, up)); }
+            default -> { return (org.joml2.internal.FmaSwitch.ON ? makeRotationLookAlong_rh_fma(dir, up) : makeRotationLookAlong_rh_mulAdd(dir, up)); }
+        }
+    }
+
+    /**
+     * Create a "look along" view rotation looking along ({@code dirX}, {@code dirY}, {@code dirZ})
+     * (the rotation of a "look at" view transformation with the eye at the origin).
+     * <p>
+     * Degenerate input still gives a proper rotation: an up vector parallel to the view direction
+     * (to within an angle of about 32 units in the last place of 1) or zero is replaced by one
+     * perpendicular to it, and a zero view direction gives the identity orientation; NaN input
+     * gives NaN. The rotation is orthonormal to working precision for vectors of any finite length,
+     * an up vector however close to the view direction included. (The raw-storage {@code *Ops}
+     * kernels need a non-zero direction and up vector that are not parallel.)
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dirX the {@code x} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param dirY the {@code y} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param dirZ the {@code z} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param upX the {@code x} component of the vector {@code (upX, upY, upZ)}
+     * @param upY the {@code y} component of the vector {@code (upX, upY, upZ)}
+     * @param upZ the {@code z} component of the vector {@code (upX, upY, upZ)}
+     * @param handedness the handedness of the coordinate system to map into
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationLookAlong(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, Handedness handedness) {
+        switch (handedness) {
+            case LEFT_HANDED -> { return (org.joml2.internal.FmaSwitch.ON ? makeRotationLookAlong_lh_fma(dirX, dirY, dirZ, upX, upY, upZ) : makeRotationLookAlong_lh_mulAdd(dirX, dirY, dirZ, upX, upY, upZ)); }
+            default -> { return (org.joml2.internal.FmaSwitch.ON ? makeRotationLookAlong_rh_fma(dirX, dirY, dirZ, upX, upY, upZ) : makeRotationLookAlong_rh_mulAdd(dirX, dirY, dirZ, upX, upY, upZ)); }
+        }
+    }
+
+    /**
+     * Create a "look along" view rotation looking along {@code dir} (the rotation of a "look at"
+     * view transformation with the eye at the origin).
+     * <p>
+     * Degenerate input still gives a proper rotation: an up vector parallel to the view direction
+     * (to within an angle of about 32 units in the last place of 1) or zero is replaced by one
+     * perpendicular to it, and a zero view direction gives the identity orientation; NaN input
+     * gives NaN. The rotation is orthonormal to working precision for vectors of any finite length,
+     * an up vector however close to the view direction included. (The raw-storage {@code *Ops}
+     * kernels need a non-zero direction and up vector that are not parallel.)
+     * <p>
+     * Uses {@link Handedness#RIGHT_HANDED} for {@code handedness}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dir the direction to look along, i.e. the direction mapped to {@code -z}
+     *        (right-handed) or {@code +z} (left-handed)
+     * @param up the direction of "up"
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationLookAlong(Float3 dir, Float3 up) { return (org.joml2.internal.FmaSwitch.ON ? makeRotationLookAlong_rh_fma(dir, up) : makeRotationLookAlong_rh_mulAdd(dir, up)); }
+
+    /**
+     * Create a "look along" view rotation looking along ({@code dirX}, {@code dirY}, {@code dirZ})
+     * (the rotation of a "look at" view transformation with the eye at the origin).
+     * <p>
+     * Degenerate input still gives a proper rotation: an up vector parallel to the view direction
+     * (to within an angle of about 32 units in the last place of 1) or zero is replaced by one
+     * perpendicular to it, and a zero view direction gives the identity orientation; NaN input
+     * gives NaN. The rotation is orthonormal to working precision for vectors of any finite length,
+     * an up vector however close to the view direction included. (The raw-storage {@code *Ops}
+     * kernels need a non-zero direction and up vector that are not parallel.)
+     * <p>
+     * Uses {@link Handedness#RIGHT_HANDED} for {@code handedness}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dirX the {@code x} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param dirY the {@code y} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param dirZ the {@code z} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param upX the {@code x} component of the vector {@code (upX, upY, upZ)}
+     * @param upY the {@code y} component of the vector {@code (upX, upY, upZ)}
+     * @param upZ the {@code z} component of the vector {@code (upX, upY, upZ)}
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationLookAlong(float dirX, float dirY, float dirZ, float upX, float upY, float upZ) { return (org.joml2.internal.FmaSwitch.ON ? makeRotationLookAlong_rh_fma(dirX, dirY, dirZ, upX, upY, upZ) : makeRotationLookAlong_rh_mulAdd(dirX, dirY, dirZ, upX, upY, upZ)); }
+
+    /**
+     * Private body of {@code makeRotationLookAlong} for {@code Handedness.LEFT_HANDED}; reached
+     * only through the public {@code makeRotationLookAlong} dispatcher.
+     */
+    private static FloatQuat makeRotationLookAlong_lh_fma(Float3 dir, Float3 up, float epsilon) {
+        return makeRotationLookAlong_lh_fma(dir.x(), dir.y(), dir.z(), up.x(), up.y(), up.z(), epsilon);
+    }
+
+    /**
+     * Private body of {@code makeRotationLookAlong} for {@code Handedness.LEFT_HANDED}; reached
+     * only through the public {@code makeRotationLookAlong} dispatcher.
+     */
+    private static FloatQuat makeRotationLookAlong_lh_mulAdd(Float3 dir, Float3 up, float epsilon) {
+        return makeRotationLookAlong_lh_mulAdd(dir.x(), dir.y(), dir.z(), up.x(), up.y(), up.z(), epsilon);
+    }
+
+    /**
+     * Private body of {@code makeRotationLookAlong} for {@code Handedness.LEFT_HANDED}; reached
+     * only through the public {@code makeRotationLookAlong} dispatcher.
+     */
+    private static FloatQuat makeRotationLookAlong_lh_fma(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, float epsilon) {
+        float _t7 = java.lang.Math.fma(dirZ, dirZ, java.lang.Math.fma(dirX, dirX, dirY * dirY));
+        float _sp0 = java.lang.Math.fma(dirZ, upZ, java.lang.Math.fma(dirX, upX, dirY * upY)) / _t7;
+        if (!(_t7 > 1.1754944E-38f && _t7 < Float.POSITIVE_INFINITY)) return makeRotationLookAlong_lh_degenerate_fma(dirX, dirY, dirZ, upX, upY, upZ, epsilon);
+        float _t15 = (1.0f / (float) java.lang.Math.sqrt(_t7));
+        float _t27 = java.lang.Math.fma(-dirY, _sp0, upY);
+        float _t28 = java.lang.Math.fma(-dirZ, _sp0, upZ);
+        float _t29 = java.lang.Math.fma(-dirX, _sp0, upX);
+        float _t36 = java.lang.Math.fma(dirZ, _t27, -dirY * _t28);
+        float _t37 = java.lang.Math.fma(dirY, _t29, -(dirX * _t27));
+        float _t38 = java.lang.Math.fma(dirX, _t28, -(dirZ * _t29));
+        float _ct0 = java.lang.Math.fma(_t37, _t37, java.lang.Math.fma(_t38, _t38, _t36 * _t36));
+        if (!(_ct0 > java.lang.Math.fma(_t7, epsilon * java.lang.Math.fma(upZ, upZ, java.lang.Math.fma(upX, upX, upY * upY)), 1.1754944E-38f) && _ct0 < Float.POSITIVE_INFINITY)) return makeRotationLookAlong_lh_degenerate_fma(dirX, dirY, dirZ, upX, upY, upZ, epsilon);
+        float _t45 = (1.0f / (float) java.lang.Math.sqrt(_ct0));
+        float _t16 = dirZ * _t15;
+        float _t17 = dirX * _t15;
+        return makeRotationLookAlong_lh_s96c6b39a_1_fma(dirX, dirY, dirZ, _t15, _t36, _t37, _t38, _t45, -dirZ, _t16, _t17, dirY * _t15, -_t17, -_t16, _t36 * _t45, _t37 * _t45, _t38 * _t45, java.lang.Math.fma(-_t36, _t45, 1.0f));
+    }
+
+    /**
+     * Private body of {@code makeRotationLookAlong} for {@code Handedness.LEFT_HANDED}; reached
+     * only through the public {@code makeRotationLookAlong} dispatcher.
+     */
+    private static FloatQuat makeRotationLookAlong_lh_mulAdd(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, float epsilon) {
+        float _t7 = ((dirZ) * (dirZ) + (((dirX) * (dirX) + (dirY * dirY))));
+        float _sp0 = ((dirZ) * (upZ) + (((dirX) * (upX) + (dirY * upY)))) / _t7;
+        if (!(_t7 > 1.1754944E-38f && _t7 < Float.POSITIVE_INFINITY)) return makeRotationLookAlong_lh_degenerate_mulAdd(dirX, dirY, dirZ, upX, upY, upZ, epsilon);
+        float _t15 = (1.0f / (float) java.lang.Math.sqrt(_t7));
+        float _t27 = ((upY) - (dirY) * (_sp0));
+        float _t28 = ((upZ) - (dirZ) * (_sp0));
+        float _t29 = ((upX) - (dirX) * (_sp0));
+        float _t36 = ((dirZ) * (_t27) - (dirY * _t28));
+        float _t37 = ((dirY) * (_t29) - (dirX * _t27));
+        float _t38 = ((dirX) * (_t28) - (dirZ * _t29));
+        float _ct0 = ((_t37) * (_t37) + (((_t38) * (_t38) + (_t36 * _t36))));
+        if (!(_ct0 > ((_t7) * (epsilon * ((upZ) * (upZ) + (((upX) * (upX) + (upY * upY))))) + (1.1754944E-38f)) && _ct0 < Float.POSITIVE_INFINITY)) return makeRotationLookAlong_lh_degenerate_mulAdd(dirX, dirY, dirZ, upX, upY, upZ, epsilon);
+        float _t45 = (1.0f / (float) java.lang.Math.sqrt(_ct0));
+        float _t16 = dirZ * _t15;
+        float _t17 = dirX * _t15;
+        return makeRotationLookAlong_lh_s96c6b39a_1_mulAdd(dirX, dirY, dirZ, _t15, _t36, _t37, _t38, _t45, -dirZ, _t16, _t17, dirY * _t15, -_t17, -_t16, _t36 * _t45, _t37 * _t45, _t38 * _t45, ((1.0f) - (_t36) * (_t45)));
+    }
+
+    /**
+     * Degenerate-input path of {@code makeRotationLookAlong}: its methods leave here when their
+     * input spans no proper basis (a zero direction, an up vector parallel to it or zero, NaN);
+     * reached only through them.
+     */
+    private static FloatQuat makeRotationLookAlong_lh_degenerate_fma(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, float epsilon) {
+        float _t0 = unitScale(dirX, dirY, dirZ);
+        float _t1 = unitScale(upX, upY, upZ);
+        float _t8 = dirZ * _t0;
+        float _t9 = dirX * _t0;
+        float _t10 = dirY * _t0;
+        float _t16 = java.lang.Math.fma(_t8, _t8, java.lang.Math.fma(_t9, _t9, _t10 * _t10));
+        float _t17 = (1.0f / (float) java.lang.Math.sqrt(_t16));
+        float _t21, _t22, _t23, _t24, _t25, _t26;
+        if (_t16 == 0.0f) {
+            _t21 = 0.0f;
+            _t22 = 0.0f;
+            _t23 = 1.0f;
+            _t24 = 1.0f;
+            _t25 = 0.0f;
+            _t26 = 0.0f;
+        } else {
+            _t21 = upZ * _t1;
+            _t22 = upX * _t1;
+            _t23 = upY * _t1;
+            _t24 = _t17 * _t8;
+            _t25 = _t17 * _t9;
+            _t26 = _t17 * _t10;
+        }
+        float _t37, _t38, _t42;
+        if (java.lang.Math.abs(_t25) > java.lang.Math.abs(_t24)) {
+            _t37 = 0.0f;
+            _t38 = -_t26;
+            _t42 = _t25;
+        } else {
+            _t37 = _t26;
+            _t38 = 0.0f;
+            _t42 = -_t24;
+        }
+        float _t44 = -java.lang.Math.fma(_t21, _t24, java.lang.Math.fma(_t25, _t22, _t26 * _t23));
+        float _t45 = java.lang.Math.fma(_t44, _t25, _t22);
+        float _t46 = java.lang.Math.fma(_t44, _t26, _t23);
+        float _t47 = java.lang.Math.fma(_t44, _t24, _t21);
+        return makeRotationLookAlong_lh_degenerate_sf46b18a5_1_fma(epsilon, _t21, _t22, _t23, _t24, _t25, _t26, 1.0f + _t24, 1.0f - _t24, _t37, _t38, _t42, java.lang.Math.fma(_t45, _t26, -(_t46 * _t25)), java.lang.Math.fma(_t47, _t25, _t45 * -_t24), java.lang.Math.fma(_t46, _t24, _t47 * -_t26));
+    }
+
+    /**
+     * Degenerate-input path of {@code makeRotationLookAlong}: its methods leave here when their
+     * input spans no proper basis (a zero direction, an up vector parallel to it or zero, NaN);
+     * reached only through them.
+     */
+    private static FloatQuat makeRotationLookAlong_lh_degenerate_mulAdd(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, float epsilon) {
+        float _t0 = unitScale(dirX, dirY, dirZ);
+        float _t1 = unitScale(upX, upY, upZ);
+        float _t8 = dirZ * _t0;
+        float _t9 = dirX * _t0;
+        float _t10 = dirY * _t0;
+        float _t16 = ((_t8) * (_t8) + (((_t9) * (_t9) + (_t10 * _t10))));
+        float _t17 = (1.0f / (float) java.lang.Math.sqrt(_t16));
+        float _t21, _t22, _t23, _t24, _t25, _t26;
+        if (_t16 == 0.0f) {
+            _t21 = 0.0f;
+            _t22 = 0.0f;
+            _t23 = 1.0f;
+            _t24 = 1.0f;
+            _t25 = 0.0f;
+            _t26 = 0.0f;
+        } else {
+            _t21 = upZ * _t1;
+            _t22 = upX * _t1;
+            _t23 = upY * _t1;
+            _t24 = _t17 * _t8;
+            _t25 = _t17 * _t9;
+            _t26 = _t17 * _t10;
+        }
+        float _t37, _t38, _t42;
+        if (java.lang.Math.abs(_t25) > java.lang.Math.abs(_t24)) {
+            _t37 = 0.0f;
+            _t38 = -_t26;
+            _t42 = _t25;
+        } else {
+            _t37 = _t26;
+            _t38 = 0.0f;
+            _t42 = -_t24;
+        }
+        float _t44 = -((_t21) * (_t24) + (((_t25) * (_t22) + (_t26 * _t23))));
+        float _t45 = ((_t44) * (_t25) + (_t22));
+        float _t46 = ((_t44) * (_t26) + (_t23));
+        float _t47 = ((_t44) * (_t24) + (_t21));
+        return makeRotationLookAlong_lh_degenerate_sf46b18a5_1_mulAdd(epsilon, _t21, _t22, _t23, _t24, _t25, _t26, 1.0f + _t24, 1.0f - _t24, _t37, _t38, _t42, ((_t45) * (_t26) - (_t46 * _t25)), ((_t47) * (_t25) - (_t45 * _t24)), ((_t46) * (_t24) - (_t47 * _t26)));
+    }
+
+    /** Piece 2 of {@code makeRotationLookAlong_lh_degenerate}, split to fit the inline budget; reached only through it. */
+    private static FloatQuat makeRotationLookAlong_lh_degenerate_sf46b18a5_1_fma(float epsilon, float _t21, float _t22, float _t23, float _t24, float _t25, float _t26, float _t32, float _t33, float _t37, float _t38, float _t42, float _t56, float _t57, float _t58) {
+        float _t62 = java.lang.Math.fma(_t56, _t56, java.lang.Math.fma(_t57, _t57, _t58 * _t58));
+        float _t63, _t64, _t65, _t67;
+        if (_t62 <= epsilon * java.lang.Math.fma(_t21, _t21, java.lang.Math.fma(_t22, _t22, _t23 * _t23))) {
+            _t63 = _t37;
+            _t64 = _t38;
+            _t65 = _t42;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(java.lang.Math.fma(_t37, _t37, java.lang.Math.fma(_t38, _t38, _t42 * _t42))));
+        } else {
+            _t63 = _t56;
+            _t64 = _t58;
+            _t65 = _t57;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(_t62));
+        }
+        float _t69 = _t67 * _t63;
+        float _t70 = _t67 * _t64;
+        float _t71 = -_t69;
+        float _t72 = -_t70;
+        float _t73 = _t67 * _t65;
+        float _t99 = java.lang.Math.fma(_t70, _t24, java.lang.Math.fma(_t71, _t25, java.lang.Math.fma(_t67, _t64, _t32)));
+        return makeRotationLookAlong_lh_degenerate_s2c1aa5ef_2_fma(_t24, _t25, _t32, _t33, _t64, _t65, _t67, -_t67, _t69, _t70, _t71, _t72, java.lang.Math.fma(_t67, _t63, _t25), java.lang.Math.fma(_t67, _t63, -_t25), java.lang.Math.fma(_t70, _t24, -(_t69 * _t25)), java.lang.Math.fma(_t69, _t26, -(_t73 * _t24)), java.lang.Math.fma(_t73, -_t25, java.lang.Math.fma(_t70, _t26, _t26)), java.lang.Math.fma(_t73, _t25, java.lang.Math.fma(_t72, _t26, _t26)), _t99, java.lang.Math.fma(_t67, _t64, java.lang.Math.fma(_t72, _t24, java.lang.Math.fma(_t69, _t25, _t33))), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t99)));
+    }
+
+    /** Piece 2 of {@code makeRotationLookAlong_lh_degenerate}, split to fit the inline budget; reached only through it. */
+    private static FloatQuat makeRotationLookAlong_lh_degenerate_sf46b18a5_1_mulAdd(float epsilon, float _t21, float _t22, float _t23, float _t24, float _t25, float _t26, float _t32, float _t33, float _t37, float _t38, float _t42, float _t56, float _t57, float _t58) {
+        float _t62 = ((_t56) * (_t56) + (((_t57) * (_t57) + (_t58 * _t58))));
+        float _t63, _t64, _t65, _t67;
+        if (_t62 <= epsilon * ((_t21) * (_t21) + (((_t22) * (_t22) + (_t23 * _t23))))) {
+            _t63 = _t37;
+            _t64 = _t38;
+            _t65 = _t42;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(((_t37) * (_t37) + (((_t38) * (_t38) + (_t42 * _t42))))));
+        } else {
+            _t63 = _t56;
+            _t64 = _t58;
+            _t65 = _t57;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(_t62));
+        }
+        float _t69 = _t67 * _t63;
+        float _t70 = _t67 * _t64;
+        float _t71 = -_t69;
+        float _t72 = -_t70;
+        float _t73 = _t67 * _t65;
+        float _t99 = ((_t70) * (_t24) + (((_t71) * (_t25) + (((_t67) * (_t64) + (_t32))))));
+        return makeRotationLookAlong_lh_degenerate_s2c1aa5ef_2_mulAdd(_t24, _t25, _t32, _t33, _t64, _t65, _t67, -_t67, _t69, _t70, _t71, _t72, ((_t67) * (_t63) + (_t25)), ((_t67) * (_t63) - (_t25)), ((_t70) * (_t24) - (_t69 * _t25)), ((_t69) * (_t26) - (_t73 * _t24)), ((((_t70) * (_t26) + (_t26))) - (_t73) * (_t25)), ((_t73) * (_t25) + (((_t72) * (_t26) + (_t26)))), _t99, ((_t67) * (_t64) + (((_t72) * (_t24) + (((_t69) * (_t25) + (_t33)))))), 0.5f * (1.0f / (float) java.lang.Math.sqrt(_t99)));
+    }
+
+    /**
+     * Private body of {@code makeRotationLookAlong} for {@code Handedness.RIGHT_HANDED}; reached
+     * only through the public {@code makeRotationLookAlong} dispatcher.
+     */
+    private static FloatQuat makeRotationLookAlong_rh_fma(Float3 dir, Float3 up, float epsilon) {
+        return makeRotationLookAlong_rh_fma(dir.x(), dir.y(), dir.z(), up.x(), up.y(), up.z(), epsilon);
+    }
+
+    /**
+     * Private body of {@code makeRotationLookAlong} for {@code Handedness.RIGHT_HANDED}; reached
+     * only through the public {@code makeRotationLookAlong} dispatcher.
+     */
+    private static FloatQuat makeRotationLookAlong_rh_mulAdd(Float3 dir, Float3 up, float epsilon) {
+        return makeRotationLookAlong_rh_mulAdd(dir.x(), dir.y(), dir.z(), up.x(), up.y(), up.z(), epsilon);
+    }
+
+    /**
+     * Private body of {@code makeRotationLookAlong} for {@code Handedness.RIGHT_HANDED}; reached
+     * only through the public {@code makeRotationLookAlong} dispatcher.
+     */
+    private static FloatQuat makeRotationLookAlong_rh_fma(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, float epsilon) {
+        float _t8 = java.lang.Math.fma(dirZ, dirZ, java.lang.Math.fma(dirX, dirX, dirY * dirY));
+        float _sp0 = java.lang.Math.fma(dirZ, upZ, java.lang.Math.fma(dirX, upX, dirY * upY)) / _t8;
+        if (!(_t8 > 1.1754944E-38f && _t8 < Float.POSITIVE_INFINITY)) return makeRotationLookAlong_rh_degenerate_fma(dirX, dirY, dirZ, upX, upY, upZ, epsilon);
+        float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t8));
+        float _t29 = java.lang.Math.fma(-dirZ, _sp0, upZ);
+        float _t30 = java.lang.Math.fma(-dirY, _sp0, upY);
+        float _t31 = java.lang.Math.fma(-dirX, _sp0, upX);
+        float _t38 = java.lang.Math.fma(dirY, _t29, -(dirZ * _t30));
+        float _t39 = java.lang.Math.fma(dirX, _t30, -(dirY * _t31));
+        float _t40 = java.lang.Math.fma(dirZ, _t31, -dirX * _t29);
+        float _ct0 = java.lang.Math.fma(_t39, _t39, java.lang.Math.fma(_t38, _t38, _t40 * _t40));
+        if (!(_ct0 > java.lang.Math.fma(_t8, epsilon * java.lang.Math.fma(upZ, upZ, java.lang.Math.fma(upX, upX, upY * upY)), 1.1754944E-38f) && _ct0 < Float.POSITIVE_INFINITY)) return makeRotationLookAlong_rh_degenerate_fma(dirX, dirY, dirZ, upX, upY, upZ, epsilon);
+        float _t47 = (1.0f / (float) java.lang.Math.sqrt(_ct0));
+        float _t17 = dirX * _t16;
+        float _t18 = dirZ * _t16;
+        return makeRotationLookAlong_rh_s1465dddc_1_fma(dirX, dirY, _t16, _t38, _t39, _t40, _t47, -dirZ, _t17, _t18, dirY * _t16, -_t18, -_t17, java.lang.Math.fma(dirZ, _t16, 1.0f), -_t38, _t39 * _t47, _t38 * _t47, _t40 * _t47);
+    }
+
+    /**
+     * Private body of {@code makeRotationLookAlong} for {@code Handedness.RIGHT_HANDED}; reached
+     * only through the public {@code makeRotationLookAlong} dispatcher.
+     */
+    private static FloatQuat makeRotationLookAlong_rh_mulAdd(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, float epsilon) {
+        float _t8 = ((dirZ) * (dirZ) + (((dirX) * (dirX) + (dirY * dirY))));
+        float _sp0 = ((dirZ) * (upZ) + (((dirX) * (upX) + (dirY * upY)))) / _t8;
+        if (!(_t8 > 1.1754944E-38f && _t8 < Float.POSITIVE_INFINITY)) return makeRotationLookAlong_rh_degenerate_mulAdd(dirX, dirY, dirZ, upX, upY, upZ, epsilon);
+        float _t16 = (1.0f / (float) java.lang.Math.sqrt(_t8));
+        float _t29 = ((upZ) - (dirZ) * (_sp0));
+        float _t30 = ((upY) - (dirY) * (_sp0));
+        float _t31 = ((upX) - (dirX) * (_sp0));
+        float _t38 = ((dirY) * (_t29) - (dirZ * _t30));
+        float _t39 = ((dirX) * (_t30) - (dirY * _t31));
+        float _t40 = ((dirZ) * (_t31) - (dirX * _t29));
+        float _ct0 = ((_t39) * (_t39) + (((_t38) * (_t38) + (_t40 * _t40))));
+        if (!(_ct0 > ((_t8) * (epsilon * ((upZ) * (upZ) + (((upX) * (upX) + (upY * upY))))) + (1.1754944E-38f)) && _ct0 < Float.POSITIVE_INFINITY)) return makeRotationLookAlong_rh_degenerate_mulAdd(dirX, dirY, dirZ, upX, upY, upZ, epsilon);
+        float _t47 = (1.0f / (float) java.lang.Math.sqrt(_ct0));
+        float _t17 = dirX * _t16;
+        float _t18 = dirZ * _t16;
+        return makeRotationLookAlong_rh_s1465dddc_1_mulAdd(dirX, dirY, _t16, _t38, _t39, _t40, _t47, -dirZ, _t17, _t18, dirY * _t16, -_t18, -_t17, ((dirZ) * (_t16) + (1.0f)), -_t38, _t39 * _t47, _t38 * _t47, _t40 * _t47);
+    }
+
+    /**
+     * Degenerate-input path of {@code makeRotationLookAlong}: its methods leave here when their
+     * input spans no proper basis (a zero direction, an up vector parallel to it or zero, NaN);
+     * reached only through them.
+     */
+    private static FloatQuat makeRotationLookAlong_rh_degenerate_fma(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, float epsilon) {
+        float _t0 = unitScale(dirX, dirY, dirZ);
+        float _t1 = unitScale(upX, upY, upZ);
+        float _t8 = dirZ * _t0;
+        float _t9 = dirX * _t0;
+        float _t10 = dirY * _t0;
+        float _t16 = java.lang.Math.fma(_t8, _t8, java.lang.Math.fma(_t9, _t9, _t10 * _t10));
+        float _t17 = (1.0f / (float) java.lang.Math.sqrt(_t16));
+        float _t21, _t22, _t23, _t24, _t25, _t26;
+        if (_t16 == 0.0f) {
+            _t21 = 0.0f;
+            _t22 = 0.0f;
+            _t23 = 1.0f;
+            _t24 = -1.0f;
+            _t25 = 0.0f;
+            _t26 = 0.0f;
+        } else {
+            _t21 = upZ * _t1;
+            _t22 = upX * _t1;
+            _t23 = upY * _t1;
+            _t24 = _t17 * _t8;
+            _t25 = _t17 * _t9;
+            _t26 = _t17 * _t10;
+        }
+        float _t29 = -_t26;
+        float _t30 = -_t24;
+        float _t37, _t38, _t42;
+        if (java.lang.Math.abs(_t25) > java.lang.Math.abs(_t24)) {
+            _t37 = 0.0f;
+            _t38 = _t29;
+            _t42 = _t25;
+        } else {
+            _t37 = _t26;
+            _t38 = 0.0f;
+            _t42 = _t30;
+        }
+        float _t44 = -java.lang.Math.fma(_t24, _t21, java.lang.Math.fma(_t25, _t22, _t26 * _t23));
+        float _t45 = java.lang.Math.fma(_t44, _t26, _t23);
+        float _t46 = java.lang.Math.fma(_t44, _t25, _t22);
+        float _t47 = java.lang.Math.fma(_t44, _t24, _t21);
+        return makeRotationLookAlong_rh_degenerate_s65a2e42b_1_fma(epsilon, _t21, _t22, _t23, _t24, _t25, _t26, _t29, _t30, 1.0f - _t24, 1.0f + _t24, _t37, _t38, _t42, _t45, _t47, java.lang.Math.fma(_t45, _t25, _t46 * -_t26), java.lang.Math.fma(_t46, _t24, -(_t47 * _t25)));
+    }
+
+    /**
+     * Degenerate-input path of {@code makeRotationLookAlong}: its methods leave here when their
+     * input spans no proper basis (a zero direction, an up vector parallel to it or zero, NaN);
+     * reached only through them.
+     */
+    private static FloatQuat makeRotationLookAlong_rh_degenerate_mulAdd(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, float epsilon) {
+        float _t0 = unitScale(dirX, dirY, dirZ);
+        float _t1 = unitScale(upX, upY, upZ);
+        float _t8 = dirZ * _t0;
+        float _t9 = dirX * _t0;
+        float _t10 = dirY * _t0;
+        float _t16 = ((_t8) * (_t8) + (((_t9) * (_t9) + (_t10 * _t10))));
+        float _t17 = (1.0f / (float) java.lang.Math.sqrt(_t16));
+        float _t21, _t22, _t23, _t24, _t25, _t26;
+        if (_t16 == 0.0f) {
+            _t21 = 0.0f;
+            _t22 = 0.0f;
+            _t23 = 1.0f;
+            _t24 = -1.0f;
+            _t25 = 0.0f;
+            _t26 = 0.0f;
+        } else {
+            _t21 = upZ * _t1;
+            _t22 = upX * _t1;
+            _t23 = upY * _t1;
+            _t24 = _t17 * _t8;
+            _t25 = _t17 * _t9;
+            _t26 = _t17 * _t10;
+        }
+        float _t29 = -_t26;
+        float _t30 = -_t24;
+        float _t37, _t38, _t42;
+        if (java.lang.Math.abs(_t25) > java.lang.Math.abs(_t24)) {
+            _t37 = 0.0f;
+            _t38 = _t29;
+            _t42 = _t25;
+        } else {
+            _t37 = _t26;
+            _t38 = 0.0f;
+            _t42 = _t30;
+        }
+        float _t44 = -((_t24) * (_t21) + (((_t25) * (_t22) + (_t26 * _t23))));
+        float _t45 = ((_t44) * (_t26) + (_t23));
+        float _t46 = ((_t44) * (_t25) + (_t22));
+        float _t47 = ((_t44) * (_t24) + (_t21));
+        return makeRotationLookAlong_rh_degenerate_s65a2e42b_1_mulAdd(epsilon, _t21, _t22, _t23, _t24, _t25, _t26, _t29, _t30, 1.0f - _t24, 1.0f + _t24, _t37, _t38, _t42, _t45, _t47, ((_t45) * (_t25) - (_t46 * _t26)), ((_t46) * (_t24) - (_t47 * _t25)));
+    }
+
+    /** Piece 2 of {@code makeRotationLookAlong_rh_degenerate}, split to fit the inline budget; reached only through it. */
+    private static FloatQuat makeRotationLookAlong_rh_degenerate_s65a2e42b_1_fma(float epsilon, float _t21, float _t22, float _t23, float _t24, float _t25, float _t26, float _t29, float _t30, float _t32, float _t33, float _t37, float _t38, float _t42, float _t45, float _t47, float _t56, float _t57) {
+        float _t58 = java.lang.Math.fma(_t47, _t26, _t45 * -_t24);
+        float _t62 = java.lang.Math.fma(_t56, _t56, java.lang.Math.fma(_t57, _t57, _t58 * _t58));
+        float _t63, _t64, _t65, _t67;
+        if (_t62 <= epsilon * java.lang.Math.fma(_t21, _t21, java.lang.Math.fma(_t22, _t22, _t23 * _t23))) {
+            _t63 = _t37;
+            _t64 = _t38;
+            _t65 = _t42;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(java.lang.Math.fma(_t37, _t37, java.lang.Math.fma(_t38, _t38, _t42 * _t42))));
+        } else {
+            _t63 = _t56;
+            _t64 = _t58;
+            _t65 = _t57;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(_t62));
+        }
+        float _t69 = _t67 * _t63;
+        float _t70 = _t67 * _t64;
+        float _t71 = -_t69;
+        float _t72 = -_t70;
+        float _t73 = _t67 * _t65;
+        return makeRotationLookAlong_rh_degenerate_s57efa25_2_fma(_t24, _t25, _t30, _t32, _t33, _t64, _t65, _t67, -_t67, _t69, _t70, _t71, _t72, java.lang.Math.fma(_t67, _t63, _t25), java.lang.Math.fma(_t67, _t63, -_t25), java.lang.Math.fma(_t69, _t25, -(_t70 * _t24)), java.lang.Math.fma(_t73, _t24, -(_t69 * _t26)), java.lang.Math.fma(_t72, _t26, java.lang.Math.fma(_t73, _t25, _t29)), java.lang.Math.fma(_t70, _t26, java.lang.Math.fma(_t73, -_t25, _t29)), java.lang.Math.fma(_t69, _t25, java.lang.Math.fma(_t72, _t24, java.lang.Math.fma(_t67, _t64, _t32))), java.lang.Math.fma(_t67, _t64, java.lang.Math.fma(_t71, _t25, java.lang.Math.fma(_t70, _t24, _t33))));
+    }
+
+    /** Piece 2 of {@code makeRotationLookAlong_rh_degenerate}, split to fit the inline budget; reached only through it. */
+    private static FloatQuat makeRotationLookAlong_rh_degenerate_s65a2e42b_1_mulAdd(float epsilon, float _t21, float _t22, float _t23, float _t24, float _t25, float _t26, float _t29, float _t30, float _t32, float _t33, float _t37, float _t38, float _t42, float _t45, float _t47, float _t56, float _t57) {
+        float _t58 = ((_t47) * (_t26) - (_t45 * _t24));
+        float _t62 = ((_t56) * (_t56) + (((_t57) * (_t57) + (_t58 * _t58))));
+        float _t63, _t64, _t65, _t67;
+        if (_t62 <= epsilon * ((_t21) * (_t21) + (((_t22) * (_t22) + (_t23 * _t23))))) {
+            _t63 = _t37;
+            _t64 = _t38;
+            _t65 = _t42;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(((_t37) * (_t37) + (((_t38) * (_t38) + (_t42 * _t42))))));
+        } else {
+            _t63 = _t56;
+            _t64 = _t58;
+            _t65 = _t57;
+            _t67 = (1.0f / (float) java.lang.Math.sqrt(_t62));
+        }
+        float _t69 = _t67 * _t63;
+        float _t70 = _t67 * _t64;
+        float _t71 = -_t69;
+        float _t72 = -_t70;
+        float _t73 = _t67 * _t65;
+        return makeRotationLookAlong_rh_degenerate_s57efa25_2_mulAdd(_t24, _t25, _t30, _t32, _t33, _t64, _t65, _t67, -_t67, _t69, _t70, _t71, _t72, ((_t67) * (_t63) + (_t25)), ((_t67) * (_t63) - (_t25)), ((_t69) * (_t25) - (_t70 * _t24)), ((_t73) * (_t24) - (_t69 * _t26)), ((_t72) * (_t26) + (((_t73) * (_t25) + (_t29)))), ((_t70) * (_t26) + (((_t29) - (_t73) * (_t25)))), ((_t69) * (_t25) + (((_t72) * (_t24) + (((_t67) * (_t64) + (_t32)))))), ((_t67) * (_t64) + (((_t71) * (_t25) + (((_t70) * (_t24) + (_t33)))))));
+    }
+
+    /**
+     * Create a "look along" view rotation looking along {@code dir} (the rotation of a "look at"
+     * view transformation with the eye at the origin).
+     * <p>
+     * Degenerate input still gives a proper rotation: an up vector parallel to the view direction
+     * (to within the angle whose squared sine is {@code epsilon}) or zero is replaced by one
+     * perpendicular to it, and a zero view direction gives the identity orientation; NaN input
+     * gives NaN. The rotation is orthonormal to working precision for vectors of any finite length,
+     * an up vector however close to the view direction included. (The raw-storage {@code *Ops}
+     * kernels need a non-zero direction and up vector that are not parallel.)
+     * <p>
+     * Valid input: {@code epsilon} must not be negative.
+     *
+     * @param dir the direction to look along, i.e. the direction mapped to {@code -z}
+     *        (right-handed) or {@code +z} (left-handed)
+     * @param up the direction of "up"
+     * @param epsilon the squared sine of the angle between {@code up} and the direction at or below
+     *        which they count as parallel (a direction perpendicular to the view then takes the
+     *        place of {@code up}); the overload without it uses {@code 2^-36}
+     * @param handedness the handedness of the coordinate system to map into
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationLookAlong(Float3 dir, Float3 up, float epsilon, Handedness handedness) {
+        switch (handedness) {
+            case LEFT_HANDED -> { return (org.joml2.internal.FmaSwitch.ON ? makeRotationLookAlong_lh_fma(dir, up, epsilon) : makeRotationLookAlong_lh_mulAdd(dir, up, epsilon)); }
+            default -> { return (org.joml2.internal.FmaSwitch.ON ? makeRotationLookAlong_rh_fma(dir, up, epsilon) : makeRotationLookAlong_rh_mulAdd(dir, up, epsilon)); }
+        }
+    }
+
+    /**
+     * Create a "look along" view rotation looking along ({@code dirX}, {@code dirY}, {@code dirZ})
+     * (the rotation of a "look at" view transformation with the eye at the origin).
+     * <p>
+     * Degenerate input still gives a proper rotation: an up vector parallel to the view direction
+     * (to within the angle whose squared sine is {@code epsilon}) or zero is replaced by one
+     * perpendicular to it, and a zero view direction gives the identity orientation; NaN input
+     * gives NaN. The rotation is orthonormal to working precision for vectors of any finite length,
+     * an up vector however close to the view direction included. (The raw-storage {@code *Ops}
+     * kernels need a non-zero direction and up vector that are not parallel.)
+     * <p>
+     * Valid input: {@code epsilon} must not be negative.
+     *
+     * @param dirX the {@code x} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param dirY the {@code y} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param dirZ the {@code z} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param upX the {@code x} component of the vector {@code (upX, upY, upZ)}
+     * @param upY the {@code y} component of the vector {@code (upX, upY, upZ)}
+     * @param upZ the {@code z} component of the vector {@code (upX, upY, upZ)}
+     * @param epsilon the squared sine of the angle between {@code up} and the direction at or below
+     *        which they count as parallel (a direction perpendicular to the view then takes the
+     *        place of {@code up}); the overload without it uses {@code 2^-36}
+     * @param handedness the handedness of the coordinate system to map into
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationLookAlong(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, float epsilon, Handedness handedness) {
+        switch (handedness) {
+            case LEFT_HANDED -> { return (org.joml2.internal.FmaSwitch.ON ? makeRotationLookAlong_lh_fma(dirX, dirY, dirZ, upX, upY, upZ, epsilon) : makeRotationLookAlong_lh_mulAdd(dirX, dirY, dirZ, upX, upY, upZ, epsilon)); }
+            default -> { return (org.joml2.internal.FmaSwitch.ON ? makeRotationLookAlong_rh_fma(dirX, dirY, dirZ, upX, upY, upZ, epsilon) : makeRotationLookAlong_rh_mulAdd(dirX, dirY, dirZ, upX, upY, upZ, epsilon)); }
+        }
+    }
+
+    /**
+     * Create a "look along" view rotation looking along {@code dir} (the rotation of a "look at"
+     * view transformation with the eye at the origin).
+     * <p>
+     * Degenerate input still gives a proper rotation: an up vector parallel to the view direction
+     * (to within the angle whose squared sine is {@code epsilon}) or zero is replaced by one
+     * perpendicular to it, and a zero view direction gives the identity orientation; NaN input
+     * gives NaN. The rotation is orthonormal to working precision for vectors of any finite length,
+     * an up vector however close to the view direction included. (The raw-storage {@code *Ops}
+     * kernels need a non-zero direction and up vector that are not parallel.)
+     * <p>
+     * Uses {@link Handedness#RIGHT_HANDED} for {@code handedness}.
+     * <p>
+     * Valid input: {@code epsilon} must not be negative.
+     *
+     * @param dir the direction to look along, i.e. the direction mapped to {@code -z}
+     *        (right-handed) or {@code +z} (left-handed)
+     * @param up the direction of "up"
+     * @param epsilon the squared sine of the angle between {@code up} and the direction at or below
+     *        which they count as parallel (a direction perpendicular to the view then takes the
+     *        place of {@code up}); the overload without it uses {@code 2^-36}
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationLookAlong(Float3 dir, Float3 up, float epsilon) { return (org.joml2.internal.FmaSwitch.ON ? makeRotationLookAlong_rh_fma(dir, up, epsilon) : makeRotationLookAlong_rh_mulAdd(dir, up, epsilon)); }
+
+    /**
+     * Create a "look along" view rotation looking along ({@code dirX}, {@code dirY}, {@code dirZ})
+     * (the rotation of a "look at" view transformation with the eye at the origin).
+     * <p>
+     * Degenerate input still gives a proper rotation: an up vector parallel to the view direction
+     * (to within the angle whose squared sine is {@code epsilon}) or zero is replaced by one
+     * perpendicular to it, and a zero view direction gives the identity orientation; NaN input
+     * gives NaN. The rotation is orthonormal to working precision for vectors of any finite length,
+     * an up vector however close to the view direction included. (The raw-storage {@code *Ops}
+     * kernels need a non-zero direction and up vector that are not parallel.)
+     * <p>
+     * Uses {@link Handedness#RIGHT_HANDED} for {@code handedness}.
+     * <p>
+     * Valid input: {@code epsilon} must not be negative.
+     *
+     * @param dirX the {@code x} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param dirY the {@code y} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param dirZ the {@code z} component of the vector {@code (dirX, dirY, dirZ)}
+     * @param upX the {@code x} component of the vector {@code (upX, upY, upZ)}
+     * @param upY the {@code y} component of the vector {@code (upX, upY, upZ)}
+     * @param upZ the {@code z} component of the vector {@code (upX, upY, upZ)}
+     * @param epsilon the squared sine of the angle between {@code up} and the direction at or below
+     *        which they count as parallel (a direction perpendicular to the view then takes the
+     *        place of {@code up}); the overload without it uses {@code 2^-36}
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationLookAlong(float dirX, float dirY, float dirZ, float upX, float upY, float upZ, float epsilon) { return (org.joml2.internal.FmaSwitch.ON ? makeRotationLookAlong_rh_fma(dirX, dirY, dirZ, upX, upY, upZ, epsilon) : makeRotationLookAlong_rh_mulAdd(dirX, dirY, dirZ, upX, upY, upZ, epsilon)); }
+
+    /**
+     * Create the rotation that rotates {@code fromDir} onto {@code toDir} (for opposite vectors an
+     * arbitrary perpendicular rotation axis is chosen).
+     * <p>
+     * The half-vector form stays accurate for nearly antiparallel inputs down to the 180-degree
+     * fallback, which is taken when {@code 1 + dot(fromDir, toDir)} is no larger than {@code 6e-8}
+     * (about 3.5e-4 radians, 0.02 degrees, from opposite); only there is the perpendicular axis
+     * chosen arbitrarily, and the result is then off by at most that angle.
+     * <p>
+     * Valid input: {@code fromDir} must have unit length; {@code toDir} must have unit length.
+     *
+     * @param fromDir the direction to rotate from (must be a unit vector)
+     * @param toDir the direction to rotate onto (must be a unit vector)
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationTo(Float3 fromDir, Float3 toDir) {
+        return makeRotationTo(fromDir.x(), fromDir.y(), fromDir.z(), toDir.x(), toDir.y(), toDir.z());
+    }
+
+    /** Private tail of {@code makeRotationTo}; reached only through it. */
+    private static FloatQuat makeRotationTo_sb47fb53_tail_fma(float _t29, float _t23, float _t16, float _t15, float _t17, float _t24, float _t13, float _t19, float _t18) {
+        float _t30 = (1.0f / (float) java.lang.Math.sqrt(_t29));
+        float _t32 = (1.0f / (float) java.lang.Math.sqrt(java.lang.Math.fma(0.25f, _t23 * _t23, java.lang.Math.fma(_t16, _t16, java.lang.Math.fma(_t15, _t15, _t17 * _t17)))));
+        if (_t24 > 6.0E-8f) {
+            return new FloatQuat(_t15 * _t32, _t17 * _t32, _t16 * _t32, _t24 * _t32);
+        } else {
+            if (_t29 != 0.0f) {
+                return new FloatQuat(_t30 * _t13, _t30 * _t19, _t30 * _t18, 0.0f);
+            } else {
+                return FloatQuat.ZERO;
+            }
+        }
+    }
+
+    /** Private tail of {@code makeRotationTo}; reached only through it. */
+    private static FloatQuat makeRotationTo_sb47fb53_tail_mulAdd(float _t29, float _t23, float _t16, float _t15, float _t17, float _t24, float _t13, float _t19, float _t18) {
+        float _t30 = (1.0f / (float) java.lang.Math.sqrt(_t29));
+        float _t32 = (1.0f / (float) java.lang.Math.sqrt(((0.25f) * (_t23 * _t23) + (((_t16) * (_t16) + (((_t15) * (_t15) + (_t17 * _t17))))))));
+        if (_t24 > 6.0E-8f) {
+            return new FloatQuat(_t15 * _t32, _t17 * _t32, _t16 * _t32, _t24 * _t32);
+        } else {
+            if (_t29 != 0.0f) {
+                return new FloatQuat(_t30 * _t13, _t30 * _t19, _t30 * _t18, 0.0f);
+            } else {
+                return FloatQuat.ZERO;
+            }
+        }
+    }
+
+    /**
+     * Create the rotation that rotates ({@code fromDirX}, {@code fromDirY}, {@code fromDirZ}) onto
+     * ({@code toDirX}, {@code toDirY}, {@code toDirZ}) (for opposite vectors an arbitrary
+     * perpendicular rotation axis is chosen).
+     * <p>
+     * The half-vector form stays accurate for nearly antiparallel inputs down to the 180-degree
+     * fallback, which is taken when {@code 1 + dot(fromDir, toDir)} is no larger than {@code 6e-8}
+     * (about 3.5e-4 radians, 0.02 degrees, from opposite); only there is the perpendicular axis
+     * chosen arbitrarily, and the result is then off by at most that angle.
+     * <p>
+     * Valid input: {@code (fromDirX, fromDirY, fromDirZ)} must have unit length;
+     * {@code (toDirX, toDirY, toDirZ)} must have unit length.
+     *
+     * @param fromDirX the {@code x} component of the vector {@code (fromDirX, fromDirY, fromDirZ)}
+     * @param fromDirY the {@code y} component of the vector {@code (fromDirX, fromDirY, fromDirZ)}
+     * @param fromDirZ the {@code z} component of the vector {@code (fromDirX, fromDirY, fromDirZ)}
+     * @param toDirX the {@code x} component of the vector {@code (toDirX, toDirY, toDirZ)}
+     * @param toDirY the {@code y} component of the vector {@code (toDirX, toDirY, toDirZ)}
+     * @param toDirZ the {@code z} component of the vector {@code (toDirX, toDirY, toDirZ)}
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationTo(float fromDirX, float fromDirY, float fromDirZ, float toDirX, float toDirY, float toDirZ) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t4 = fromDirZ + toDirZ;
+            float _t5 = fromDirX + toDirX;
+            float _t6 = fromDirY + toDirY;
+            float _t13, _t18, _t19;
+            if (java.lang.Math.abs(fromDirZ) < java.lang.Math.abs(fromDirX)) {
+                _t13 = fromDirY;
+                _t18 = 0.0f;
+                _t19 = -fromDirX;
+            } else {
+                _t13 = 0.0f;
+                _t18 = -fromDirY;
+                _t19 = fromDirZ;
+            }
+            float _t23 = java.lang.Math.fma(_t4, _t4, java.lang.Math.fma(_t5, _t5, _t6 * _t6));
+            return makeRotationTo_sb47fb53_tail_fma(java.lang.Math.fma(_t18, _t18, java.lang.Math.fma(_t13, _t13, _t19 * _t19)), _t23, java.lang.Math.fma(fromDirX, toDirY, -fromDirY * toDirX), java.lang.Math.fma(fromDirY, toDirZ, -(fromDirZ * toDirY)), java.lang.Math.fma(fromDirZ, toDirX, -fromDirX * toDirZ), 0.5f * _t23, _t13, _t19, _t18);
+        } else {
+            float _t4 = fromDirZ + toDirZ;
+            float _t5 = fromDirX + toDirX;
+            float _t6 = fromDirY + toDirY;
+            float _t13, _t18, _t19;
+            if (java.lang.Math.abs(fromDirZ) < java.lang.Math.abs(fromDirX)) {
+                _t13 = fromDirY;
+                _t18 = 0.0f;
+                _t19 = -fromDirX;
+            } else {
+                _t13 = 0.0f;
+                _t18 = -fromDirY;
+                _t19 = fromDirZ;
+            }
+            float _t23 = ((_t4) * (_t4) + (((_t5) * (_t5) + (_t6 * _t6))));
+            return makeRotationTo_sb47fb53_tail_mulAdd(((_t18) * (_t18) + (((_t13) * (_t13) + (_t19 * _t19)))), _t23, ((fromDirX) * (toDirY) - (fromDirY * toDirX)), ((fromDirY) * (toDirZ) - (fromDirZ * toDirY)), ((fromDirZ) * (toDirX) - (fromDirX * toDirZ)), 0.5f * _t23, _t13, _t19, _t18);
+        }
+    }
+
+    /**
+     * Create the rotation that rotates {@code fromDir} onto {@code toDir} (for opposite vectors an
+     * arbitrary perpendicular rotation axis is chosen).
+     * <p>
+     * The half-vector form stays accurate for nearly antiparallel inputs down to the 180-degree
+     * fallback, which is taken when {@code 1 + dot(fromDir, toDir)} is no larger than
+     * {@code epsilon}; only there is the perpendicular axis chosen arbitrarily.
+     * <p>
+     * Valid input: {@code fromDir} must have unit length; {@code toDir} must have unit length;
+     * {@code epsilon} must not be negative.
+     *
+     * @param fromDir the direction to rotate from (must be a unit vector)
+     * @param toDir the direction to rotate onto (must be a unit vector)
+     * @param epsilon the value of {@code 1 + dot(fromDir, toDir)} at or below which the directions
+     *        count as opposite and an arbitrary perpendicular rotation axis is chosen; the overload
+     *        without it uses {@code 6e-8}
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationTo(Float3 fromDir, Float3 toDir, float epsilon) {
+        return makeRotationTo(fromDir.x(), fromDir.y(), fromDir.z(), toDir.x(), toDir.y(), toDir.z(), epsilon);
+    }
+
+    /** Private tail of {@code makeRotationTo}; reached only through it. */
+    private static FloatQuat makeRotationTo_s27e2c0ff_tail_fma(float _t29, float _t23, float _t16, float _t15, float _t17, float _t24, float epsilon, float _t13, float _t19, float _t18) {
+        float _t30 = (1.0f / (float) java.lang.Math.sqrt(_t29));
+        float _t32 = (1.0f / (float) java.lang.Math.sqrt(java.lang.Math.fma(0.25f, _t23 * _t23, java.lang.Math.fma(_t16, _t16, java.lang.Math.fma(_t15, _t15, _t17 * _t17)))));
+        if (_t24 > epsilon) {
+            return new FloatQuat(_t15 * _t32, _t17 * _t32, _t16 * _t32, _t24 * _t32);
+        } else {
+            if (_t29 != 0.0f) {
+                return new FloatQuat(_t30 * _t13, _t30 * _t19, _t30 * _t18, 0.0f);
+            } else {
+                return FloatQuat.ZERO;
+            }
+        }
+    }
+
+    /** Private tail of {@code makeRotationTo}; reached only through it. */
+    private static FloatQuat makeRotationTo_s27e2c0ff_tail_mulAdd(float _t29, float _t23, float _t16, float _t15, float _t17, float _t24, float epsilon, float _t13, float _t19, float _t18) {
+        float _t30 = (1.0f / (float) java.lang.Math.sqrt(_t29));
+        float _t32 = (1.0f / (float) java.lang.Math.sqrt(((0.25f) * (_t23 * _t23) + (((_t16) * (_t16) + (((_t15) * (_t15) + (_t17 * _t17))))))));
+        if (_t24 > epsilon) {
+            return new FloatQuat(_t15 * _t32, _t17 * _t32, _t16 * _t32, _t24 * _t32);
+        } else {
+            if (_t29 != 0.0f) {
+                return new FloatQuat(_t30 * _t13, _t30 * _t19, _t30 * _t18, 0.0f);
+            } else {
+                return FloatQuat.ZERO;
+            }
+        }
+    }
+
+    /**
+     * Create the rotation that rotates ({@code fromDirX}, {@code fromDirY}, {@code fromDirZ}) onto
+     * ({@code toDirX}, {@code toDirY}, {@code toDirZ}) (for opposite vectors an arbitrary
+     * perpendicular rotation axis is chosen).
+     * <p>
+     * The half-vector form stays accurate for nearly antiparallel inputs down to the 180-degree
+     * fallback, which is taken when {@code 1 + dot(fromDir, toDir)} is no larger than
+     * {@code epsilon}; only there is the perpendicular axis chosen arbitrarily.
+     * <p>
+     * Valid input: {@code (fromDirX, fromDirY, fromDirZ)} must have unit length;
+     * {@code (toDirX, toDirY, toDirZ)} must have unit length; {@code epsilon} must not be negative.
+     *
+     * @param fromDirX the {@code x} component of the vector {@code (fromDirX, fromDirY, fromDirZ)}
+     * @param fromDirY the {@code y} component of the vector {@code (fromDirX, fromDirY, fromDirZ)}
+     * @param fromDirZ the {@code z} component of the vector {@code (fromDirX, fromDirY, fromDirZ)}
+     * @param toDirX the {@code x} component of the vector {@code (toDirX, toDirY, toDirZ)}
+     * @param toDirY the {@code y} component of the vector {@code (toDirX, toDirY, toDirZ)}
+     * @param toDirZ the {@code z} component of the vector {@code (toDirX, toDirY, toDirZ)}
+     * @param epsilon the value of {@code 1 + dot(fromDir, toDir)} at or below which the directions
+     *        count as opposite and an arbitrary perpendicular rotation axis is chosen; the overload
+     *        without it uses {@code 6e-8}
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationTo(float fromDirX, float fromDirY, float fromDirZ, float toDirX, float toDirY, float toDirZ, float epsilon) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t4 = fromDirZ + toDirZ;
+            float _t5 = fromDirX + toDirX;
+            float _t6 = fromDirY + toDirY;
+            float _t13, _t18, _t19;
+            if (java.lang.Math.abs(fromDirZ) < java.lang.Math.abs(fromDirX)) {
+                _t13 = fromDirY;
+                _t18 = 0.0f;
+                _t19 = -fromDirX;
+            } else {
+                _t13 = 0.0f;
+                _t18 = -fromDirY;
+                _t19 = fromDirZ;
+            }
+            float _t23 = java.lang.Math.fma(_t4, _t4, java.lang.Math.fma(_t5, _t5, _t6 * _t6));
+            return makeRotationTo_s27e2c0ff_tail_fma(java.lang.Math.fma(_t18, _t18, java.lang.Math.fma(_t13, _t13, _t19 * _t19)), _t23, java.lang.Math.fma(fromDirX, toDirY, -fromDirY * toDirX), java.lang.Math.fma(fromDirY, toDirZ, -(fromDirZ * toDirY)), java.lang.Math.fma(fromDirZ, toDirX, -fromDirX * toDirZ), 0.5f * _t23, epsilon, _t13, _t19, _t18);
+        } else {
+            float _t4 = fromDirZ + toDirZ;
+            float _t5 = fromDirX + toDirX;
+            float _t6 = fromDirY + toDirY;
+            float _t13, _t18, _t19;
+            if (java.lang.Math.abs(fromDirZ) < java.lang.Math.abs(fromDirX)) {
+                _t13 = fromDirY;
+                _t18 = 0.0f;
+                _t19 = -fromDirX;
+            } else {
+                _t13 = 0.0f;
+                _t18 = -fromDirY;
+                _t19 = fromDirZ;
+            }
+            float _t23 = ((_t4) * (_t4) + (((_t5) * (_t5) + (_t6 * _t6))));
+            return makeRotationTo_s27e2c0ff_tail_mulAdd(((_t18) * (_t18) + (((_t13) * (_t13) + (_t19 * _t19)))), _t23, ((fromDirX) * (toDirY) - (fromDirY * toDirX)), ((fromDirY) * (toDirZ) - (fromDirZ * toDirY)), ((fromDirZ) * (toDirX) - (fromDirX * toDirZ)), 0.5f * _t23, epsilon, _t13, _t19, _t18);
+        }
+    }
+
+    /**
+     * Create a rotation of {@code angle} radians about the X axis.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angle the angle in radians
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationX(float angle) {
+        float _t0 = 0.5f * angle;
+        return new FloatQuat(Math.sinWithCos(_t0), 0.0f, 0.0f, Math.cosWithSin(_t0));
+    }
+
+    /**
+     * Create a rotation of {@code angleX}, {@code angleY} and {@code angleZ} radians about the X, Y
+     * and Z axes, in that order (intrinsic rotations, each about the axes the previous ones turned:
+     * the matrix product {@code Rx * Ry * Rz}, so a vector is rotated about the fixed Z axis first,
+     * then Y, then X).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angleX the angle in radians to rotate about the X axis
+     * @param angleY the angle in radians to rotate about the Y axis
+     * @param angleZ the angle in radians to rotate about the Z axis
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationXYZ(float angleX, float angleY, float angleZ) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = 0.5f * angleX;
+            float _t1 = 0.5f * angleY;
+            float _t2 = 0.5f * angleZ;
+            float _t3 = Math.sinWithCos(_t0);
+            float _t4 = Math.cosWithSin(_t1);
+            float _t5 = Math.cosWithSin(_t2);
+            float _t6 = Math.sinWithCos(_t1);
+            float _t7 = Math.cosWithSin(_t0);
+            float _t8 = Math.sinWithCos(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t3 * _t6;
+            float _t12 = _t7 * _t4;
+            return new FloatQuat(java.lang.Math.fma(_t9, _t5, _t10 * _t8), java.lang.Math.fma(_t10, _t5, _t9 * -_t8), java.lang.Math.fma(_t11, _t5, _t12 * _t8), java.lang.Math.fma(_t12, _t5, _t11 * -_t8));
+        } else {
+            float _t0 = 0.5f * angleX;
+            float _t1 = 0.5f * angleY;
+            float _t2 = 0.5f * angleZ;
+            float _t3 = Math.sinWithCos(_t0);
+            float _t4 = Math.cosWithSin(_t1);
+            float _t5 = Math.cosWithSin(_t2);
+            float _t6 = Math.sinWithCos(_t1);
+            float _t7 = Math.cosWithSin(_t0);
+            float _t8 = Math.sinWithCos(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t3 * _t6;
+            float _t12 = _t7 * _t4;
+            return new FloatQuat(((_t9) * (_t5) + (_t10 * _t8)), ((_t10) * (_t5) - (_t9 * _t8)), ((_t11) * (_t5) + (_t12 * _t8)), ((_t12) * (_t5) - (_t11 * _t8)));
+        }
+    }
+
+    /**
+     * Create a rotation of {@code angleX}, {@code angleZ} and {@code angleY} radians about the X, Z
+     * and Y axes, in that order (intrinsic rotations, each about the axes the previous ones turned:
+     * the matrix product {@code Rx * Rz * Ry}, so a vector is rotated about the fixed Y axis first,
+     * then Z, then X).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angleX the angle in radians to rotate about the X axis
+     * @param angleZ the angle in radians to rotate about the Z axis
+     * @param angleY the angle in radians to rotate about the Y axis
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationXZY(float angleX, float angleZ, float angleY) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = 0.5f * angleX;
+            float _t1 = 0.5f * angleZ;
+            float _t2 = 0.5f * angleY;
+            float _t3 = Math.sinWithCos(_t0);
+            float _t4 = Math.cosWithSin(_t1);
+            float _t5 = Math.cosWithSin(_t2);
+            float _t6 = Math.sinWithCos(_t1);
+            float _t7 = Math.cosWithSin(_t0);
+            float _t8 = Math.sinWithCos(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t7 * _t4;
+            float _t12 = _t3 * _t6;
+            return new FloatQuat(java.lang.Math.fma(_t9, _t5, -(_t10 * _t8)), java.lang.Math.fma(_t11, _t8, -(_t12 * _t5)), java.lang.Math.fma(_t9, _t8, _t10 * _t5), java.lang.Math.fma(_t12, _t8, _t11 * _t5));
+        } else {
+            float _t0 = 0.5f * angleX;
+            float _t1 = 0.5f * angleZ;
+            float _t2 = 0.5f * angleY;
+            float _t3 = Math.sinWithCos(_t0);
+            float _t4 = Math.cosWithSin(_t1);
+            float _t5 = Math.cosWithSin(_t2);
+            float _t6 = Math.sinWithCos(_t1);
+            float _t7 = Math.cosWithSin(_t0);
+            float _t8 = Math.sinWithCos(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t7 * _t4;
+            float _t12 = _t3 * _t6;
+            return new FloatQuat(((_t9) * (_t5) - (_t10 * _t8)), ((_t11) * (_t8) - (_t12 * _t5)), ((_t9) * (_t8) + (_t10 * _t5)), ((_t12) * (_t8) + (_t11 * _t5)));
+        }
+    }
+
+    /**
+     * Create a rotation of {@code angle} radians about the Y axis.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angle the angle in radians
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationY(float angle) {
+        float _t0 = 0.5f * angle;
+        return new FloatQuat(0.0f, Math.sinWithCos(_t0), 0.0f, Math.cosWithSin(_t0));
+    }
+
+    /**
+     * Create a rotation of {@code angleY}, {@code angleX} and {@code angleZ} radians about the Y, X
+     * and Z axes, in that order (intrinsic rotations, each about the axes the previous ones turned:
+     * the matrix product {@code Ry * Rx * Rz}, so a vector is rotated about the fixed Z axis first,
+     * then X, then Y).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angleY the angle in radians to rotate about the Y axis
+     * @param angleX the angle in radians to rotate about the X axis
+     * @param angleZ the angle in radians to rotate about the Z axis
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationYXZ(float angleY, float angleX, float angleZ) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = 0.5f * angleX;
+            float _t1 = 0.5f * angleY;
+            float _t2 = 0.5f * angleZ;
+            float _t3 = Math.sinWithCos(_t0);
+            float _t4 = Math.cosWithSin(_t1);
+            float _t5 = Math.cosWithSin(_t2);
+            float _t6 = Math.sinWithCos(_t1);
+            float _t7 = Math.cosWithSin(_t0);
+            float _t8 = Math.sinWithCos(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t7 * _t4;
+            float _t12 = _t3 * _t6;
+            return new FloatQuat(java.lang.Math.fma(_t9, _t5, _t10 * _t8), java.lang.Math.fma(_t10, _t5, -(_t9 * _t8)), java.lang.Math.fma(_t11, _t8, -(_t12 * _t5)), java.lang.Math.fma(_t12, _t8, _t11 * _t5));
+        } else {
+            float _t0 = 0.5f * angleX;
+            float _t1 = 0.5f * angleY;
+            float _t2 = 0.5f * angleZ;
+            float _t3 = Math.sinWithCos(_t0);
+            float _t4 = Math.cosWithSin(_t1);
+            float _t5 = Math.cosWithSin(_t2);
+            float _t6 = Math.sinWithCos(_t1);
+            float _t7 = Math.cosWithSin(_t0);
+            float _t8 = Math.sinWithCos(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t7 * _t4;
+            float _t12 = _t3 * _t6;
+            return new FloatQuat(((_t9) * (_t5) + (_t10 * _t8)), ((_t10) * (_t5) - (_t9 * _t8)), ((_t11) * (_t8) - (_t12 * _t5)), ((_t12) * (_t8) + (_t11 * _t5)));
+        }
+    }
+
+    /**
+     * Create a rotation of {@code angleY}, {@code angleZ} and {@code angleX} radians about the Y, Z
+     * and X axes, in that order (intrinsic rotations, each about the axes the previous ones turned:
+     * the matrix product {@code Ry * Rz * Rx}, so a vector is rotated about the fixed X axis first,
+     * then Z, then Y).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angleY the angle in radians to rotate about the Y axis
+     * @param angleZ the angle in radians to rotate about the Z axis
+     * @param angleX the angle in radians to rotate about the X axis
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationYZX(float angleY, float angleZ, float angleX) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = 0.5f * angleY;
+            float _t1 = 0.5f * angleZ;
+            float _t2 = 0.5f * angleX;
+            float _t3 = Math.sinWithCos(_t0);
+            float _t4 = Math.sinWithCos(_t1);
+            float _t5 = Math.cosWithSin(_t2);
+            float _t6 = Math.cosWithSin(_t0);
+            float _t7 = Math.cosWithSin(_t1);
+            float _t8 = Math.sinWithCos(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t3 * _t7;
+            float _t12 = _t4 * _t6;
+            return new FloatQuat(java.lang.Math.fma(_t9, _t5, _t10 * _t8), java.lang.Math.fma(_t11, _t5, _t12 * _t8), java.lang.Math.fma(_t12, _t5, _t11 * -_t8), java.lang.Math.fma(_t10, _t5, _t9 * -_t8));
+        } else {
+            float _t0 = 0.5f * angleY;
+            float _t1 = 0.5f * angleZ;
+            float _t2 = 0.5f * angleX;
+            float _t3 = Math.sinWithCos(_t0);
+            float _t4 = Math.sinWithCos(_t1);
+            float _t5 = Math.cosWithSin(_t2);
+            float _t6 = Math.cosWithSin(_t0);
+            float _t7 = Math.cosWithSin(_t1);
+            float _t8 = Math.sinWithCos(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t3 * _t7;
+            float _t12 = _t4 * _t6;
+            return new FloatQuat(((_t9) * (_t5) + (_t10 * _t8)), ((_t11) * (_t5) + (_t12 * _t8)), ((_t12) * (_t5) - (_t11 * _t8)), ((_t10) * (_t5) - (_t9 * _t8)));
+        }
+    }
+
+    /**
+     * Create a rotation of {@code angle} radians about the Z axis.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angle the angle in radians
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationZ(float angle) {
+        float _t0 = 0.5f * angle;
+        return new FloatQuat(0.0f, 0.0f, Math.sinWithCos(_t0), Math.cosWithSin(_t0));
+    }
+
+    /**
+     * Create a rotation of {@code angleZ}, {@code angleX} and {@code angleY} radians about the Z, X
+     * and Y axes, in that order (intrinsic rotations, each about the axes the previous ones turned:
+     * the matrix product {@code Rz * Rx * Ry}, so a vector is rotated about the fixed Y axis first,
+     * then X, then Z).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angleZ the angle in radians to rotate about the Z axis
+     * @param angleX the angle in radians to rotate about the X axis
+     * @param angleY the angle in radians to rotate about the Y axis
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationZXY(float angleZ, float angleX, float angleY) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = 0.5f * angleX;
+            float _t1 = 0.5f * angleZ;
+            float _t2 = 0.5f * angleY;
+            float _t3 = Math.sinWithCos(_t0);
+            float _t4 = Math.cosWithSin(_t1);
+            float _t5 = Math.cosWithSin(_t2);
+            float _t6 = Math.sinWithCos(_t1);
+            float _t7 = Math.cosWithSin(_t0);
+            float _t8 = Math.sinWithCos(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t3 * _t6;
+            float _t12 = _t7 * _t4;
+            return new FloatQuat(java.lang.Math.fma(_t9, _t5, _t10 * -_t8), java.lang.Math.fma(_t11, _t5, _t12 * _t8), java.lang.Math.fma(_t9, _t8, _t10 * _t5), java.lang.Math.fma(_t12, _t5, _t11 * -_t8));
+        } else {
+            float _t0 = 0.5f * angleX;
+            float _t1 = 0.5f * angleZ;
+            float _t2 = 0.5f * angleY;
+            float _t3 = Math.sinWithCos(_t0);
+            float _t4 = Math.cosWithSin(_t1);
+            float _t5 = Math.cosWithSin(_t2);
+            float _t6 = Math.sinWithCos(_t1);
+            float _t7 = Math.cosWithSin(_t0);
+            float _t8 = Math.sinWithCos(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t3 * _t6;
+            float _t12 = _t7 * _t4;
+            return new FloatQuat(((_t9) * (_t5) - (_t10 * _t8)), ((_t11) * (_t5) + (_t12 * _t8)), ((_t9) * (_t8) + (_t10 * _t5)), ((_t12) * (_t5) - (_t11 * _t8)));
+        }
+    }
+
+    /**
+     * Create a rotation of {@code angleZ}, {@code angleY} and {@code angleX} radians about the Z, Y
+     * and X axes, in that order (intrinsic rotations, each about the axes the previous ones turned:
+     * the matrix product {@code Rz * Ry * Rx}, so a vector is rotated about the fixed X axis first,
+     * then Y, then Z).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angleZ the angle in radians to rotate about the Z axis
+     * @param angleY the angle in radians to rotate about the Y axis
+     * @param angleX the angle in radians to rotate about the X axis
+     * @return the resulting quaternion
+     */
+    public static FloatQuat makeRotationZYX(float angleZ, float angleY, float angleX) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = 0.5f * angleY;
+            float _t1 = 0.5f * angleZ;
+            float _t2 = 0.5f * angleX;
+            float _t3 = Math.cosWithSin(_t0);
+            float _t4 = Math.cosWithSin(_t1);
+            float _t5 = Math.sinWithCos(_t2);
+            float _t6 = Math.sinWithCos(_t0);
+            float _t7 = Math.sinWithCos(_t1);
+            float _t8 = Math.cosWithSin(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t6 * _t4;
+            float _t12 = _t7 * _t3;
+            return new FloatQuat(java.lang.Math.fma(_t9, _t5, -(_t10 * _t8)), java.lang.Math.fma(_t11, _t8, _t12 * _t5), java.lang.Math.fma(_t12, _t8, -(_t11 * _t5)), java.lang.Math.fma(_t10, _t5, _t9 * _t8));
+        } else {
+            float _t0 = 0.5f * angleY;
+            float _t1 = 0.5f * angleZ;
+            float _t2 = 0.5f * angleX;
+            float _t3 = Math.cosWithSin(_t0);
+            float _t4 = Math.cosWithSin(_t1);
+            float _t5 = Math.sinWithCos(_t2);
+            float _t6 = Math.sinWithCos(_t0);
+            float _t7 = Math.sinWithCos(_t1);
+            float _t8 = Math.cosWithSin(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t6 * _t4;
+            float _t12 = _t7 * _t3;
+            return new FloatQuat(((_t9) * (_t5) - (_t10 * _t8)), ((_t11) * (_t8) + (_t12 * _t5)), ((_t12) * (_t8) - (_t11 * _t5)), ((_t10) * (_t5) + (_t9 * _t8)));
+        }
+    }
+
+    /**
+     * Pre-multiply a rotation of {@code angle} radians about the X axis onto this quaternion,
+     * returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code R} the rotation quaternion, then the new
+     * quaternion will be {@code R * Q}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code R * Q * v}, the rotation will be applied last.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angle the angle in radians
+     * @return the resulting quaternion
+     */
+    public FloatQuat preRotateX(float angle) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = 0.5f * angle;
+            float _t1 = Math.cosWithSin(_t0);
+            float _t2 = Math.sinWithCos(_t0);
+            return new FloatQuat(java.lang.Math.fma(this.x, _t1, this.w * _t2), java.lang.Math.fma(this.y, _t1, -(this.z * _t2)), java.lang.Math.fma(this.y, _t2, this.z * _t1), java.lang.Math.fma(this.w, _t1, -(this.x * _t2)));
+        } else {
+            float _t0 = 0.5f * angle;
+            float _t1 = Math.cosWithSin(_t0);
+            float _t2 = Math.sinWithCos(_t0);
+            return new FloatQuat(((this.x) * (_t1) + (this.w * _t2)), ((this.y) * (_t1) - (this.z * _t2)), ((this.y) * (_t2) + (this.z * _t1)), ((this.w) * (_t1) - (this.x * _t2)));
+        }
+    }
+
+    /**
+     * Pre-multiply a rotation of {@code angle} radians about the Y axis onto this quaternion,
+     * returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code R} the rotation quaternion, then the new
+     * quaternion will be {@code R * Q}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code R * Q * v}, the rotation will be applied last.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angle the angle in radians
+     * @return the resulting quaternion
+     */
+    public FloatQuat preRotateY(float angle) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = 0.5f * angle;
+            float _t1 = Math.cosWithSin(_t0);
+            float _t2 = Math.sinWithCos(_t0);
+            return new FloatQuat(java.lang.Math.fma(this.x, _t1, this.z * _t2), java.lang.Math.fma(this.y, _t1, this.w * _t2), java.lang.Math.fma(this.z, _t1, -(this.x * _t2)), java.lang.Math.fma(this.w, _t1, -(this.y * _t2)));
+        } else {
+            float _t0 = 0.5f * angle;
+            float _t1 = Math.cosWithSin(_t0);
+            float _t2 = Math.sinWithCos(_t0);
+            return new FloatQuat(((this.x) * (_t1) + (this.z * _t2)), ((this.y) * (_t1) + (this.w * _t2)), ((this.z) * (_t1) - (this.x * _t2)), ((this.w) * (_t1) - (this.y * _t2)));
+        }
+    }
+
+    /**
+     * Pre-multiply a rotation of {@code angle} radians about the Z axis onto this quaternion,
+     * returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code R} the rotation quaternion, then the new
+     * quaternion will be {@code R * Q}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code R * Q * v}, the rotation will be applied last.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angle the angle in radians
+     * @return the resulting quaternion
+     */
+    public FloatQuat preRotateZ(float angle) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = 0.5f * angle;
+            float _t1 = Math.cosWithSin(_t0);
+            float _t2 = Math.sinWithCos(_t0);
+            return new FloatQuat(java.lang.Math.fma(this.x, _t1, -(this.y * _t2)), java.lang.Math.fma(this.x, _t2, this.y * _t1), java.lang.Math.fma(this.z, _t1, this.w * _t2), java.lang.Math.fma(this.w, _t1, -(this.z * _t2)));
+        } else {
+            float _t0 = 0.5f * angle;
+            float _t1 = Math.cosWithSin(_t0);
+            float _t2 = Math.sinWithCos(_t0);
+            return new FloatQuat(((this.x) * (_t1) - (this.y * _t2)), ((this.x) * (_t2) + (this.y * _t1)), ((this.z) * (_t1) + (this.w * _t2)), ((this.w) * (_t1) - (this.z * _t2)));
+        }
+    }
+
+    /**
+     * Apply a rotation of {@code angle} radians about the axis {@code axis} to this quaternion,
+     * returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code R} the rotation quaternion, then the new
+     * quaternion will be {@code Q * R}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code Q * R * v}, the rotation will be applied first.
+     * <p>
+     * Valid input: {@code axis} must have unit length.
+     *
+     * @param angle the angle in radians
+     * @param axis the rotation axis
+     * @return the resulting quaternion
+     */
+    public FloatQuat rotateAxis(float angle, Float3 axis) {
+        return rotateAxis(angle, axis.x(), axis.y(), axis.z());
+    }
+
+    /**
+     * Apply a rotation of {@code angle} radians about the axis ({@code axisX}, {@code axisY},
+     * {@code axisZ}) to this quaternion, returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code R} the rotation quaternion, then the new
+     * quaternion will be {@code Q * R}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code Q * R * v}, the rotation will be applied first.
+     * <p>
+     * Valid input: {@code (axisX, axisY, axisZ)} must have unit length.
+     *
+     * @param angle the angle in radians
+     * @param axisX the {@code x} component of the rotation axis {@code (axisX, axisY, axisZ)}
+     * @param axisY the {@code y} component of the rotation axis {@code (axisX, axisY, axisZ)}
+     * @param axisZ the {@code z} component of the rotation axis {@code (axisX, axisY, axisZ)}
+     * @return the resulting quaternion
+     */
+    public FloatQuat rotateAxis(float angle, float axisX, float axisY, float axisZ) {
+        if (axisY == 0 && axisZ == 0 && java.lang.Math.abs(axisX) == 1) return rotateX(axisX * angle);
+        if (axisX == 0 && axisZ == 0 && java.lang.Math.abs(axisY) == 1) return rotateY(axisY * angle);
+        if (axisX == 0 && axisY == 0 && java.lang.Math.abs(axisZ) == 1) return rotateZ(axisZ * angle);
+        if (!org.joml2.internal.FmaSwitch.ON) return rotateAxis_mulAdd(angle, axisX, axisY, axisZ);
+        float _t0 = 0.5f * angle;
+        float _t1 = Math.cosWithSin(_t0);
+        float _t2 = Math.sinWithCos(_t0);
+        float _t3 = axisX * _t2;
+        float _t4 = axisZ * _t2;
+        float _t5 = axisY * _t2;
+        return new FloatQuat(java.lang.Math.fma(this.x, _t1, this.w * _t3) + java.lang.Math.fma(this.y, _t4, -(this.z * _t5)), java.lang.Math.fma(this.y, _t1, this.z * _t3) + java.lang.Math.fma(this.w, _t5, -this.x * _t4), java.lang.Math.fma(this.x, _t5, this.w * _t4) + java.lang.Math.fma(this.z, _t1, -(this.y * _t3)), java.lang.Math.fma(this.w, _t1, -this.x * _t3) - java.lang.Math.fma(this.y, _t5, this.z * _t4));
+    }
+
+    /** {@code rotateAxis} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private FloatQuat rotateAxis_mulAdd(float angle, float axisX, float axisY, float axisZ) {
+        float _t0 = 0.5f * angle;
+        float _t1 = Math.cosWithSin(_t0);
+        float _t2 = Math.sinWithCos(_t0);
+        float _t3 = axisX * _t2;
+        float _t4 = axisZ * _t2;
+        float _t5 = axisY * _t2;
+        return new FloatQuat(((this.x) * (_t1) + (this.w * _t3)) + ((this.y) * (_t4) - (this.z * _t5)), ((this.y) * (_t1) + (this.z * _t3)) + ((this.w) * (_t5) - (this.x * _t4)), ((this.x) * (_t5) + (this.w * _t4)) + ((this.z) * (_t1) - (this.y * _t3)), ((this.w) * (_t1) - (this.x * _t3)) - ((this.y) * (_t5) + (this.z * _t4)));
+    }
+
+    /**
+     * Apply the rotation that rotates {@code fromDir} onto {@code toDir} (for opposite vectors an
+     * arbitrary perpendicular rotation axis is chosen) to this quaternion, returning the result as
+     * a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code R} the rotation quaternion, then the new
+     * quaternion will be {@code Q * R}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code Q * R * v}, the rotation will be applied first.
+     * <p>
+     * The half-vector form stays accurate for nearly antiparallel inputs down to the 180-degree
+     * fallback, which is taken when {@code 1 + dot(fromDir, toDir)} is no larger than {@code 6e-8}
+     * (about 3.5e-4 radians, 0.02 degrees, from opposite); only there is the perpendicular axis
+     * chosen arbitrarily, and the result is then off by at most that angle.
+     * <p>
+     * Valid input: {@code fromDir} must have unit length; {@code toDir} must have unit length.
+     *
+     * @param fromDir the direction to rotate from (must be a unit vector)
+     * @param toDir the direction to rotate onto (must be a unit vector)
+     * @return the resulting quaternion
+     */
+    public FloatQuat rotateTo(Float3 fromDir, Float3 toDir) {
+        float fromDirX = fromDir.x();
+        float fromDirY = fromDir.y();
+        float fromDirZ = fromDir.z();
+        float toDirX = toDir.x();
+        float toDirY = toDir.y();
+        float toDirZ = toDir.z();
+        if (!org.joml2.internal.FmaSwitch.ON) return rotateTo_mulAdd(fromDirX, fromDirY, fromDirZ, toDirX, toDirY, toDirZ);
+        float _t4 = fromDirZ + toDirZ;
+        float _t5 = fromDirX + toDirX;
+        float _t6 = fromDirY + toDirY;
+        float _t13, _t18, _t19;
+        if (java.lang.Math.abs(fromDirZ) < java.lang.Math.abs(fromDirX)) {
+            _t13 = fromDirY;
+            _t18 = 0.0f;
+            _t19 = -fromDirX;
+        } else {
+            _t13 = 0.0f;
+            _t18 = -fromDirY;
+            _t19 = fromDirZ;
+        }
+        float _t15 = java.lang.Math.fma(fromDirX, toDirY, -fromDirY * toDirX);
+        float _t16 = java.lang.Math.fma(fromDirY, toDirZ, -(fromDirZ * toDirY));
+        float _t17 = java.lang.Math.fma(fromDirZ, toDirX, -fromDirX * toDirZ);
+        float _t23 = java.lang.Math.fma(_t4, _t4, java.lang.Math.fma(_t5, _t5, _t6 * _t6));
+        float _t29 = java.lang.Math.fma(_t18, _t18, java.lang.Math.fma(_t13, _t13, _t19 * _t19));
+        return rotateTo_sb47fb53_tail_fma(0.5f * _t23, (1.0f / (float) java.lang.Math.sqrt(java.lang.Math.fma(0.25f, _t23 * _t23, java.lang.Math.fma(_t15, _t15, java.lang.Math.fma(_t16, _t16, _t17 * _t17))))), _t16, _t29, (1.0f / (float) java.lang.Math.sqrt(_t29)), _t13, _t15, _t18, _t17, _t19);
+    }
+
+    /** Private tail of {@code rotateTo}; reached only through it. */
+    private FloatQuat rotateTo_sb47fb53_tail_fma(float _t24, float _t35, float _t16, float _t29, float _t30, float _t13, float _t15, float _t18, float _t17, float _t19) {
+        float _t44, _t45, _t46, _t47;
+        if (_t24 > 6.0E-8f) {
+            _t44 = _t24 * _t35;
+            _t45 = _t16 * _t35;
+            _t46 = _t15 * _t35;
+            _t47 = _t17 * _t35;
+        } else {
+            if (_t29 != 0.0f) {
+                _t44 = 0.0f;
+                _t45 = _t30 * _t13;
+                _t46 = _t30 * _t18;
+                _t47 = _t30 * _t19;
+            } else {
+                _t44 = 0.0f;
+                _t45 = 0.0f;
+                _t46 = 0.0f;
+                _t47 = 0.0f;
+            }
+        }
+        return new FloatQuat(java.lang.Math.fma(this.x, _t44, this.w * _t45) + java.lang.Math.fma(this.y, _t46, -(this.z * _t47)), java.lang.Math.fma(this.y, _t44, this.z * _t45) + java.lang.Math.fma(this.w, _t47, -this.x * _t46), java.lang.Math.fma(this.x, _t47, this.w * _t46) + java.lang.Math.fma(this.z, _t44, -(this.y * _t45)), java.lang.Math.fma(this.w, _t44, -this.x * _t45) - java.lang.Math.fma(this.y, _t47, this.z * _t46));
+    }
+
+    /** Private tail of {@code rotateTo}; reached only through it. */
+    private FloatQuat rotateTo_sb47fb53_tail_mulAdd(float _t24, float _t35, float _t16, float _t29, float _t30, float _t13, float _t15, float _t18, float _t17, float _t19) {
+        float _t44, _t45, _t46, _t47;
+        if (_t24 > 6.0E-8f) {
+            _t44 = _t24 * _t35;
+            _t45 = _t16 * _t35;
+            _t46 = _t15 * _t35;
+            _t47 = _t17 * _t35;
+        } else {
+            if (_t29 != 0.0f) {
+                _t44 = 0.0f;
+                _t45 = _t30 * _t13;
+                _t46 = _t30 * _t18;
+                _t47 = _t30 * _t19;
+            } else {
+                _t44 = 0.0f;
+                _t45 = 0.0f;
+                _t46 = 0.0f;
+                _t47 = 0.0f;
+            }
+        }
+        return new FloatQuat(((this.x) * (_t44) + (this.w * _t45)) + ((this.y) * (_t46) - (this.z * _t47)), ((this.y) * (_t44) + (this.z * _t45)) + ((this.w) * (_t47) - (this.x * _t46)), ((this.x) * (_t47) + (this.w * _t46)) + ((this.z) * (_t44) - (this.y * _t45)), ((this.w) * (_t44) - (this.x * _t45)) - ((this.y) * (_t47) + (this.z * _t46)));
+    }
+
+    /**
+     * Apply the rotation that rotates ({@code fromDirX}, {@code fromDirY}, {@code fromDirZ}) onto
+     * ({@code toDirX}, {@code toDirY}, {@code toDirZ}) (for opposite vectors an arbitrary
+     * perpendicular rotation axis is chosen) to this quaternion, returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code R} the rotation quaternion, then the new
+     * quaternion will be {@code Q * R}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code Q * R * v}, the rotation will be applied first.
+     * <p>
+     * The half-vector form stays accurate for nearly antiparallel inputs down to the 180-degree
+     * fallback, which is taken when {@code 1 + dot(fromDir, toDir)} is no larger than {@code 6e-8}
+     * (about 3.5e-4 radians, 0.02 degrees, from opposite); only there is the perpendicular axis
+     * chosen arbitrarily, and the result is then off by at most that angle.
+     * <p>
+     * Valid input: {@code (fromDirX, fromDirY, fromDirZ)} must have unit length;
+     * {@code (toDirX, toDirY, toDirZ)} must have unit length.
+     *
+     * @param fromDirX the {@code x} component of the vector {@code (fromDirX, fromDirY, fromDirZ)}
+     * @param fromDirY the {@code y} component of the vector {@code (fromDirX, fromDirY, fromDirZ)}
+     * @param fromDirZ the {@code z} component of the vector {@code (fromDirX, fromDirY, fromDirZ)}
+     * @param toDirX the {@code x} component of the vector {@code (toDirX, toDirY, toDirZ)}
+     * @param toDirY the {@code y} component of the vector {@code (toDirX, toDirY, toDirZ)}
+     * @param toDirZ the {@code z} component of the vector {@code (toDirX, toDirY, toDirZ)}
+     * @return the resulting quaternion
+     */
+    public FloatQuat rotateTo(float fromDirX, float fromDirY, float fromDirZ, float toDirX, float toDirY, float toDirZ) {
+        if (!org.joml2.internal.FmaSwitch.ON) return rotateTo_mulAdd(fromDirX, fromDirY, fromDirZ, toDirX, toDirY, toDirZ);
+        float _t4 = fromDirZ + toDirZ;
+        float _t5 = fromDirX + toDirX;
+        float _t6 = fromDirY + toDirY;
+        float _t13, _t18, _t19;
+        if (java.lang.Math.abs(fromDirZ) < java.lang.Math.abs(fromDirX)) {
+            _t13 = fromDirY;
+            _t18 = 0.0f;
+            _t19 = -fromDirX;
+        } else {
+            _t13 = 0.0f;
+            _t18 = -fromDirY;
+            _t19 = fromDirZ;
+        }
+        float _t15 = java.lang.Math.fma(fromDirX, toDirY, -fromDirY * toDirX);
+        float _t16 = java.lang.Math.fma(fromDirY, toDirZ, -(fromDirZ * toDirY));
+        float _t17 = java.lang.Math.fma(fromDirZ, toDirX, -fromDirX * toDirZ);
+        float _t23 = java.lang.Math.fma(_t4, _t4, java.lang.Math.fma(_t5, _t5, _t6 * _t6));
+        float _t29 = java.lang.Math.fma(_t18, _t18, java.lang.Math.fma(_t13, _t13, _t19 * _t19));
+        return rotateTo_sb47fb53_tail_fma(0.5f * _t23, (1.0f / (float) java.lang.Math.sqrt(java.lang.Math.fma(0.25f, _t23 * _t23, java.lang.Math.fma(_t15, _t15, java.lang.Math.fma(_t16, _t16, _t17 * _t17))))), _t16, _t29, (1.0f / (float) java.lang.Math.sqrt(_t29)), _t13, _t15, _t18, _t17, _t19);
+    }
+
+    /** {@code rotateTo} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private FloatQuat rotateTo_mulAdd(float fromDirX, float fromDirY, float fromDirZ, float toDirX, float toDirY, float toDirZ) {
+        float _t4 = fromDirZ + toDirZ;
+        float _t5 = fromDirX + toDirX;
+        float _t6 = fromDirY + toDirY;
+        float _t13, _t18, _t19;
+        if (java.lang.Math.abs(fromDirZ) < java.lang.Math.abs(fromDirX)) {
+            _t13 = fromDirY;
+            _t18 = 0.0f;
+            _t19 = -fromDirX;
+        } else {
+            _t13 = 0.0f;
+            _t18 = -fromDirY;
+            _t19 = fromDirZ;
+        }
+        float _t15 = ((fromDirX) * (toDirY) - (fromDirY * toDirX));
+        float _t16 = ((fromDirY) * (toDirZ) - (fromDirZ * toDirY));
+        float _t17 = ((fromDirZ) * (toDirX) - (fromDirX * toDirZ));
+        float _t23 = ((_t4) * (_t4) + (((_t5) * (_t5) + (_t6 * _t6))));
+        float _t29 = ((_t18) * (_t18) + (((_t13) * (_t13) + (_t19 * _t19))));
+        return rotateTo_sb47fb53_tail_mulAdd(0.5f * _t23, (1.0f / (float) java.lang.Math.sqrt(((0.25f) * (_t23 * _t23) + (((_t15) * (_t15) + (((_t16) * (_t16) + (_t17 * _t17)))))))), _t16, _t29, (1.0f / (float) java.lang.Math.sqrt(_t29)), _t13, _t15, _t18, _t17, _t19);
+    }
+
+    /**
+     * Apply the rotation that rotates {@code fromDir} onto {@code toDir} (for opposite vectors an
+     * arbitrary perpendicular rotation axis is chosen) to this quaternion, returning the result as
+     * a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code R} the rotation quaternion, then the new
+     * quaternion will be {@code Q * R}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code Q * R * v}, the rotation will be applied first.
+     * <p>
+     * The half-vector form stays accurate for nearly antiparallel inputs down to the 180-degree
+     * fallback, which is taken when {@code 1 + dot(fromDir, toDir)} is no larger than
+     * {@code epsilon}; only there is the perpendicular axis chosen arbitrarily.
+     * <p>
+     * Valid input: {@code fromDir} must have unit length; {@code toDir} must have unit length;
+     * {@code epsilon} must not be negative.
+     *
+     * @param fromDir the direction to rotate from (must be a unit vector)
+     * @param toDir the direction to rotate onto (must be a unit vector)
+     * @param epsilon the value of {@code 1 + dot(fromDir, toDir)} at or below which the directions
+     *        count as opposite and an arbitrary perpendicular rotation axis is chosen; the overload
+     *        without it uses {@code 6e-8}
+     * @return the resulting quaternion
+     */
+    public FloatQuat rotateTo(Float3 fromDir, Float3 toDir, float epsilon) {
+        float fromDirX = fromDir.x();
+        float fromDirY = fromDir.y();
+        float fromDirZ = fromDir.z();
+        float toDirX = toDir.x();
+        float toDirY = toDir.y();
+        float toDirZ = toDir.z();
+        if (!org.joml2.internal.FmaSwitch.ON) return rotateTo_mulAdd(fromDirX, fromDirY, fromDirZ, toDirX, toDirY, toDirZ, epsilon);
+        float _t4 = fromDirZ + toDirZ;
+        float _t5 = fromDirX + toDirX;
+        float _t6 = fromDirY + toDirY;
+        float _t13, _t18, _t19;
+        if (java.lang.Math.abs(fromDirZ) < java.lang.Math.abs(fromDirX)) {
+            _t13 = fromDirY;
+            _t18 = 0.0f;
+            _t19 = -fromDirX;
+        } else {
+            _t13 = 0.0f;
+            _t18 = -fromDirY;
+            _t19 = fromDirZ;
+        }
+        float _t15 = java.lang.Math.fma(fromDirX, toDirY, -fromDirY * toDirX);
+        float _t16 = java.lang.Math.fma(fromDirY, toDirZ, -(fromDirZ * toDirY));
+        float _t17 = java.lang.Math.fma(fromDirZ, toDirX, -fromDirX * toDirZ);
+        float _t23 = java.lang.Math.fma(_t4, _t4, java.lang.Math.fma(_t5, _t5, _t6 * _t6));
+        float _t29 = java.lang.Math.fma(_t18, _t18, java.lang.Math.fma(_t13, _t13, _t19 * _t19));
+        return rotateTo_s27e2c0ff_tail_fma(0.5f * _t23, epsilon, (1.0f / (float) java.lang.Math.sqrt(java.lang.Math.fma(0.25f, _t23 * _t23, java.lang.Math.fma(_t15, _t15, java.lang.Math.fma(_t16, _t16, _t17 * _t17))))), _t16, _t29, (1.0f / (float) java.lang.Math.sqrt(_t29)), _t13, _t15, _t18, _t17, _t19);
+    }
+
+    /** Private tail of {@code rotateTo}; reached only through it. */
+    private FloatQuat rotateTo_s27e2c0ff_tail_fma(float _t24, float epsilon, float _t35, float _t16, float _t29, float _t30, float _t13, float _t15, float _t18, float _t17, float _t19) {
+        float _t44, _t45, _t46, _t47;
+        if (_t24 > epsilon) {
+            _t44 = _t24 * _t35;
+            _t45 = _t16 * _t35;
+            _t46 = _t15 * _t35;
+            _t47 = _t17 * _t35;
+        } else {
+            if (_t29 != 0.0f) {
+                _t44 = 0.0f;
+                _t45 = _t30 * _t13;
+                _t46 = _t30 * _t18;
+                _t47 = _t30 * _t19;
+            } else {
+                _t44 = 0.0f;
+                _t45 = 0.0f;
+                _t46 = 0.0f;
+                _t47 = 0.0f;
+            }
+        }
+        return new FloatQuat(java.lang.Math.fma(this.x, _t44, this.w * _t45) + java.lang.Math.fma(this.y, _t46, -(this.z * _t47)), java.lang.Math.fma(this.y, _t44, this.z * _t45) + java.lang.Math.fma(this.w, _t47, -this.x * _t46), java.lang.Math.fma(this.x, _t47, this.w * _t46) + java.lang.Math.fma(this.z, _t44, -(this.y * _t45)), java.lang.Math.fma(this.w, _t44, -this.x * _t45) - java.lang.Math.fma(this.y, _t47, this.z * _t46));
+    }
+
+    /** Private tail of {@code rotateTo}; reached only through it. */
+    private FloatQuat rotateTo_s27e2c0ff_tail_mulAdd(float _t24, float epsilon, float _t35, float _t16, float _t29, float _t30, float _t13, float _t15, float _t18, float _t17, float _t19) {
+        float _t44, _t45, _t46, _t47;
+        if (_t24 > epsilon) {
+            _t44 = _t24 * _t35;
+            _t45 = _t16 * _t35;
+            _t46 = _t15 * _t35;
+            _t47 = _t17 * _t35;
+        } else {
+            if (_t29 != 0.0f) {
+                _t44 = 0.0f;
+                _t45 = _t30 * _t13;
+                _t46 = _t30 * _t18;
+                _t47 = _t30 * _t19;
+            } else {
+                _t44 = 0.0f;
+                _t45 = 0.0f;
+                _t46 = 0.0f;
+                _t47 = 0.0f;
+            }
+        }
+        return new FloatQuat(((this.x) * (_t44) + (this.w * _t45)) + ((this.y) * (_t46) - (this.z * _t47)), ((this.y) * (_t44) + (this.z * _t45)) + ((this.w) * (_t47) - (this.x * _t46)), ((this.x) * (_t47) + (this.w * _t46)) + ((this.z) * (_t44) - (this.y * _t45)), ((this.w) * (_t44) - (this.x * _t45)) - ((this.y) * (_t47) + (this.z * _t46)));
+    }
+
+    /**
+     * Apply the rotation that rotates ({@code fromDirX}, {@code fromDirY}, {@code fromDirZ}) onto
+     * ({@code toDirX}, {@code toDirY}, {@code toDirZ}) (for opposite vectors an arbitrary
+     * perpendicular rotation axis is chosen) to this quaternion, returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code R} the rotation quaternion, then the new
+     * quaternion will be {@code Q * R}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code Q * R * v}, the rotation will be applied first.
+     * <p>
+     * The half-vector form stays accurate for nearly antiparallel inputs down to the 180-degree
+     * fallback, which is taken when {@code 1 + dot(fromDir, toDir)} is no larger than
+     * {@code epsilon}; only there is the perpendicular axis chosen arbitrarily.
+     * <p>
+     * Valid input: {@code (fromDirX, fromDirY, fromDirZ)} must have unit length;
+     * {@code (toDirX, toDirY, toDirZ)} must have unit length; {@code epsilon} must not be negative.
+     *
+     * @param fromDirX the {@code x} component of the vector {@code (fromDirX, fromDirY, fromDirZ)}
+     * @param fromDirY the {@code y} component of the vector {@code (fromDirX, fromDirY, fromDirZ)}
+     * @param fromDirZ the {@code z} component of the vector {@code (fromDirX, fromDirY, fromDirZ)}
+     * @param toDirX the {@code x} component of the vector {@code (toDirX, toDirY, toDirZ)}
+     * @param toDirY the {@code y} component of the vector {@code (toDirX, toDirY, toDirZ)}
+     * @param toDirZ the {@code z} component of the vector {@code (toDirX, toDirY, toDirZ)}
+     * @param epsilon the value of {@code 1 + dot(fromDir, toDir)} at or below which the directions
+     *        count as opposite and an arbitrary perpendicular rotation axis is chosen; the overload
+     *        without it uses {@code 6e-8}
+     * @return the resulting quaternion
+     */
+    public FloatQuat rotateTo(float fromDirX, float fromDirY, float fromDirZ, float toDirX, float toDirY, float toDirZ, float epsilon) {
+        if (!org.joml2.internal.FmaSwitch.ON) return rotateTo_mulAdd(fromDirX, fromDirY, fromDirZ, toDirX, toDirY, toDirZ, epsilon);
+        float _t4 = fromDirZ + toDirZ;
+        float _t5 = fromDirX + toDirX;
+        float _t6 = fromDirY + toDirY;
+        float _t13, _t18, _t19;
+        if (java.lang.Math.abs(fromDirZ) < java.lang.Math.abs(fromDirX)) {
+            _t13 = fromDirY;
+            _t18 = 0.0f;
+            _t19 = -fromDirX;
+        } else {
+            _t13 = 0.0f;
+            _t18 = -fromDirY;
+            _t19 = fromDirZ;
+        }
+        float _t15 = java.lang.Math.fma(fromDirX, toDirY, -fromDirY * toDirX);
+        float _t16 = java.lang.Math.fma(fromDirY, toDirZ, -(fromDirZ * toDirY));
+        float _t17 = java.lang.Math.fma(fromDirZ, toDirX, -fromDirX * toDirZ);
+        float _t23 = java.lang.Math.fma(_t4, _t4, java.lang.Math.fma(_t5, _t5, _t6 * _t6));
+        float _t29 = java.lang.Math.fma(_t18, _t18, java.lang.Math.fma(_t13, _t13, _t19 * _t19));
+        return rotateTo_s27e2c0ff_tail_fma(0.5f * _t23, epsilon, (1.0f / (float) java.lang.Math.sqrt(java.lang.Math.fma(0.25f, _t23 * _t23, java.lang.Math.fma(_t15, _t15, java.lang.Math.fma(_t16, _t16, _t17 * _t17))))), _t16, _t29, (1.0f / (float) java.lang.Math.sqrt(_t29)), _t13, _t15, _t18, _t17, _t19);
+    }
+
+    /** {@code rotateTo} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private FloatQuat rotateTo_mulAdd(float fromDirX, float fromDirY, float fromDirZ, float toDirX, float toDirY, float toDirZ, float epsilon) {
+        float _t4 = fromDirZ + toDirZ;
+        float _t5 = fromDirX + toDirX;
+        float _t6 = fromDirY + toDirY;
+        float _t13, _t18, _t19;
+        if (java.lang.Math.abs(fromDirZ) < java.lang.Math.abs(fromDirX)) {
+            _t13 = fromDirY;
+            _t18 = 0.0f;
+            _t19 = -fromDirX;
+        } else {
+            _t13 = 0.0f;
+            _t18 = -fromDirY;
+            _t19 = fromDirZ;
+        }
+        float _t15 = ((fromDirX) * (toDirY) - (fromDirY * toDirX));
+        float _t16 = ((fromDirY) * (toDirZ) - (fromDirZ * toDirY));
+        float _t17 = ((fromDirZ) * (toDirX) - (fromDirX * toDirZ));
+        float _t23 = ((_t4) * (_t4) + (((_t5) * (_t5) + (_t6 * _t6))));
+        float _t29 = ((_t18) * (_t18) + (((_t13) * (_t13) + (_t19 * _t19))));
+        return rotateTo_s27e2c0ff_tail_mulAdd(0.5f * _t23, epsilon, (1.0f / (float) java.lang.Math.sqrt(((0.25f) * (_t23 * _t23) + (((_t15) * (_t15) + (((_t16) * (_t16) + (_t17 * _t17)))))))), _t16, _t29, (1.0f / (float) java.lang.Math.sqrt(_t29)), _t13, _t15, _t18, _t17, _t19);
+    }
+
+    /**
+     * Rotate this quaternion by {@code angle} radians about the local X axis, returning the result
+     * as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angle the angle in radians
+     * @return the resulting quaternion
+     */
+    public FloatQuat rotateX(float angle) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = 0.5f * angle;
+            float _t1 = Math.cosWithSin(_t0);
+            float _t2 = Math.sinWithCos(_t0);
+            return new FloatQuat(java.lang.Math.fma(this.x, _t1, this.w * _t2), java.lang.Math.fma(this.y, _t1, this.z * _t2), java.lang.Math.fma(this.z, _t1, -(this.y * _t2)), java.lang.Math.fma(this.w, _t1, -(this.x * _t2)));
+        } else {
+            float _t0 = 0.5f * angle;
+            float _t1 = Math.cosWithSin(_t0);
+            float _t2 = Math.sinWithCos(_t0);
+            return new FloatQuat(((this.x) * (_t1) + (this.w * _t2)), ((this.y) * (_t1) + (this.z * _t2)), ((this.z) * (_t1) - (this.y * _t2)), ((this.w) * (_t1) - (this.x * _t2)));
+        }
+    }
+
+    /** Private tail of {@code rotateXYZ}; reached only through it. */
+    private FloatQuat rotateXYZ_s6e793366_tail_fma(float _t12, float _t5, float _t11, float _t8, float _t21, float _t19, float _t20) {
+        float _t22 = java.lang.Math.fma(_t12, _t5, _t11 * -_t8);
+        return new FloatQuat(java.lang.Math.fma(this.x, _t21, this.w * _t19) + java.lang.Math.fma(this.y, _t20, -(this.z * _t22)), java.lang.Math.fma(this.y, _t21, this.z * _t19) + java.lang.Math.fma(this.w, _t22, -this.x * _t20), java.lang.Math.fma(this.x, _t22, this.w * _t20) + java.lang.Math.fma(this.z, _t21, -(this.y * _t19)), java.lang.Math.fma(this.w, _t21, -this.x * _t19) - java.lang.Math.fma(this.y, _t22, this.z * _t20));
+    }
+
+    /**
+     * Private tail of {@code rotateXYZ}. Shared by the identical private paths of {@code rotateXYZ}
+     * and {@code rotateXZY}; reached only through them.
+     */
+    private FloatQuat rotateXYZ_s6e793366_tail_mulAdd(float _t12, float _t5, float _t11, float _t8, float _t21, float _t19, float _t20) {
+        float _t22 = ((_t12) * (_t5) - (_t11 * _t8));
+        return new FloatQuat(((this.x) * (_t21) + (this.w * _t19)) + ((this.y) * (_t20) - (this.z * _t22)), ((this.y) * (_t21) + (this.z * _t19)) + ((this.w) * (_t22) - (this.x * _t20)), ((this.x) * (_t22) + (this.w * _t20)) + ((this.z) * (_t21) - (this.y * _t19)), ((this.w) * (_t21) - (this.x * _t19)) - ((this.y) * (_t22) + (this.z * _t20)));
+    }
+
+    /**
+     * Apply a rotation of {@code angleX}, {@code angleY} and {@code angleZ} radians about the X, Y
+     * and Z axes, in that order (intrinsic rotations, each about the axes the previous ones turned:
+     * the matrix product {@code Rx * Ry * Rz}, so a vector is rotated about the fixed Z axis first,
+     * then Y, then X), to this quaternion, returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code R} the rotation quaternion, then the new
+     * quaternion will be {@code Q * R}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code Q * R * v}, the rotation will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angleX the angle in radians to rotate about the X axis
+     * @param angleY the angle in radians to rotate about the Y axis
+     * @param angleZ the angle in radians to rotate about the Z axis
+     * @return the resulting quaternion
+     */
+    public FloatQuat rotateXYZ(float angleX, float angleY, float angleZ) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = 0.5f * angleX;
+            float _t1 = 0.5f * angleY;
+            float _t2 = 0.5f * angleZ;
+            float _t3 = Math.cosWithSin(_t0);
+            float _t4 = Math.cosWithSin(_t1);
+            float _t5 = Math.cosWithSin(_t2);
+            float _t6 = Math.sinWithCos(_t0);
+            float _t7 = Math.sinWithCos(_t1);
+            float _t8 = Math.sinWithCos(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t6 * _t4;
+            float _t12 = _t7 * _t3;
+            return rotateXYZ_s6e793366_tail_fma(_t12, _t5, _t11, _t8, java.lang.Math.fma(_t9, _t5, _t10 * -_t8), java.lang.Math.fma(_t11, _t5, _t12 * _t8), java.lang.Math.fma(_t10, _t5, _t9 * _t8));
+        } else {
+            float _t0 = 0.5f * angleX;
+            float _t1 = 0.5f * angleY;
+            float _t2 = 0.5f * angleZ;
+            float _t3 = Math.cosWithSin(_t0);
+            float _t4 = Math.cosWithSin(_t1);
+            float _t5 = Math.cosWithSin(_t2);
+            float _t6 = Math.sinWithCos(_t0);
+            float _t7 = Math.sinWithCos(_t1);
+            float _t8 = Math.sinWithCos(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t6 * _t4;
+            float _t12 = _t7 * _t3;
+            return rotateXYZ_s6e793366_tail_mulAdd(_t12, _t5, _t11, _t8, ((_t9) * (_t5) - (_t10 * _t8)), ((_t11) * (_t5) + (_t12 * _t8)), ((_t10) * (_t5) + (_t9 * _t8)));
+        }
+    }
+
+    /**
+     * Private tail of {@code rotateXZY}. Shared by the identical private paths of {@code rotateXZY}
+     * and {@code rotateYXZ}; reached only through them.
+     */
+    private FloatQuat rotateXZY_s48549da6_tail_fma(float _t10, float _t5, float _t9, float _t8, float _t19, float _t21, float _t20) {
+        float _t22 = java.lang.Math.fma(_t10, _t5, -(_t9 * _t8));
+        return new FloatQuat(java.lang.Math.fma(this.x, _t19, this.w * _t21) + java.lang.Math.fma(this.y, _t20, -(this.z * _t22)), java.lang.Math.fma(this.y, _t19, this.z * _t21) + java.lang.Math.fma(this.w, _t22, -this.x * _t20), java.lang.Math.fma(this.x, _t22, this.w * _t20) + java.lang.Math.fma(this.z, _t19, -(this.y * _t21)), java.lang.Math.fma(this.w, _t19, -this.x * _t21) - java.lang.Math.fma(this.y, _t22, this.z * _t20));
+    }
+
+    /**
+     * Apply a rotation of {@code angleX}, {@code angleZ} and {@code angleY} radians about the X, Z
+     * and Y axes, in that order (intrinsic rotations, each about the axes the previous ones turned:
+     * the matrix product {@code Rx * Rz * Ry}, so a vector is rotated about the fixed Y axis first,
+     * then Z, then X), to this quaternion, returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code R} the rotation quaternion, then the new
+     * quaternion will be {@code Q * R}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code Q * R * v}, the rotation will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angleX the angle in radians to rotate about the X axis
+     * @param angleZ the angle in radians to rotate about the Z axis
+     * @param angleY the angle in radians to rotate about the Y axis
+     * @return the resulting quaternion
+     */
+    public FloatQuat rotateXZY(float angleX, float angleZ, float angleY) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = 0.5f * angleX;
+            float _t1 = 0.5f * angleZ;
+            float _t2 = 0.5f * angleY;
+            float _t3 = Math.sinWithCos(_t0);
+            float _t4 = Math.sinWithCos(_t1);
+            float _t5 = Math.sinWithCos(_t2);
+            float _t6 = Math.cosWithSin(_t0);
+            float _t7 = Math.cosWithSin(_t1);
+            float _t8 = Math.cosWithSin(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t3 * _t7;
+            float _t12 = _t4 * _t6;
+            return rotateXZY_s48549da6_tail_fma(_t10, _t5, _t9, _t8, java.lang.Math.fma(_t9, _t5, _t10 * _t8), java.lang.Math.fma(_t11, _t8, -(_t12 * _t5)), java.lang.Math.fma(_t11, _t5, _t12 * _t8));
+        } else {
+            float _t0 = 0.5f * angleX;
+            float _t1 = 0.5f * angleZ;
+            float _t2 = 0.5f * angleY;
+            float _t3 = Math.sinWithCos(_t0);
+            float _t4 = Math.sinWithCos(_t1);
+            float _t5 = Math.sinWithCos(_t2);
+            float _t6 = Math.cosWithSin(_t0);
+            float _t7 = Math.cosWithSin(_t1);
+            float _t8 = Math.cosWithSin(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t3 * _t7;
+            float _t12 = _t4 * _t6;
+            return rotateXYZ_s6e793366_tail_mulAdd(_t10, _t5, _t9, _t8, ((_t9) * (_t5) + (_t10 * _t8)), ((_t11) * (_t8) - (_t12 * _t5)), ((_t11) * (_t5) + (_t12 * _t8)));
+        }
+    }
+
+    /**
+     * Rotate this quaternion by {@code angle} radians about the local Y axis, returning the result
+     * as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angle the angle in radians
+     * @return the resulting quaternion
+     */
+    public FloatQuat rotateY(float angle) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = 0.5f * angle;
+            float _t1 = Math.cosWithSin(_t0);
+            float _t2 = Math.sinWithCos(_t0);
+            return new FloatQuat(java.lang.Math.fma(this.x, _t1, -(this.z * _t2)), java.lang.Math.fma(this.y, _t1, this.w * _t2), java.lang.Math.fma(this.x, _t2, this.z * _t1), java.lang.Math.fma(this.w, _t1, -(this.y * _t2)));
+        } else {
+            float _t0 = 0.5f * angle;
+            float _t1 = Math.cosWithSin(_t0);
+            float _t2 = Math.sinWithCos(_t0);
+            return new FloatQuat(((this.x) * (_t1) - (this.z * _t2)), ((this.y) * (_t1) + (this.w * _t2)), ((this.x) * (_t2) + (this.z * _t1)), ((this.w) * (_t1) - (this.y * _t2)));
+        }
+    }
+
+    /**
+     * Apply a rotation of {@code angleY}, {@code angleX} and {@code angleZ} radians about the Y, X
+     * and Z axes, in that order (intrinsic rotations, each about the axes the previous ones turned:
+     * the matrix product {@code Ry * Rx * Rz}, so a vector is rotated about the fixed Z axis first,
+     * then X, then Y), to this quaternion, returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code R} the rotation quaternion, then the new
+     * quaternion will be {@code Q * R}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code Q * R * v}, the rotation will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angleY the angle in radians to rotate about the Y axis
+     * @param angleX the angle in radians to rotate about the X axis
+     * @param angleZ the angle in radians to rotate about the Z axis
+     * @return the resulting quaternion
+     */
+    public FloatQuat rotateYXZ(float angleY, float angleX, float angleZ) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = 0.5f * angleX;
+            float _t1 = 0.5f * angleY;
+            float _t2 = 0.5f * angleZ;
+            float _t3 = Math.sinWithCos(_t0);
+            float _t4 = Math.sinWithCos(_t1);
+            float _t5 = Math.sinWithCos(_t2);
+            float _t6 = Math.cosWithSin(_t0);
+            float _t7 = Math.cosWithSin(_t1);
+            float _t8 = Math.cosWithSin(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t3 * _t7;
+            float _t12 = _t4 * _t6;
+            return rotateXZY_s48549da6_tail_fma(_t12, _t8, _t11, _t5, java.lang.Math.fma(_t9, _t5, _t10 * _t8), java.lang.Math.fma(_t11, _t8, _t12 * _t5), java.lang.Math.fma(_t10, _t5, -(_t9 * _t8)));
+        } else {
+            float _t0 = 0.5f * angleX;
+            float _t1 = 0.5f * angleY;
+            float _t2 = 0.5f * angleZ;
+            float _t3 = Math.sinWithCos(_t0);
+            float _t4 = Math.sinWithCos(_t1);
+            float _t5 = Math.sinWithCos(_t2);
+            float _t6 = Math.cosWithSin(_t0);
+            float _t7 = Math.cosWithSin(_t1);
+            float _t8 = Math.cosWithSin(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t3 * _t7;
+            float _t12 = _t4 * _t6;
+            return rotateXYZ_s6e793366_tail_mulAdd(_t12, _t8, _t11, _t5, ((_t9) * (_t5) + (_t10 * _t8)), ((_t11) * (_t8) + (_t12 * _t5)), ((_t10) * (_t5) - (_t9 * _t8)));
+        }
+    }
+
+    /** Private tail of {@code rotateYZX}; reached only through it. */
+    private FloatQuat rotateYZX_s71a48226_tail_fma(float _t11, float _t5, float _t12, float _t8, float _t21, float _t19, float _t20) {
+        float _t22 = java.lang.Math.fma(_t11, _t5, _t12 * -_t8);
+        return new FloatQuat(java.lang.Math.fma(this.x, _t21, this.w * _t19) + java.lang.Math.fma(this.y, _t22, -(this.z * _t20)), java.lang.Math.fma(this.y, _t21, this.z * _t19) + java.lang.Math.fma(this.w, _t20, -this.x * _t22), java.lang.Math.fma(this.x, _t20, this.w * _t22) + java.lang.Math.fma(this.z, _t21, -(this.y * _t19)), java.lang.Math.fma(this.w, _t21, -this.x * _t19) - java.lang.Math.fma(this.y, _t20, this.z * _t22));
+    }
+
+    /**
+     * Private tail of {@code rotateYZX}. Shared by the identical private paths of {@code rotateYZX}
+     * and {@code rotateZYX}; reached only through them.
+     */
+    private FloatQuat rotateYZX_s71a48226_tail_mulAdd(float _t11, float _t5, float _t12, float _t8, float _t21, float _t19, float _t20) {
+        float _t22 = ((_t11) * (_t5) - (_t12 * _t8));
+        return new FloatQuat(((this.x) * (_t21) + (this.w * _t19)) + ((this.y) * (_t22) - (this.z * _t20)), ((this.y) * (_t21) + (this.z * _t19)) + ((this.w) * (_t20) - (this.x * _t22)), ((this.x) * (_t20) + (this.w * _t22)) + ((this.z) * (_t21) - (this.y * _t19)), ((this.w) * (_t21) - (this.x * _t19)) - ((this.y) * (_t20) + (this.z * _t22)));
+    }
+
+    /**
+     * Apply a rotation of {@code angleY}, {@code angleZ} and {@code angleX} radians about the Y, Z
+     * and X axes, in that order (intrinsic rotations, each about the axes the previous ones turned:
+     * the matrix product {@code Ry * Rz * Rx}, so a vector is rotated about the fixed X axis first,
+     * then Z, then Y), to this quaternion, returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code R} the rotation quaternion, then the new
+     * quaternion will be {@code Q * R}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code Q * R * v}, the rotation will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angleY the angle in radians to rotate about the Y axis
+     * @param angleZ the angle in radians to rotate about the Z axis
+     * @param angleX the angle in radians to rotate about the X axis
+     * @return the resulting quaternion
+     */
+    public FloatQuat rotateYZX(float angleY, float angleZ, float angleX) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = 0.5f * angleY;
+            float _t1 = 0.5f * angleZ;
+            float _t2 = 0.5f * angleX;
+            float _t3 = Math.cosWithSin(_t0);
+            float _t4 = Math.cosWithSin(_t1);
+            float _t5 = Math.cosWithSin(_t2);
+            float _t6 = Math.sinWithCos(_t0);
+            float _t7 = Math.sinWithCos(_t1);
+            float _t8 = Math.sinWithCos(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t7 * _t3;
+            float _t12 = _t6 * _t4;
+            return rotateYZX_s71a48226_tail_fma(_t11, _t5, _t12, _t8, java.lang.Math.fma(_t9, _t5, _t10 * -_t8), java.lang.Math.fma(_t10, _t5, _t9 * _t8), java.lang.Math.fma(_t12, _t5, _t11 * _t8));
+        } else {
+            float _t0 = 0.5f * angleY;
+            float _t1 = 0.5f * angleZ;
+            float _t2 = 0.5f * angleX;
+            float _t3 = Math.cosWithSin(_t0);
+            float _t4 = Math.cosWithSin(_t1);
+            float _t5 = Math.cosWithSin(_t2);
+            float _t6 = Math.sinWithCos(_t0);
+            float _t7 = Math.sinWithCos(_t1);
+            float _t8 = Math.sinWithCos(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t7 * _t3;
+            float _t12 = _t6 * _t4;
+            return rotateYZX_s71a48226_tail_mulAdd(_t11, _t5, _t12, _t8, ((_t9) * (_t5) - (_t10 * _t8)), ((_t10) * (_t5) + (_t9 * _t8)), ((_t12) * (_t5) + (_t11 * _t8)));
+        }
+    }
+
+    /**
+     * Rotate this quaternion by {@code angle} radians about the local Z axis, returning the result
+     * as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angle the angle in radians
+     * @return the resulting quaternion
+     */
+    public FloatQuat rotateZ(float angle) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = 0.5f * angle;
+            float _t1 = Math.cosWithSin(_t0);
+            float _t2 = Math.sinWithCos(_t0);
+            return new FloatQuat(java.lang.Math.fma(this.x, _t1, this.y * _t2), java.lang.Math.fma(this.y, _t1, -(this.x * _t2)), java.lang.Math.fma(this.z, _t1, this.w * _t2), java.lang.Math.fma(this.w, _t1, -(this.z * _t2)));
+        } else {
+            float _t0 = 0.5f * angle;
+            float _t1 = Math.cosWithSin(_t0);
+            float _t2 = Math.sinWithCos(_t0);
+            return new FloatQuat(((this.x) * (_t1) + (this.y * _t2)), ((this.y) * (_t1) - (this.x * _t2)), ((this.z) * (_t1) + (this.w * _t2)), ((this.w) * (_t1) - (this.z * _t2)));
+        }
+    }
+
+    /** Private tail of {@code rotateZXY}; reached only through it. */
+    private FloatQuat rotateZXY_s673d9226_tail_fma(float _t11, float _t5, float _t12, float _t8, float _t21, float _t19, float _t20) {
+        float _t22 = java.lang.Math.fma(_t11, _t5, _t12 * -_t8);
+        return new FloatQuat(java.lang.Math.fma(this.x, _t21, this.w * _t22) + java.lang.Math.fma(this.y, _t19, -(this.z * _t20)), java.lang.Math.fma(this.y, _t21, this.z * _t22) + java.lang.Math.fma(this.w, _t20, -this.x * _t19), java.lang.Math.fma(this.x, _t20, this.w * _t19) + java.lang.Math.fma(this.z, _t21, -(this.y * _t22)), java.lang.Math.fma(this.w, _t21, -this.x * _t22) - java.lang.Math.fma(this.y, _t20, this.z * _t19));
+    }
+
+    /** Private tail of {@code rotateZXY}; reached only through it. */
+    private FloatQuat rotateZXY_s673d9226_tail_mulAdd(float _t11, float _t5, float _t12, float _t8, float _t21, float _t19, float _t20) {
+        float _t22 = ((_t11) * (_t5) - (_t12 * _t8));
+        return new FloatQuat(((this.x) * (_t21) + (this.w * _t22)) + ((this.y) * (_t19) - (this.z * _t20)), ((this.y) * (_t21) + (this.z * _t22)) + ((this.w) * (_t20) - (this.x * _t19)), ((this.x) * (_t20) + (this.w * _t19)) + ((this.z) * (_t21) - (this.y * _t22)), ((this.w) * (_t21) - (this.x * _t22)) - ((this.y) * (_t20) + (this.z * _t19)));
+    }
+
+    /**
+     * Apply a rotation of {@code angleZ}, {@code angleX} and {@code angleY} radians about the Z, X
+     * and Y axes, in that order (intrinsic rotations, each about the axes the previous ones turned:
+     * the matrix product {@code Rz * Rx * Ry}, so a vector is rotated about the fixed Y axis first,
+     * then X, then Z), to this quaternion, returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code R} the rotation quaternion, then the new
+     * quaternion will be {@code Q * R}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code Q * R * v}, the rotation will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angleZ the angle in radians to rotate about the Z axis
+     * @param angleX the angle in radians to rotate about the X axis
+     * @param angleY the angle in radians to rotate about the Y axis
+     * @return the resulting quaternion
+     */
+    public FloatQuat rotateZXY(float angleZ, float angleX, float angleY) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = 0.5f * angleX;
+            float _t1 = 0.5f * angleZ;
+            float _t2 = 0.5f * angleY;
+            float _t3 = Math.cosWithSin(_t0);
+            float _t4 = Math.cosWithSin(_t1);
+            float _t5 = Math.cosWithSin(_t2);
+            float _t6 = Math.sinWithCos(_t0);
+            float _t7 = Math.sinWithCos(_t1);
+            float _t8 = Math.sinWithCos(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t6 * _t4;
+            float _t12 = _t7 * _t3;
+            return rotateZXY_s673d9226_tail_fma(_t11, _t5, _t12, _t8, java.lang.Math.fma(_t9, _t5, _t10 * -_t8), java.lang.Math.fma(_t11, _t8, _t12 * _t5), java.lang.Math.fma(_t10, _t5, _t9 * _t8));
+        } else {
+            float _t0 = 0.5f * angleX;
+            float _t1 = 0.5f * angleZ;
+            float _t2 = 0.5f * angleY;
+            float _t3 = Math.cosWithSin(_t0);
+            float _t4 = Math.cosWithSin(_t1);
+            float _t5 = Math.cosWithSin(_t2);
+            float _t6 = Math.sinWithCos(_t0);
+            float _t7 = Math.sinWithCos(_t1);
+            float _t8 = Math.sinWithCos(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t6 * _t4;
+            float _t12 = _t7 * _t3;
+            return rotateZXY_s673d9226_tail_mulAdd(_t11, _t5, _t12, _t8, ((_t9) * (_t5) - (_t10 * _t8)), ((_t11) * (_t8) + (_t12 * _t5)), ((_t10) * (_t5) + (_t9 * _t8)));
+        }
+    }
+
+    /** Private tail of {@code rotateZYX}; reached only through it. */
+    private FloatQuat rotateZYX_s4118fc66_tail_fma(float _t11, float _t8, float _t12, float _t5, float _t19, float _t21, float _t20) {
+        float _t22 = java.lang.Math.fma(_t11, _t8, -(_t12 * _t5));
+        return new FloatQuat(java.lang.Math.fma(this.x, _t19, this.w * _t21) + java.lang.Math.fma(this.y, _t22, -(this.z * _t20)), java.lang.Math.fma(this.y, _t19, this.z * _t21) + java.lang.Math.fma(this.w, _t20, -this.x * _t22), java.lang.Math.fma(this.x, _t20, this.w * _t22) + java.lang.Math.fma(this.z, _t19, -(this.y * _t21)), java.lang.Math.fma(this.w, _t19, -this.x * _t21) - java.lang.Math.fma(this.y, _t20, this.z * _t22));
+    }
+
+    /**
+     * Apply a rotation of {@code angleZ}, {@code angleY} and {@code angleX} radians about the Z, Y
+     * and X axes, in that order (intrinsic rotations, each about the axes the previous ones turned:
+     * the matrix product {@code Rz * Ry * Rx}, so a vector is rotated about the fixed X axis first,
+     * then Y, then Z), to this quaternion, returning the result as a value.
+     * <p>
+     * If {@code Q} is {@code this} quaternion and {@code R} the rotation quaternion, then the new
+     * quaternion will be {@code Q * R}. So when transforming a vector {@code v} with the new
+     * quaternion by using {@code Q * R * v}, the rotation will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angleZ the angle in radians to rotate about the Z axis
+     * @param angleY the angle in radians to rotate about the Y axis
+     * @param angleX the angle in radians to rotate about the X axis
+     * @return the resulting quaternion
+     */
+    public FloatQuat rotateZYX(float angleZ, float angleY, float angleX) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t0 = 0.5f * angleY;
+            float _t1 = 0.5f * angleZ;
+            float _t2 = 0.5f * angleX;
+            float _t3 = Math.sinWithCos(_t0);
+            float _t4 = Math.sinWithCos(_t1);
+            float _t5 = Math.sinWithCos(_t2);
+            float _t6 = Math.cosWithSin(_t0);
+            float _t7 = Math.cosWithSin(_t1);
+            float _t8 = Math.cosWithSin(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t4 * _t6;
+            float _t12 = _t3 * _t7;
+            return rotateZYX_s4118fc66_tail_fma(_t11, _t8, _t12, _t5, java.lang.Math.fma(_t9, _t5, _t10 * _t8), java.lang.Math.fma(_t10, _t5, -(_t9 * _t8)), java.lang.Math.fma(_t12, _t8, _t11 * _t5));
+        } else {
+            float _t0 = 0.5f * angleY;
+            float _t1 = 0.5f * angleZ;
+            float _t2 = 0.5f * angleX;
+            float _t3 = Math.sinWithCos(_t0);
+            float _t4 = Math.sinWithCos(_t1);
+            float _t5 = Math.sinWithCos(_t2);
+            float _t6 = Math.cosWithSin(_t0);
+            float _t7 = Math.cosWithSin(_t1);
+            float _t8 = Math.cosWithSin(_t2);
+            float _t9 = _t3 * _t4;
+            float _t10 = _t6 * _t7;
+            float _t11 = _t4 * _t6;
+            float _t12 = _t3 * _t7;
+            return rotateYZX_s71a48226_tail_mulAdd(_t11, _t8, _t12, _t5, ((_t9) * (_t5) + (_t10 * _t8)), ((_t10) * (_t5) - (_t9 * _t8)), ((_t12) * (_t8) + (_t11 * _t5)));
+        }
+    }
+
+    /**
+     * Transform {@code v} by this quaternion, returning the result as a value.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @param v the vector to transform
+     * @return the resulting vector
+     */
+    public Float3 transform(Float3 v) {
+        return transform(v.x(), v.y(), v.z());
+    }
+
+    /**
+     * Transform ({@code vX}, {@code vY}, {@code vZ}) by this quaternion, returning the result as a
+     * value.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @param vX the {@code x} component of the vector {@code (vX, vY, vZ)}
+     * @param vY the {@code y} component of the vector {@code (vX, vY, vZ)}
+     * @param vZ the {@code z} component of the vector {@code (vX, vY, vZ)}
+     * @return the resulting vector
+     */
+    public Float3 transform(float vX, float vY, float vZ) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t9 = 2.0f * java.lang.Math.fma(this.x, vY, -(this.y * vX));
+            float _t10 = 2.0f * java.lang.Math.fma(this.z, vX, -(this.x * vZ));
+            float _t11 = 2.0f * java.lang.Math.fma(this.y, vZ, -(this.z * vY));
+            return new Float3(java.lang.Math.fma(this.y, _t9, java.lang.Math.fma(-this.z, _t10, java.lang.Math.fma(this.w, _t11, vX))), java.lang.Math.fma(this.z, _t11, java.lang.Math.fma(-this.x, _t9, java.lang.Math.fma(this.w, _t10, vY))), java.lang.Math.fma(this.x, _t10, java.lang.Math.fma(-this.y, _t11, java.lang.Math.fma(this.w, _t9, vZ))));
+        } else {
+            float _t9 = 2.0f * ((this.x) * (vY) - (this.y * vX));
+            float _t10 = 2.0f * ((this.z) * (vX) - (this.x * vZ));
+            float _t11 = 2.0f * ((this.y) * (vZ) - (this.z * vY));
+            return new Float3(((this.y) * (_t9) + (((((this.w) * (_t11) + (vX))) - (this.z) * (_t10)))), ((this.z) * (_t11) + (((((this.w) * (_t10) + (vY))) - (this.x) * (_t9)))), ((this.x) * (_t10) + (((((this.w) * (_t9) + (vZ))) - (this.y) * (_t11)))));
+        }
+    }
+
+    /**
+     * Transform {@code v} by the inverse of this quaternion, returning the result as a value.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @param v the vector to transform
+     * @return the resulting vector
+     */
+    public Float3 transformInverse(Float3 v) {
+        return transformInverse(v.x(), v.y(), v.z());
+    }
+
+    /**
+     * Transform ({@code vX}, {@code vY}, {@code vZ}) by the inverse of this quaternion, returning
+     * the result as a value.
+     * <p>
+     * Valid input: this quaternion must have unit length.
+     *
+     * @param vX the {@code x} component of the vector {@code (vX, vY, vZ)}
+     * @param vY the {@code y} component of the vector {@code (vX, vY, vZ)}
+     * @param vZ the {@code z} component of the vector {@code (vX, vY, vZ)}
+     * @return the resulting vector
+     */
+    public Float3 transformInverse(float vX, float vY, float vZ) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t9 = 2.0f * java.lang.Math.fma(this.x, vZ, -(this.z * vX));
+            float _t10 = 2.0f * java.lang.Math.fma(this.y, vX, -(this.x * vY));
+            float _t11 = 2.0f * java.lang.Math.fma(this.z, vY, -(this.y * vZ));
+            return new Float3(java.lang.Math.fma(this.z, _t9, java.lang.Math.fma(-this.y, _t10, java.lang.Math.fma(this.w, _t11, vX))), java.lang.Math.fma(this.x, _t10, java.lang.Math.fma(-this.z, _t11, java.lang.Math.fma(this.w, _t9, vY))), java.lang.Math.fma(this.y, _t11, java.lang.Math.fma(-this.x, _t9, java.lang.Math.fma(this.w, _t10, vZ))));
+        } else {
+            float _t9 = 2.0f * ((this.x) * (vZ) - (this.z * vX));
+            float _t10 = 2.0f * ((this.y) * (vX) - (this.x * vY));
+            float _t11 = 2.0f * ((this.z) * (vY) - (this.y * vZ));
+            return new Float3(((this.z) * (_t9) + (((((this.w) * (_t11) + (vX))) - (this.y) * (_t10)))), ((this.x) * (_t10) + (((((this.w) * (_t9) + (vY))) - (this.z) * (_t11)))), ((this.y) * (_t11) + (((((this.w) * (_t10) + (vZ))) - (this.x) * (_t9)))));
+        }
+    }
+
+    /**
+     * {@return a copy with the {@code x} component replaced by {@code v}}
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param v the new value of the {@code x} component
+     */
+    public FloatQuat withX(float v) {
+        return new FloatQuat(v, y, z, w);
+    }
+
+    /**
+     * {@return a copy with the {@code y} component replaced by {@code v}}
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param v the new value of the {@code y} component
+     */
+    public FloatQuat withY(float v) {
+        return new FloatQuat(x, v, z, w);
+    }
+
+    /**
+     * {@return a copy with the {@code z} component replaced by {@code v}}
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param v the new value of the {@code z} component
+     */
+    public FloatQuat withZ(float v) {
+        return new FloatQuat(x, y, v, w);
+    }
+
+    /**
+     * {@return a copy with the {@code w} component replaced by {@code v}}
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param v the new value of the {@code w} component
+     */
+    public FloatQuat withW(float v) {
+        return new FloatQuat(x, y, z, v);
+    }
+
+    @Override public String toString() {
+        return "FloatQuat(" + this.x + ", " + this.y + ", " + this.z + ", " + this.w + ")";
+    }
+
+    @Override public boolean equals(@org.jspecify.annotations.Nullable Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof FloatQuat)) return false;
+        FloatQuat o = (FloatQuat) obj;
+        return Float.floatToIntBits(x) == Float.floatToIntBits(o.x)
+            && Float.floatToIntBits(y) == Float.floatToIntBits(o.y)
+            && Float.floatToIntBits(z) == Float.floatToIntBits(o.z)
+            && Float.floatToIntBits(w) == Float.floatToIntBits(o.w);
+    }
+
+    @Override public int hashCode() {
+        int h = 1;
+        h = 31 * h + Float.floatToIntBits(x);
+        h = 31 * h + Float.floatToIntBits(y);
+        h = 31 * h + Float.floatToIntBits(z);
+        h = 31 * h + Float.floatToIntBits(w);
+        return h;
+    }
+
+    /** {@return whether all components of this value are finite, i.e. neither NaN nor infinite} <p>Valid input: any value, NaN and the infinities included. */
+    public boolean isFinite() {
+        return Float.isFinite(x)
+            && Float.isFinite(y)
+            && Float.isFinite(z)
+            && Float.isFinite(w);
+    }
+
+    /** {@return whether any component of this value is NaN} <p>Valid input: any value, NaN and the infinities included. */
+    public boolean isNaN() {
+        return Float.isNaN(x)
+            || Float.isNaN(y)
+            || Float.isNaN(z)
+            || Float.isNaN(w);
+    }
+
+    /**
+     * Compare this value component-wise against {@code other}, allowing a difference of at
+     * most {@code epsilon} per component.
+     * <p>
+     * {@code equalsEpsilon} compares per component with a tolerance: an infinite component never
+     * compares equal to an equal infinity (the difference {@code Inf - Inf} is NaN), and to a
+     * finite one only under an infinite {@code epsilon}; a NaN component never compares equal to
+     * anything.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param other the value to compare against
+     * @param epsilon the maximum allowed difference per component
+     * @return {@code true} if all components differ by at most {@code epsilon}, {@code false} otherwise
+     */
+    public boolean equalsEpsilon(FloatQuat other, float epsilon) {
+        return java.lang.Math.abs(x - other.x) <= epsilon
+            && java.lang.Math.abs(y - other.y) <= epsilon
+            && java.lang.Math.abs(z - other.z) <= epsilon
+            && java.lang.Math.abs(w - other.w) <= epsilon;
+    }
+
+    /** Store/load dispatch targets, picked on the first store/load (see {@code Joml.storeLoadBackend()}). */
+    private static final class StoreLoad {
+        static final FloatQuatSegOps SEG_OPS = Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE
+            ? new FloatQuatSegOpsUnsafe()
+            : new FloatQuatSegOpsMS();
+        static final FloatQuatBbOps BB_OPS = Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE
+            ? new FloatQuatBbOpsUnsafe()
+            : new FloatQuatBbOpsApi();
+        static final FloatQuatRawOps RAW_OPS = Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE
+            ? new FloatQuatRawOpsUnsafe()
+            : new FloatQuatRawOpsApi();
+    }
+
+    /**
+     * Store the elements into the given array, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    public float[] store(float[] dest, int offset) {
+        dest[offset] = this.x;
+        dest[offset + 1] = this.y;
+        dest[offset + 2] = this.z;
+        dest[offset + 3] = this.w;
+        return dest;
+    }
+
+    /**
+     * Store the elements into the given array.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    public float[] store(float[] dest) { return store(dest, 0); }
+
+    /**
+     * Load the elements from the given array, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @param offset the start offset in the array, in elements
+     * @return a new {@code FloatQuat} holding the loaded elements
+     */
+    public static FloatQuat load(float[] src, int offset) {
+        float _c0 = src[offset];
+        float _c1 = src[offset + 1];
+        float _c2 = src[offset + 2];
+        float _c3 = src[offset + 3];
+        return new FloatQuat(_c0, _c1, _c2, _c3);
+    }
+
+    /**
+     * Load the elements from the given array.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @return a new {@code FloatQuat} holding the loaded elements
+     */
+    public static FloatQuat load(float[] src) { return load(src, 0); }
+
+    /**
+     * Store the elements into the given buffer, starting at its current position (the position is
+     * not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public FloatBuffer store(FloatBuffer buf) {
+        return StoreLoad.BB_OPS.storeAbsolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given buffer, starting at the given absolute index (the position
+     * is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public FloatBuffer storeAbsolute(int index, FloatBuffer buf) {
+        return StoreLoad.BB_OPS.storeAbsolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given buffer, starting at its current position and advancing the
+     * position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public FloatBuffer storeRelative(FloatBuffer buf) {
+        if (buf.remaining() < 4) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeAbsolute(this, pos, buf);
+        buf.position(pos + 4);
+        return buf;
+    }
+
+    /**
+     * Load the elements from the given buffer, starting at its current position (the position is
+     * not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source buffer
+     * @return a new {@code FloatQuat} holding the loaded elements
+     */
+    public static FloatQuat load(FloatBuffer buf) {
+        return StoreLoad.BB_OPS.loadAbsolute(buf.position(), buf);
+    }
+
+    /**
+     * Load the elements from the given buffer, starting at the given absolute index (the position
+     * is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the source buffer
+     * @return a new {@code FloatQuat} holding the loaded elements
+     */
+    public static FloatQuat loadAbsolute(int index, FloatBuffer buf) {
+        return StoreLoad.BB_OPS.loadAbsolute(index, buf);
+    }
+
+    /**
+     * Load the elements from the given buffer, starting at its current position and advancing the
+     * position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source buffer
+     * @return a new {@code FloatQuat} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the buffer than the position
+     *        advances over; nothing is loaded and the position is unchanged
+     */
+    public static FloatQuat loadRelative(FloatBuffer buf) {
+        if (buf.remaining() < 4) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        FloatQuat r = StoreLoad.BB_OPS.loadAbsolute(pos, buf);
+        buf.position(pos + 4);
+        return r;
+    }
+
+    /**
+     * Store the elements into the given byte buffer, starting at its current position (the position
+     * is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer store(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeAbsolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer, starting at the given absolute index (the
+     * position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeAbsolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer, starting at its current position and advancing
+     * the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer storeRelative(ByteBuffer buf) {
+        if (buf.remaining() < 16) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeAbsolute(this, pos, buf);
+        buf.position(pos + 16);
+        return buf;
+    }
+
+    /**
+     * Load the elements from the given byte buffer, starting at its current position (the position
+     * is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source byte buffer
+     * @return a new {@code FloatQuat} holding the loaded elements
+     */
+    public static FloatQuat load(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.loadAbsolute(buf.position(), buf);
+    }
+
+    /**
+     * Load the elements from the given byte buffer, starting at the given absolute index (the
+     * position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the source byte buffer
+     * @return a new {@code FloatQuat} holding the loaded elements
+     */
+    public static FloatQuat loadAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.loadAbsolute(index, buf);
+    }
+
+    /**
+     * Load the elements from the given byte buffer, starting at its current position and advancing
+     * the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source byte buffer
+     * @return a new {@code FloatQuat} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the byte buffer than the
+     *        position advances over; nothing is loaded and the position is unchanged
+     */
+    public static FloatQuat loadRelative(ByteBuffer buf) {
+        if (buf.remaining() < 16) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        FloatQuat r = StoreLoad.BB_OPS.loadAbsolute(pos, buf);
+        buf.position(pos + 16);
+        return r;
+    }
+
+    /**
+     * Store the elements into the given raw memory address. No bounds or liveness checks are
+     * performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return this
+     */
+    public FloatQuat storeUnsafe(long address) {
+        return StoreLoad.RAW_OPS.storeUnsafe(this, address);
+    }
+
+    /**
+     * Load the elements from the given raw memory address. No bounds or liveness checks are
+     * performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be readable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return a new {@code FloatQuat} holding the loaded elements
+     */
+    public static FloatQuat loadUnsafe(long address) {
+        return StoreLoad.RAW_OPS.loadUnsafe(address);
+    }
+
+    /**
+     * Store the elements into the given memory segment.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment store(MemorySegment dest) { return StoreLoad.SEG_OPS.store(this, 0L, dest); }
+
+    /**
+     * Store the elements into the given memory segment, starting at the given offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment store(long offset, MemorySegment dest) {
+        return StoreLoad.SEG_OPS.store(this, offset, dest);
+    }
+
+    /**
+     * Load the elements from the given memory segment.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source memory segment
+     * @return a new {@code FloatQuat} holding the loaded elements
+     */
+    public static FloatQuat load(MemorySegment src) { return StoreLoad.SEG_OPS.load(0L, src); }
+
+    /**
+     * Load the elements from the given memory segment, starting at the given offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param src the source memory segment
+     * @return a new {@code FloatQuat} holding the loaded elements
+     */
+    public static FloatQuat load(long offset, MemorySegment src) {
+        return StoreLoad.SEG_OPS.load(offset, src);
+    }
+
+    /**
+     * Store the elements into the given array, converting each element to {@code double}, starting
+     * at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    public double[] store(double[] dest, int offset) {
+        dest[offset] = this.x;
+        dest[offset + 1] = this.y;
+        dest[offset + 2] = this.z;
+        dest[offset + 3] = this.w;
+        return dest;
+    }
+
+    /**
+     * Store the elements into the given array, converting each element to {@code double}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    public double[] store(double[] dest) { return store(dest, 0); }
+
+    /**
+     * Load the elements from the given array, converting each element from {@code double}, starting
+     * at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @param offset the start offset in the array, in elements
+     * @return a new {@code FloatQuat} holding the loaded elements
+     */
+    public static FloatQuat load(double[] src, int offset) {
+        float _c0 = (float) src[offset];
+        float _c1 = (float) src[offset + 1];
+        float _c2 = (float) src[offset + 2];
+        float _c3 = (float) src[offset + 3];
+        return new FloatQuat(_c0, _c1, _c2, _c3);
+    }
+
+    /**
+     * Load the elements from the given array, converting each element from {@code double}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @return a new {@code FloatQuat} holding the loaded elements
+     */
+    public static FloatQuat load(double[] src) { return load(src, 0); }
+
+    /**
+     * Store the elements into the given buffer, converting each element to {@code double}, starting
+     * at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public DoubleBuffer store(DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.storeAbsolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given buffer, converting each element to {@code double}, starting
+     * at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public DoubleBuffer storeAbsolute(int index, DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.storeAbsolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given buffer, converting each element to {@code double}, starting
+     * at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public DoubleBuffer storeRelative(DoubleBuffer buf) {
+        if (buf.remaining() < 4) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeAbsolute(this, pos, buf);
+        buf.position(pos + 4);
+        return buf;
+    }
+
+    /**
+     * Load the elements from the given buffer, converting each element from {@code double},
+     * starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source buffer
+     * @return a new {@code FloatQuat} holding the loaded elements
+     */
+    public static FloatQuat load(DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.loadAbsolute(buf.position(), buf);
+    }
+
+    /**
+     * Load the elements from the given buffer, converting each element from {@code double},
+     * starting at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the source buffer
+     * @return a new {@code FloatQuat} holding the loaded elements
+     */
+    public static FloatQuat loadAbsolute(int index, DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.loadAbsolute(index, buf);
+    }
+
+    /**
+     * Load the elements from the given buffer, converting each element from {@code double},
+     * starting at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source buffer
+     * @return a new {@code FloatQuat} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the buffer than the position
+     *        advances over; nothing is loaded and the position is unchanged
+     */
+    public static FloatQuat loadRelative(DoubleBuffer buf) {
+        if (buf.remaining() < 4) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        FloatQuat r = StoreLoad.BB_OPS.loadAbsolute(pos, buf);
+        buf.position(pos + 4);
+        return r;
+    }
+
+    /**
+     * Store the elements into the given byte buffer, converting each element to {@code double},
+     * starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeDouble(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeDoubleAbsolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer, converting each element to {@code double},
+     * starting at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeDoubleAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeDoubleAbsolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer, converting each element to {@code double},
+     * starting at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer storeDoubleRelative(ByteBuffer buf) {
+        if (buf.remaining() < 32) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeDoubleAbsolute(this, pos, buf);
+        buf.position(pos + 32);
+        return buf;
+    }
+
+    /**
+     * Load the elements from the given byte buffer, converting each element from {@code double},
+     * starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source byte buffer
+     * @return a new {@code FloatQuat} holding the loaded elements
+     */
+    public static FloatQuat loadDouble(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.loadDoubleAbsolute(buf.position(), buf);
+    }
+
+    /**
+     * Load the elements from the given byte buffer, converting each element from {@code double},
+     * starting at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the source byte buffer
+     * @return a new {@code FloatQuat} holding the loaded elements
+     */
+    public static FloatQuat loadDoubleAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.loadDoubleAbsolute(index, buf);
+    }
+
+    /**
+     * Load the elements from the given byte buffer, converting each element from {@code double},
+     * starting at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source byte buffer
+     * @return a new {@code FloatQuat} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the byte buffer than the
+     *        position advances over; nothing is loaded and the position is unchanged
+     */
+    public static FloatQuat loadDoubleRelative(ByteBuffer buf) {
+        if (buf.remaining() < 32) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        FloatQuat r = StoreLoad.BB_OPS.loadDoubleAbsolute(pos, buf);
+        buf.position(pos + 32);
+        return r;
+    }
+
+    /**
+     * Store the elements into the given raw memory address, converting each element to
+     * {@code double}. No bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return this
+     */
+    public FloatQuat storeDoubleUnsafe(long address) {
+        return StoreLoad.RAW_OPS.storeDoubleUnsafe(this, address);
+    }
+
+    /**
+     * Load the elements from the given raw memory address, converting each element from
+     * {@code double}. No bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be readable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return a new {@code FloatQuat} holding the loaded elements
+     */
+    public static FloatQuat loadDoubleUnsafe(long address) {
+        return StoreLoad.RAW_OPS.loadDoubleUnsafe(address);
+    }
+
+    /**
+     * Store the elements into the given memory segment, converting each element to {@code double}.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeDouble(MemorySegment dest) { return StoreLoad.SEG_OPS.storeDouble(this, 0L, dest); }
+
+    /**
+     * Store the elements into the given memory segment, converting each element to {@code double},
+     * starting at the given offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeDouble(long offset, MemorySegment dest) {
+        return StoreLoad.SEG_OPS.storeDouble(this, offset, dest);
+    }
+
+    /**
+     * Load the elements from the given memory segment, converting each element from {@code double}.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source memory segment
+     * @return a new {@code FloatQuat} holding the loaded elements
+     */
+    public static FloatQuat loadDouble(MemorySegment src) { return StoreLoad.SEG_OPS.loadDouble(0L, src); }
+
+    /**
+     * Load the elements from the given memory segment, converting each element from {@code double},
+     * starting at the given offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param src the source memory segment
+     * @return a new {@code FloatQuat} holding the loaded elements
+     */
+    public static FloatQuat loadDouble(long offset, MemorySegment src) {
+        return StoreLoad.SEG_OPS.loadDouble(offset, src);
+    }
+
+    /** cos(k pi/8) and sin(k pi/8), k = 0..4: the float quatArcAngle's rotations. */
+    private static final double[] QUAT_ARC_ANGLE_COS = new double[] {1.0, 0x1.d906bcf328d46p-1, 0x1.6a09e667f3bcdp-1, 0x1.87de2a6aea963p-2, 0.0};
+    private static final double[] QUAT_ARC_ANGLE_SIN = new double[] {0.0, 0x1.87de2a6aea963p-2, 0x1.6a09e667f3bcdp-1, 0x1.d906bcf328d46p-1, 1.0};
+
+    /**
+     * The angle between two unit quaternions a and b from s = |a+b|^2, clamped to [0, 4]. With
+     * |a-b|^2 = 4 - s and half the angle in [0, pi/2], that half is k pi/8 + asin(|a-b|/2
+     * cos(k pi/8) - |a+b|/2 sin(k pi/8)) for the k (four comparisons of 4 - s) that keeps the
+     * argument within sin(pi/16): there the arcsine's odd Taylor polynomial to x^11 (3e-10 of it
+     * left out), in double, is exact to well below a float ulp. Within 0.5005 ulp of the angle,
+     * and no call, where java.lang.Math.asin is one: slerp is 15-24% faster.
+     */
+    private static float quatArcAngle_fma(float s) {
+        double d = 4.0 - s, sd = java.lang.Math.sqrt(d), ss = java.lang.Math.sqrt(s);
+        int k = (d > 0x1.37ca1866b95cfp-3 ? 1 : 0) + (d > 0x1.3c10eaca8ab4fp+0 ? 1 : 0)
+                + (d > 0x1.61f78a9abaa59p+1 ? 1 : 0) + (d > 0x1.ec835e79946a3p+1 ? 1 : 0);
+        double x = 0.5 * java.lang.Math.fma(sd, QUAT_ARC_ANGLE_COS[k], -ss * QUAT_ARC_ANGLE_SIN[k]), t = x * x;
+        double p = java.lang.Math.fma(t, java.lang.Math.fma(t, java.lang.Math.fma(t, java.lang.Math.fma(t, 0x1.6e8ba2e8ba2e9p-6, 0x1.f1c71c71c71c7p-6),
+                0x1.6db6db6db6db7p-5), 0x1.3333333333333p-4), 0x1.5555555555555p-3);
+        return (float) (k * (Math.PI / 4) + 2 * java.lang.Math.fma(x * t, p, x));
+    }
+
+    /**
+     * The angle between two unit quaternions a and b from s = |a+b|^2, clamped to [0, 4]. With
+     * |a-b|^2 = 4 - s and half the angle in [0, pi/2], that half is k pi/8 + asin(|a-b|/2
+     * cos(k pi/8) - |a+b|/2 sin(k pi/8)) for the k (four comparisons of 4 - s) that keeps the
+     * argument within sin(pi/16): there the arcsine's odd Taylor polynomial to x^11 (3e-10 of it
+     * left out), in double, is exact to well below a float ulp. Within 0.5005 ulp of the angle,
+     * and no call, where java.lang.Math.asin is one: slerp is 15-24% faster.
+     */
+    private static float quatArcAngle_mulAdd(float s) {
+        double d = 4.0 - s, sd = java.lang.Math.sqrt(d), ss = java.lang.Math.sqrt(s);
+        int k = (d > 0x1.37ca1866b95cfp-3 ? 1 : 0) + (d > 0x1.3c10eaca8ab4fp+0 ? 1 : 0)
+                + (d > 0x1.61f78a9abaa59p+1 ? 1 : 0) + (d > 0x1.ec835e79946a3p+1 ? 1 : 0);
+        double x = 0.5 * ((sd) * (QUAT_ARC_ANGLE_COS[k]) - (ss * QUAT_ARC_ANGLE_SIN[k])), t = x * x;
+        double p = ((t) * (((t) * (((t) * (((t) * (0x1.6e8ba2e8ba2e9p-6) + (0x1.f1c71c71c71c7p-6))) + (0x1.6db6db6db6db7p-5))) + (0x1.3333333333333p-4))) + (0x1.5555555555555p-3));
+        return (float) (k * (Math.PI / 4) + 2 * ((x * t) * (p) + (x)));
+    }
+
+    /**
+     * The power of two that brings max(|a|, |b|, |c|) into [1, 2), from the largest exponent
+     * field: multiplying by it is exact. Clamped to [2^-126, 2^126], so zero and subnormal
+     * values scale up without overflow and the largest floats land in [2, 4).
+     */
+    private static float unitScale(float a, float b, float c) {
+        int e = java.lang.Math.max(java.lang.Math.max(Float.floatToRawIntBits(a) & 0x7F800000,
+                Float.floatToRawIntBits(b) & 0x7F800000), Float.floatToRawIntBits(c) & 0x7F800000);
+        return Float.intBitsToFloat(0x7F000000 - java.lang.Math.min(java.lang.Math.max(e, 0x00800000), 0x7E800000));
+    }
+
+    private abstract static class FloatQuatSegOps {
+        public abstract MemorySegment store(FloatQuat self, long offset, MemorySegment dest);
+        public abstract FloatQuat load(long offset, MemorySegment src);
+        public abstract MemorySegment storeDouble(FloatQuat self, long offset, MemorySegment dest);
+        public abstract FloatQuat loadDouble(long offset, MemorySegment src);
+    }
+
+    private static final class FloatQuatSegOpsMS extends FloatQuatSegOps {
+        public MemorySegment store(FloatQuat self, long offset, MemorySegment dest) {
+            dest.set(ValueLayout.JAVA_FLOAT_UNALIGNED, offset, self.x);
+            dest.set(ValueLayout.JAVA_FLOAT_UNALIGNED, offset + 4L, self.y);
+            dest.set(ValueLayout.JAVA_FLOAT_UNALIGNED, offset + 8L, self.z);
+            dest.set(ValueLayout.JAVA_FLOAT_UNALIGNED, offset + 12L, self.w);
+            return dest;
+        }
+
+        public FloatQuat load(long offset, MemorySegment src) {
+            float _c0 = src.get(ValueLayout.JAVA_FLOAT_UNALIGNED, offset);
+            float _c1 = src.get(ValueLayout.JAVA_FLOAT_UNALIGNED, offset + 4L);
+            float _c2 = src.get(ValueLayout.JAVA_FLOAT_UNALIGNED, offset + 8L);
+            float _c3 = src.get(ValueLayout.JAVA_FLOAT_UNALIGNED, offset + 12L);
+            return new FloatQuat(_c0, _c1, _c2, _c3);
+        }
+
+        public MemorySegment storeDouble(FloatQuat self, long offset, MemorySegment dest) {
+            dest.set(ValueLayout.JAVA_DOUBLE_UNALIGNED, offset, self.x);
+            dest.set(ValueLayout.JAVA_DOUBLE_UNALIGNED, offset + 8L, self.y);
+            dest.set(ValueLayout.JAVA_DOUBLE_UNALIGNED, offset + 16L, self.z);
+            dest.set(ValueLayout.JAVA_DOUBLE_UNALIGNED, offset + 24L, self.w);
+            return dest;
+        }
+
+        public FloatQuat loadDouble(long offset, MemorySegment src) {
+            float _c0 = (float) src.get(ValueLayout.JAVA_DOUBLE_UNALIGNED, offset);
+            float _c1 = (float) src.get(ValueLayout.JAVA_DOUBLE_UNALIGNED, offset + 8L);
+            float _c2 = (float) src.get(ValueLayout.JAVA_DOUBLE_UNALIGNED, offset + 16L);
+            float _c3 = (float) src.get(ValueLayout.JAVA_DOUBLE_UNALIGNED, offset + 24L);
+            return new FloatQuat(_c0, _c1, _c2, _c3);
+        }
+    }
+
+    private static final class FloatQuatSegOpsUnsafe extends FloatQuatSegOps {
+        private static final FloatQuatSegOpsMS MS = new FloatQuatSegOpsMS();
+
+        public MemorySegment store(FloatQuat self, long offset, MemorySegment dest) {
+            if (dest.isReadOnly()) return MS.store(self, offset, dest);
+            if (!dest.isNative()) return storeOnHeap(self, offset, dest);
+            long address = dest.address() + offset;
+            U.putFloat(address, self.x);
+            U.putFloat(address + 4L, self.y);
+            U.putFloat(address + 8L, self.z);
+            U.putFloat(address + 12L, self.w);
+            return dest;
+        }
+
+        private static MemorySegment storeOnHeap(FloatQuat self, long offset, MemorySegment dest) {
+            byte[] bytes = HeapSegments.bytes(dest);
+            if (bytes == null) return MS.store(self, offset, dest);
+            long address = HeapSegments.offset(dest) + offset;
+            U.putFloat(bytes, address, self.x);
+            U.putFloat(bytes, address + 4L, self.y);
+            U.putFloat(bytes, address + 8L, self.z);
+            U.putFloat(bytes, address + 12L, self.w);
+            return dest;
+        }
+
+        public FloatQuat load(long offset, MemorySegment src) {
+            if (!src.isNative()) return loadOnHeap(offset, src);
+            long address = src.address() + offset;
+            float _c0 = U.getFloat(address);
+            float _c1 = U.getFloat(address + 4L);
+            float _c2 = U.getFloat(address + 8L);
+            float _c3 = U.getFloat(address + 12L);
+            return new FloatQuat(_c0, _c1, _c2, _c3);
+        }
+
+        private static FloatQuat loadOnHeap(long offset, MemorySegment src) {
+            byte[] bytes = HeapSegments.bytes(src);
+            if (bytes == null) return MS.load(offset, src);
+            long address = HeapSegments.offset(src) + offset;
+            float _c0 = U.getFloat(bytes, address);
+            float _c1 = U.getFloat(bytes, address + 4L);
+            float _c2 = U.getFloat(bytes, address + 8L);
+            float _c3 = U.getFloat(bytes, address + 12L);
+            return new FloatQuat(_c0, _c1, _c2, _c3);
+        }
+
+        public MemorySegment storeDouble(FloatQuat self, long offset, MemorySegment dest) {
+            if (dest.isReadOnly()) return MS.storeDouble(self, offset, dest);
+            if (!dest.isNative()) return storeDoubleOnHeap(self, offset, dest);
+            long address = dest.address() + offset;
+            U.putDouble(address, self.x);
+            U.putDouble(address + 8L, self.y);
+            U.putDouble(address + 16L, self.z);
+            U.putDouble(address + 24L, self.w);
+            return dest;
+        }
+
+        private static MemorySegment storeDoubleOnHeap(FloatQuat self, long offset, MemorySegment dest) {
+            byte[] bytes = HeapSegments.bytes(dest);
+            if (bytes == null) return MS.storeDouble(self, offset, dest);
+            long address = HeapSegments.offset(dest) + offset;
+            U.putDouble(bytes, address, self.x);
+            U.putDouble(bytes, address + 8L, self.y);
+            U.putDouble(bytes, address + 16L, self.z);
+            U.putDouble(bytes, address + 24L, self.w);
+            return dest;
+        }
+
+        public FloatQuat loadDouble(long offset, MemorySegment src) {
+            if (!src.isNative()) return loadDoubleOnHeap(offset, src);
+            long address = src.address() + offset;
+            float _c0 = (float) U.getDouble(address);
+            float _c1 = (float) U.getDouble(address + 8L);
+            float _c2 = (float) U.getDouble(address + 16L);
+            float _c3 = (float) U.getDouble(address + 24L);
+            return new FloatQuat(_c0, _c1, _c2, _c3);
+        }
+
+        private static FloatQuat loadDoubleOnHeap(long offset, MemorySegment src) {
+            byte[] bytes = HeapSegments.bytes(src);
+            if (bytes == null) return MS.loadDouble(offset, src);
+            long address = HeapSegments.offset(src) + offset;
+            float _c0 = (float) U.getDouble(bytes, address);
+            float _c1 = (float) U.getDouble(bytes, address + 8L);
+            float _c2 = (float) U.getDouble(bytes, address + 16L);
+            float _c3 = (float) U.getDouble(bytes, address + 24L);
+            return new FloatQuat(_c0, _c1, _c2, _c3);
+        }
+    }
+
+    private abstract static class FloatQuatBbOps {
+        public abstract FloatBuffer storeAbsolute(FloatQuat self, int index, FloatBuffer buf);
+        public abstract FloatQuat loadAbsolute(int index, FloatBuffer buf);
+        public abstract ByteBuffer storeAbsolute(FloatQuat self, int index, ByteBuffer buf);
+        public abstract FloatQuat loadAbsolute(int index, ByteBuffer buf);
+        public abstract DoubleBuffer storeAbsolute(FloatQuat self, int index, DoubleBuffer buf);
+        public abstract FloatQuat loadAbsolute(int index, DoubleBuffer buf);
+        public abstract ByteBuffer storeDoubleAbsolute(FloatQuat self, int index, ByteBuffer buf);
+        public abstract FloatQuat loadDoubleAbsolute(int index, ByteBuffer buf);
+    }
+
+    private static final class FloatQuatBbOpsApi extends FloatQuatBbOps {
+        public FloatBuffer storeAbsolute(FloatQuat self, int index, FloatBuffer buf) {
+            buf.put(index, self.x);
+            buf.put(index + 1, self.y);
+            buf.put(index + 2, self.z);
+            buf.put(index + 3, self.w);
+            return buf;
+        }
+
+        public FloatQuat loadAbsolute(int index, FloatBuffer buf) {
+            float _c0 = buf.get(index);
+            float _c1 = buf.get(index + 1);
+            float _c2 = buf.get(index + 2);
+            float _c3 = buf.get(index + 3);
+            return new FloatQuat(_c0, _c1, _c2, _c3);
+        }
+
+        public ByteBuffer storeAbsolute(FloatQuat self, int index, ByteBuffer buf) {
+            buf.putFloat(index, self.x);
+            buf.putFloat(index + 4, self.y);
+            buf.putFloat(index + 8, self.z);
+            buf.putFloat(index + 12, self.w);
+            return buf;
+        }
+
+        public FloatQuat loadAbsolute(int index, ByteBuffer buf) {
+            float _c0 = buf.getFloat(index);
+            float _c1 = buf.getFloat(index + 4);
+            float _c2 = buf.getFloat(index + 8);
+            float _c3 = buf.getFloat(index + 12);
+            return new FloatQuat(_c0, _c1, _c2, _c3);
+        }
+
+        public DoubleBuffer storeAbsolute(FloatQuat self, int index, DoubleBuffer buf) {
+            buf.put(index, self.x);
+            buf.put(index + 1, self.y);
+            buf.put(index + 2, self.z);
+            buf.put(index + 3, self.w);
+            return buf;
+        }
+
+        public FloatQuat loadAbsolute(int index, DoubleBuffer buf) {
+            float _c0 = (float) buf.get(index);
+            float _c1 = (float) buf.get(index + 1);
+            float _c2 = (float) buf.get(index + 2);
+            float _c3 = (float) buf.get(index + 3);
+            return new FloatQuat(_c0, _c1, _c2, _c3);
+        }
+
+        public ByteBuffer storeDoubleAbsolute(FloatQuat self, int index, ByteBuffer buf) {
+            buf.putDouble(index, self.x);
+            buf.putDouble(index + 8, self.y);
+            buf.putDouble(index + 16, self.z);
+            buf.putDouble(index + 24, self.w);
+            return buf;
+        }
+
+        public FloatQuat loadDoubleAbsolute(int index, ByteBuffer buf) {
+            float _c0 = (float) buf.getDouble(index);
+            float _c1 = (float) buf.getDouble(index + 8);
+            float _c2 = (float) buf.getDouble(index + 16);
+            float _c3 = (float) buf.getDouble(index + 24);
+            return new FloatQuat(_c0, _c1, _c2, _c3);
+        }
+    }
+
+    private static final class FloatQuatBbOpsUnsafe extends FloatQuatBbOps {
+        private static final FloatQuatBbOpsApi API = new FloatQuatBbOpsApi();
+
+        public FloatBuffer storeAbsolute(FloatQuat self, int index, FloatBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeAbsolute(self, index, buf);
+            long address = U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+            U.putFloat(address, self.x);
+            U.putFloat(address + 4L, self.y);
+            U.putFloat(address + 8L, self.z);
+            U.putFloat(address + 12L, self.w);
+            return buf;
+        }
+
+        public FloatQuat loadAbsolute(int index, FloatBuffer buf) {
+            if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadAbsolute(index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+            float _c0 = _U.getFloat(address);
+            float _c1 = _U.getFloat(address + 4L);
+            float _c2 = _U.getFloat(address + 8L);
+            float _c3 = _U.getFloat(address + 12L);
+            return new FloatQuat(_c0, _c1, _c2, _c3);
+        }
+
+        public ByteBuffer storeAbsolute(FloatQuat self, int index, ByteBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeAbsoluteElse(self, index, buf);
+            long address = U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            U.putFloat(address, self.x);
+            U.putFloat(address + 4L, self.y);
+            U.putFloat(address + 8L, self.z);
+            U.putFloat(address + 12L, self.w);
+            return buf;
+        }
+
+        private static ByteBuffer storeAbsoluteElse(FloatQuat self, int index, ByteBuffer buf) {
+            byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.storeAbsolute(self, index, buf);
+            long address = U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            U.putFloat(bytes, address, self.x);
+            U.putFloat(bytes, address + 4L, self.y);
+            U.putFloat(bytes, address + 8L, self.z);
+            U.putFloat(bytes, address + 12L, self.w);
+            return buf;
+        }
+
+        public FloatQuat loadAbsolute(int index, ByteBuffer buf) {
+            if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return loadAbsoluteElse(index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            float _c0 = _U.getFloat(address);
+            float _c1 = _U.getFloat(address + 4L);
+            float _c2 = _U.getFloat(address + 8L);
+            float _c3 = _U.getFloat(address + 12L);
+            return new FloatQuat(_c0, _c1, _c2, _c3);
+        }
+
+        private static FloatQuat loadAbsoluteElse(int index, ByteBuffer buf) {
+            byte[] bytes = buf.isDirect() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.loadAbsolute(index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            float _c0 = _U.getFloat(bytes, address);
+            float _c1 = _U.getFloat(bytes, address + 4L);
+            float _c2 = _U.getFloat(bytes, address + 8L);
+            float _c3 = _U.getFloat(bytes, address + 12L);
+            return new FloatQuat(_c0, _c1, _c2, _c3);
+        }
+
+        public DoubleBuffer storeAbsolute(FloatQuat self, int index, DoubleBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeAbsolute(self, index, buf);
+            long address = U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+            U.putDouble(address, self.x);
+            U.putDouble(address + 8L, self.y);
+            U.putDouble(address + 16L, self.z);
+            U.putDouble(address + 24L, self.w);
+            return buf;
+        }
+
+        public FloatQuat loadAbsolute(int index, DoubleBuffer buf) {
+            if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadAbsolute(index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+            float _c0 = (float) _U.getDouble(address);
+            float _c1 = (float) _U.getDouble(address + 8L);
+            float _c2 = (float) _U.getDouble(address + 16L);
+            float _c3 = (float) _U.getDouble(address + 24L);
+            return new FloatQuat(_c0, _c1, _c2, _c3);
+        }
+
+        public ByteBuffer storeDoubleAbsolute(FloatQuat self, int index, ByteBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeDoubleAbsoluteElse(self, index, buf);
+            long address = U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            U.putDouble(address, self.x);
+            U.putDouble(address + 8L, self.y);
+            U.putDouble(address + 16L, self.z);
+            U.putDouble(address + 24L, self.w);
+            return buf;
+        }
+
+        private static ByteBuffer storeDoubleAbsoluteElse(FloatQuat self, int index, ByteBuffer buf) {
+            byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.storeDoubleAbsolute(self, index, buf);
+            long address = U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            U.putDouble(bytes, address, self.x);
+            U.putDouble(bytes, address + 8L, self.y);
+            U.putDouble(bytes, address + 16L, self.z);
+            U.putDouble(bytes, address + 24L, self.w);
+            return buf;
+        }
+
+        public FloatQuat loadDoubleAbsolute(int index, ByteBuffer buf) {
+            if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return loadDoubleAbsoluteElse(index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            float _c0 = (float) _U.getDouble(address);
+            float _c1 = (float) _U.getDouble(address + 8L);
+            float _c2 = (float) _U.getDouble(address + 16L);
+            float _c3 = (float) _U.getDouble(address + 24L);
+            return new FloatQuat(_c0, _c1, _c2, _c3);
+        }
+
+        private static FloatQuat loadDoubleAbsoluteElse(int index, ByteBuffer buf) {
+            byte[] bytes = buf.isDirect() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.loadDoubleAbsolute(index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            float _c0 = (float) _U.getDouble(bytes, address);
+            float _c1 = (float) _U.getDouble(bytes, address + 8L);
+            float _c2 = (float) _U.getDouble(bytes, address + 16L);
+            float _c3 = (float) _U.getDouble(bytes, address + 24L);
+            return new FloatQuat(_c0, _c1, _c2, _c3);
+        }
+    }
+
+    private abstract static class FloatQuatRawOps {
+        public abstract FloatQuat storeUnsafe(FloatQuat self, long address);
+        public abstract FloatQuat loadUnsafe(long address);
+        public abstract FloatQuat storeDoubleUnsafe(FloatQuat self, long address);
+        public abstract FloatQuat loadDoubleUnsafe(long address);
+    }
+
+    private static final class FloatQuatRawOpsApi extends FloatQuatRawOps {
+        public FloatQuat storeUnsafe(FloatQuat self, long address) {
+            self.store(0L, virtualMemory().asSlice(address, 16L));
+            return self;
+        }
+
+        public FloatQuat loadUnsafe(long address) {
+            return FloatQuat.load(0L, virtualMemory().asSlice(address, 16L));
+        }
+
+        public FloatQuat storeDoubleUnsafe(FloatQuat self, long address) {
+            self.storeDouble(0L, virtualMemory().asSlice(address, 32L));
+            return self;
+        }
+
+        public FloatQuat loadDoubleUnsafe(long address) {
+            return FloatQuat.loadDouble(0L, virtualMemory().asSlice(address, 32L));
+        }
+    }
+
+    private static final class FloatQuatRawOpsUnsafe extends FloatQuatRawOps {
+        public FloatQuat storeUnsafe(FloatQuat self, long address) {
+            U.putFloat(address, self.x);
+            U.putFloat(address + 4L, self.y);
+            U.putFloat(address + 8L, self.z);
+            U.putFloat(address + 12L, self.w);
+            return self;
+        }
+
+        public FloatQuat storeHeap(FloatQuat self, byte[] bytes, long address) {
+            U.putFloat(bytes, address, self.x);
+            U.putFloat(bytes, address + 4L, self.y);
+            U.putFloat(bytes, address + 8L, self.z);
+            U.putFloat(bytes, address + 12L, self.w);
+            return self;
+        }
+
+        public FloatQuat loadUnsafe(long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = _U.getFloat(address);
+            float _c1 = _U.getFloat(address + 4L);
+            float _c2 = _U.getFloat(address + 8L);
+            float _c3 = _U.getFloat(address + 12L);
+            return new FloatQuat(_c0, _c1, _c2, _c3);
+        }
+
+        public FloatQuat loadHeap(byte[] bytes, long address) {
+            float _c0 = U.getFloat(bytes, address);
+            float _c1 = U.getFloat(bytes, address + 4L);
+            float _c2 = U.getFloat(bytes, address + 8L);
+            float _c3 = U.getFloat(bytes, address + 12L);
+            return new FloatQuat(_c0, _c1, _c2, _c3);
+        }
+
+        public FloatQuat storeDoubleUnsafe(FloatQuat self, long address) {
+            U.putDouble(address, self.x);
+            U.putDouble(address + 8L, self.y);
+            U.putDouble(address + 16L, self.z);
+            U.putDouble(address + 24L, self.w);
+            return self;
+        }
+
+        public FloatQuat storeDoubleHeap(FloatQuat self, byte[] bytes, long address) {
+            U.putDouble(bytes, address, self.x);
+            U.putDouble(bytes, address + 8L, self.y);
+            U.putDouble(bytes, address + 16L, self.z);
+            U.putDouble(bytes, address + 24L, self.w);
+            return self;
+        }
+
+        public FloatQuat loadDoubleUnsafe(long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = (float) _U.getDouble(address);
+            float _c1 = (float) _U.getDouble(address + 8L);
+            float _c2 = (float) _U.getDouble(address + 16L);
+            float _c3 = (float) _U.getDouble(address + 24L);
+            return new FloatQuat(_c0, _c1, _c2, _c3);
+        }
+
+        public FloatQuat loadDoubleHeap(byte[] bytes, long address) {
+            float _c0 = (float) U.getDouble(bytes, address);
+            float _c1 = (float) U.getDouble(bytes, address + 8L);
+            float _c2 = (float) U.getDouble(bytes, address + 16L);
+            float _c3 = (float) U.getDouble(bytes, address + 24L);
+            return new FloatQuat(_c0, _c1, _c2, _c3);
+        }
+    }
+}

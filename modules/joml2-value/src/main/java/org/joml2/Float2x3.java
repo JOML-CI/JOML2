@@ -1,0 +1,15122 @@
+// Copyright (c) 2015-2026 JOML
+// SPDX-License-Identifier: MIT
+package org.joml2;
+
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
+import java.nio.DoubleBuffer;
+import org.joml2.internal.unsafe.HeapSegments;
+import static org.joml2.internal.unsafe.UnsafeOpsHolder.U;
+import java.nio.ByteOrder;
+import org.joml2.internal.unsafe.UnsafeCopy;
+import static org.joml2.internal.unsafe.VirtualMemoryHolder.virtualMemory;
+
+/**
+ * Immutable 2x3 matrix of single-precision {@code float} components, declared as a value record.
+ * <p>
+ * All operations leave the receiver unchanged and return their result as a value. An operation
+ * whose result equals one of its operands may return that operand instead of allocating a new
+ * instance; as a value class, instances have no identity and may be flattened by the JVM.
+ * <p>
+ * Structural property bits: the matrix caches whether it is known to be the identity, a pure
+ * translation, orthogonal (a proper rotation, with any translation) or affine, and the operations
+ * dispatch to cheaper arms on those bits. The {@code make*} factories set the bits from what they
+ * construct and the computing operations derive them from their operands' bits; the element
+ * constructors and the {@code load*} factories recompute them with {@code determineProperties()},
+ * which compares elements exactly against {@code 0} and {@code 1} and infers identity, translation
+ * and affine only. A rotation loaded from a buffer or set from scalars is therefore merely affine -
+ * never orthogonal - until it is rebuilt through a {@code make*} factory.
+ * <p>
+ * {@code equals} compares the components element-wise and bitwise, as by
+ * {@code Float.floatToIntBits}: {@code 0.0} and {@code -0.0} are not equal, and NaN is equal to
+ * NaN; the cached structural property bits are ignored, so two matrix objects holding the same
+ * elements are equal whatever either one has determined about itself. {@code hashCode} is
+ * consistent with it (derived from the same bit patterns).
+ * <p>
+ * {@code equalsEpsilon} compares per component with a tolerance: an infinite component never
+ * compares equal to an equal infinity (the difference {@code Inf - Inf} is NaN), and to a finite
+ * one only under an infinite {@code epsilon}; a NaN component never compares equal to anything.
+ *
+ * @param m00 the element in row 0, column 0
+ * @param m01 the element in row 0, column 1
+ * @param m02 the element in row 0, column 2
+ * @param m10 the element in row 1, column 0
+ * @param m11 the element in row 1, column 1
+ * @param m12 the element in row 1, column 2
+ * @param properties the cached structural property bits
+ */
+@jdk.internal.vm.annotation.LooselyConsistentValue
+public value record Float2x3(float m00, float m01, float m02, float m10, float m11, float m12, int properties) {
+    /** The number of bytes one instance occupies in the natural {@code store}/{@code load} layout. */
+    public static final int BYTES = 24;
+
+    /** The number of rows - the tight stride of the column-major ({@code storeCM}/{@code loadCM}) strided overloads. */
+    public static final int ROWS = 2;
+
+    /** The number of columns - the tight stride of the row-major ({@code storeRM}/{@code loadRM}) strided overloads. */
+    public static final int COLUMNS = 3;
+
+    /** The zero matrix (all components 0). */
+    public static final Float2x3 ZERO = new Float2x3(0, 0, 0, 0, 0, 0);
+
+    /** The identity matrix. */
+    public static final Float2x3 IDENTITY = new Float2x3();
+
+    /**
+     * Canonical constructor, taking the cached property bits as given.
+     * <p>
+     * The bits are trusted as-is and never validated: wrong bits produce wrong results from every
+     * dispatched operation. Prefer the {@code make*} factories, or the element constructor, which
+     * computes the bits itself.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param m00 the element in row 0, column 0
+     * @param m01 the element in row 0, column 1
+     * @param m02 the element in row 0, column 2
+     * @param m10 the element in row 1, column 0
+     * @param m11 the element in row 1, column 1
+     * @param m12 the element in row 1, column 2
+     * @param properties the cached property bits, taken as given
+     */
+    public Float2x3(float m00, float m01, float m02, float m10, float m11, float m12, int properties) {
+        this.m00 = m00;
+        this.m01 = m01;
+        this.m02 = m02;
+        this.m10 = m10;
+        this.m11 = m11;
+        this.m12 = m12;
+        this.properties = properties;
+    }
+
+    /**
+     * Create a new instance initialized to the identity.
+     * <p>
+     * Valid input: the method reads no input.
+     */
+    public Float2x3() {
+        this(1, 0, 0, 0, 1, 0, Joml.BIT_IDENTITY);
+    }
+
+    /**
+     * Create a matrix from the given elements, computing the cached property bits.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param m00 the element in row 0, column 0
+     * @param m01 the element in row 0, column 1
+     * @param m02 the element in row 0, column 2
+     * @param m10 the element in row 1, column 0
+     * @param m11 the element in row 1, column 1
+     * @param m12 the element in row 1, column 2
+     */
+    public Float2x3(float m00, float m01, float m02, float m10, float m11, float m12) {
+        this(m00, m01, m02, m10, m11, m12, props(m00, m01, m02, m10, m11, m12));
+    }
+
+    /**
+     * Create a matrix from the given column vectors.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param c0 the first column
+     * @param c1 the second column
+     * @param c2 the third column
+     */
+    public Float2x3(Float2 c0, Float2 c1, Float2 c2) {
+        this(c0.x(), c1.x(), c2.x(), c0.y(), c1.y(), c2.y());
+    }
+
+    /**
+     * Create a matrix from the given column vectors and precomputed property bits (no
+     * recomputation).
+     * <p>
+     * The bits are trusted as-is and never validated: wrong bits produce wrong results from every
+     * dispatched operation. Prefer the {@code make*} factories, or the element constructor, which
+     * computes the bits itself.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param c0 the first column
+     * @param c1 the second column
+     * @param c2 the third column
+     * @param properties the cached property bits, taken as given
+     */
+    public Float2x3(Float2 c0, Float2 c1, Float2 c2, int properties) {
+        this(c0.x(), c1.x(), c2.x(), c0.y(), c1.y(), c2.y(), properties);
+    }
+
+    /**
+     * Create a matrix by identity-extending {@code src} with a zero translation column.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param src the matrix to convert
+     */
+    public Float2x3(Float2x2 src) {
+        this(src.m00(), src.m01(), 0, src.m10(), src.m11(), 0);
+    }
+
+    /**
+     * Create a matrix by truncating {@code src} to the overlapping cells.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param src the matrix to convert
+     */
+    public Float2x3(Float3x3 src) {
+        this(src.m00(), src.m01(), src.m02(), src.m10(), src.m11(), src.m12());
+    }
+
+    /**
+     * Create an array of {@code length} elements, each {@link #ZERO}.
+     * <p>
+     * The array is flat where the JVM lets this library create one: when the application exports
+     * {@code java.base/jdk.internal.value} to it
+     * ({@code --add-exports java.base/jdk.internal.value=org.joml2}, or {@code =ALL-UNNAMED} on the
+     * classpath). Its elements are then stored inline, without an object each: reading one follows
+     * no reference and storing one allocates nothing. Such an array holds no {@code null} - storing
+     * one throws {@link NullPointerException} - and an element written by one thread while another
+     * reads it can be read torn, part old, part new. Without the export it is an ordinary array,
+     * filled the same way.
+     * <p>
+     * Valid input: {@code length} must not be negative.
+     *
+     * @param length the number of elements
+     * @return the new array
+     * @throws NegativeArraySizeException if {@code length} is negative
+     */
+    public static Float2x3[] newArray(int length) {
+        return (Float2x3[]) org.joml2.internal.value.FlatArrays.newArray(Float2x3.class, length, ZERO);
+    }
+
+    /**
+     * Create an array of {@code length} elements, each {@code init}.
+     * <p>
+     * The array is flat where the JVM lets this library create one: when the application exports
+     * {@code java.base/jdk.internal.value} to it
+     * ({@code --add-exports java.base/jdk.internal.value=org.joml2}, or {@code =ALL-UNNAMED} on the
+     * classpath). Its elements are then stored inline, without an object each: reading one follows
+     * no reference and storing one allocates nothing. Such an array holds no {@code null} - storing
+     * one throws {@link NullPointerException} - and an element written by one thread while another
+     * reads it can be read torn, part old, part new. Without the export it is an ordinary array,
+     * filled the same way.
+     * <p>
+     * Valid input: {@code length} must not be negative.
+     *
+     * @param length the number of elements
+     * @param init the value every element starts as
+     * @return the new array
+     * @throws NullPointerException if {@code init} is null
+     * @throws NegativeArraySizeException if {@code length} is negative
+     */
+    public static Float2x3[] newArray(int length, Float2x3 init) {
+        return (Float2x3[]) org.joml2.internal.value.FlatArrays.newArray(Float2x3.class, length, init);
+    }
+
+    /** {@return the element in row 0, column 0} <p>Valid input: any value, NaN and the infinities included. */
+    public float m00() { return m00; }
+
+    /** {@return the element in row 0, column 1} <p>Valid input: any value, NaN and the infinities included. */
+    public float m01() { return m01; }
+
+    /** {@return the element in row 0, column 2} <p>Valid input: any value, NaN and the infinities included. */
+    public float m02() { return m02; }
+
+    /** {@return the element in row 1, column 0} <p>Valid input: any value, NaN and the infinities included. */
+    public float m10() { return m10; }
+
+    /** {@return the element in row 1, column 1} <p>Valid input: any value, NaN and the infinities included. */
+    public float m11() { return m11; }
+
+    /** {@return the element in row 1, column 2} <p>Valid input: any value, NaN and the infinities included. */
+    public float m12() { return m12; }
+
+    /** {@return the cached structural property bits} <p>Valid input: any value, NaN and the infinities included. */
+    public int properties() { return properties; }
+
+    private static int props(float m00, float m01, float m02, float m10, float m11, float m12) {
+        if (m00 != 1 || m01 != 0 || m10 != 0 || m11 != 1) return 1;
+        if (m02 != 0 || m12 != 0) return 7;
+        return 15;
+    }
+
+    /**
+     * Numerically determine the structural properties of this matrix (identity, translation,
+     * affinity) and return them as property bits.
+     * <p>
+     * The comparison is exact: an element counts as {@code 0} or {@code 1} only when it is exactly
+     * that value (as by {@code ==}), with no tolerance. A {@code double} element {@code 1 + 1e-8}
+     * is therefore not an identity element, while the {@code float} literal {@code 1 + 1e-8f}
+     * already rounds to {@code 1.0f} and is.
+     * <p>
+     * Only identity, translation and affine are inferred (the identity and a pure translation carry
+     * the orthogonal bit they imply); a general rotation block is never recognised as orthogonal. A
+     * rotation loaded from a buffer or set from scalars therefore takes the affine dispatch arms
+     * until it is rebuilt through a {@code make*} factory, which sets the bits from what it
+     * constructs.
+     * <p>
+     * This is a pure query: it does not update this matrix's cached property bits.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @return the determined property bits
+     */
+    public int determineProperties() {
+        if (this.m00 != 1 || this.m01 != 0 || this.m10 != 0 || this.m11 != 1) return 1;
+        if (this.m02 != 0 || this.m12 != 0) return 7;
+        return 15;
+    }
+
+    /** {@return whether this matrix is known to be the identity} O(1) read of the cached property bits; conservative. <p>Valid input: any value, NaN and the infinities included. */
+    public boolean isIdentity() { return (this.properties & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY; }
+
+    /** {@return whether this matrix is known to be a pure translation} O(1) read of the cached property bits; conservative. <p>Valid input: any value, NaN and the infinities included. */
+    public boolean isTranslation() { return (this.properties & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION; }
+
+    /** {@return whether this matrix is known to be orthogonal, i.e. its upper-left block is orthonormal with positive determinant (a proper rotation; a reflection is affine, not orthogonal)} O(1) read of the cached property bits; conservative. <p>Valid input: any value, NaN and the infinities included. */
+    public boolean isOrthogonal() { return (this.properties & Joml.BIT_ORTHOGONAL) == Joml.BIT_ORTHOGONAL; }
+
+    /** {@return whether this matrix is affine} Always {@code true} for this shape. <p>Valid input: any value, NaN and the infinities included. */
+    public boolean isAffine() { return true; }
+
+    /**
+     * Private body of {@code getColumn}, specialized by runtime matrix properties; reached only
+     * through the public {@code getColumn} dispatcher.
+     */
+    private Float2 getColumn_identity(int col) {
+        return switch (col) {
+            case 0 -> new Float2(1.0f, 0.0f);
+            case 1 -> new Float2(0.0f, 1.0f);
+            case 2 -> Float2.ZERO;
+            default -> throw new IndexOutOfBoundsException("Index out of range: " + col);
+        };
+    }
+
+    /**
+     * Private body of {@code getColumn}, specialized by runtime matrix properties; reached only
+     * through the public {@code getColumn} dispatcher.
+     */
+    private Float2 getColumn_translation(int col) {
+        return switch (col) {
+            case 0 -> new Float2(1.0f, 0.0f);
+            case 1 -> new Float2(0.0f, 1.0f);
+            case 2 -> new Float2(this.m02, this.m12);
+            default -> throw new IndexOutOfBoundsException("Index out of range: " + col);
+        };
+    }
+
+    /**
+     * Private body of {@code getColumn}, specialized by runtime matrix properties; reached only
+     * through the public {@code getColumn} dispatcher.
+     */
+    private Float2 getColumn_general(int col) {
+        return switch (col) {
+            case 0 -> new Float2(this.m00, this.m10);
+            case 1 -> new Float2(this.m01, this.m11);
+            case 2 -> new Float2(this.m02, this.m12);
+            default -> throw new IndexOutOfBoundsException("Index out of range: " + col);
+        };
+    }
+
+    /**
+     * Get the column at the given index of this matrix, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param col the column index
+     * @return the resulting vector
+     * @throws IndexOutOfBoundsException if {@code col} is not in {@code [0, COLUMNS)}
+     */
+    public Float2 getColumn(int col) {
+        int p = this.properties;
+        if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return getColumn_general(col);
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return getColumn_identity(col);
+        return getColumn_translation(col);
+    }
+
+    /**
+     * Compute the rotation angle in radians ({@code atan2(m10, m00)}) of this matrix; it is still
+     * recovered under a uniform scale, or a scale applied before the rotation ({@code M = R * S})
+     * whose x factor is positive.
+     * <p>
+     * Valid input: this matrix must be a rotation matrix, possibly scaled uniformly.
+     *
+     * @return the rotation angle in radians ({@code atan2(m10, m00)}) of this matrix; it is still
+     *        recovered under a uniform scale, or a scale applied before the rotation
+     *        ({@code M = R * S}) whose x factor is positive
+     */
+    public float getRotationAngle() {
+        return Math.atan2(this.m10, this.m00);
+    }
+
+    /**
+     * Private body of {@code getRow}, specialized by runtime matrix properties; reached only
+     * through the public {@code getRow} dispatcher.
+     */
+    private Float3 getRow_identity(int row) {
+        return switch (row) {
+            case 0 -> new Float3(1.0f, 0.0f, 0.0f);
+            case 1 -> new Float3(0.0f, 1.0f, 0.0f);
+            default -> throw new IndexOutOfBoundsException("Index out of range: " + row);
+        };
+    }
+
+    /**
+     * Private body of {@code getRow}, specialized by runtime matrix properties; reached only
+     * through the public {@code getRow} dispatcher.
+     */
+    private Float3 getRow_translation(int row) {
+        return switch (row) {
+            case 0 -> new Float3(1.0f, 0.0f, this.m02);
+            case 1 -> new Float3(0.0f, 1.0f, this.m12);
+            default -> throw new IndexOutOfBoundsException("Index out of range: " + row);
+        };
+    }
+
+    /**
+     * Private body of {@code getRow}, specialized by runtime matrix properties; reached only
+     * through the public {@code getRow} dispatcher.
+     */
+    private Float3 getRow_general(int row) {
+        return switch (row) {
+            case 0 -> new Float3(this.m00, this.m01, this.m02);
+            case 1 -> new Float3(this.m10, this.m11, this.m12);
+            default -> throw new IndexOutOfBoundsException("Index out of range: " + row);
+        };
+    }
+
+    /**
+     * Get the row at the given index of this matrix, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param row the row index
+     * @return the resulting vector
+     * @throws IndexOutOfBoundsException if {@code row} is not in {@code [0, ROWS)}
+     */
+    public Float3 getRow(int row) {
+        int p = this.properties;
+        if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return getRow_general(row);
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return getRow_identity(row);
+        return getRow_translation(row);
+    }
+
+    /**
+     * Get the translation of this matrix, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting vector
+     */
+    public Float2 getTranslation() {
+        if ((this.properties & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return Float2.ZERO;
+        return new Float2(this.m02, this.m12);
+    }
+
+    /**
+     * Compute the determinant of the linear part (the upper-left square block) of this matrix.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the determinant of the linear part (the upper-left square block) of this matrix
+     */
+    public float determinant() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            float _t1 = -(this.m01 * this.m10);
+            return java.lang.Math.fma(this.m00, this.m11, _t1) - java.lang.Math.fma(this.m01, this.m10, _t1);
+        } else {
+            float _t1 = -(this.m01 * this.m10);
+            return ((this.m00) * (this.m11) + (_t1)) - ((this.m01) * (this.m10) + (_t1));
+        }
+    }
+
+    /**
+     * Compute the Frobenius norm of this matrix.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the Frobenius norm of this matrix
+     */
+    public float frobeniusNorm() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return (float) java.lang.Math.sqrt(java.lang.Math.fma(this.m12, this.m12, java.lang.Math.fma(this.m11, this.m11, java.lang.Math.fma(this.m10, this.m10, java.lang.Math.fma(this.m02, this.m02, java.lang.Math.fma(this.m00, this.m00, this.m01 * this.m01))))));
+        } else {
+            return (float) java.lang.Math.sqrt(((this.m12) * (this.m12) + (((this.m11) * (this.m11) + (((this.m10) * (this.m10) + (((this.m02) * (this.m02) + (((this.m00) * (this.m00) + (this.m01 * this.m01)))))))))));
+        }
+    }
+
+    /**
+     * Private body of {@code invert}, specialized by runtime matrix properties; reached only
+     * through the public {@code invert} dispatcher.
+     */
+    private Float2x3 invert_orthogonal_fma() {
+        float _t2 = -this.m10 * this.m12;
+        float _t3 = -this.m11 * this.m12;
+        return new Float2x3(this.m11, this.m10, java.lang.Math.fma(this.m02, -this.m11, _t2) - java.lang.Math.fma(this.m10, this.m12, _t2), -this.m10, this.m11, java.lang.Math.fma(this.m02, this.m10, _t3) - java.lang.Math.fma(this.m11, this.m12, _t3), Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private body of {@code invert}, specialized by runtime matrix properties; reached only
+     * through the public {@code invert} dispatcher.
+     */
+    private Float2x3 invert_general_fma() {
+        float _t3 = -(this.m01 * this.m10);
+        float _t4 = -(this.m01 * this.m12);
+        float _t5 = -(this.m02 * this.m10);
+        float _t9 = java.lang.Math.fma(this.m00, this.m11, _t3) - java.lang.Math.fma(this.m01, this.m10, _t3);
+        if (!(java.lang.Math.abs(_t9) > 1.1754944E-38f && java.lang.Math.abs(_t9) < 8.507059E37f)) {
+            int p = this.properties;
+            if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return invert_degenerate_general_fma();
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, Joml.BIT_IDENTITY);
+            if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return new Float2x3(1.0f, 0.0f, -this.m02, 0.0f, 1.0f, -this.m12, Joml.BIT_TRANSLATION);
+            return invert_degenerate_orthogonal_fma();
+        }
+        float _t9_inv = 1.0f / _t9;
+        return new Float2x3(this.m11 * _t9_inv, -(this.m01 * _t9_inv), (java.lang.Math.fma(this.m01, this.m12, _t4) - java.lang.Math.fma(this.m02, this.m11, _t4)) * _t9_inv, -(this.m10 * _t9_inv), this.m00 * _t9_inv, (java.lang.Math.fma(this.m02, this.m10, _t5) - java.lang.Math.fma(this.m00, this.m12, _t5)) * _t9_inv, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code invert}, specialized by runtime matrix properties; reached only
+     * through the public {@code invert} dispatcher.
+     */
+    private Float2x3 invert_general_mulAdd() {
+        float _t3 = -(this.m01 * this.m10);
+        float _t4 = -(this.m01 * this.m12);
+        float _t5 = -(this.m02 * this.m10);
+        float _t9 = ((this.m00) * (this.m11) + (_t3)) - ((this.m01) * (this.m10) + (_t3));
+        if (!(java.lang.Math.abs(_t9) > 1.1754944E-38f && java.lang.Math.abs(_t9) < 8.507059E37f)) return invert_degenerate_mulAdd();
+        float _t9_inv = 1.0f / _t9;
+        return new Float2x3(this.m11 * _t9_inv, -(this.m01 * _t9_inv), (((this.m01) * (this.m12) + (_t4)) - ((this.m02) * (this.m11) + (_t4))) * _t9_inv, -(this.m10 * _t9_inv), this.m00 * _t9_inv, (((this.m02) * (this.m10) + (_t5)) - ((this.m00) * (this.m12) + (_t5))) * _t9_inv, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Invert this affine matrix, i.e. compute the inverse of the implied square homogeneous matrix,
+     * returning the result as a value.
+     * <p>
+     * Valid input: this matrix must be invertible.
+     *
+     * @return the resulting matrix
+     */
+    public Float2x3 invert() {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            int p = this.properties;
+            if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return invert_general_fma();
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, Joml.BIT_IDENTITY);
+            if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return new Float2x3(1.0f, 0.0f, -this.m02, 0.0f, 1.0f, -this.m12, Joml.BIT_TRANSLATION);
+            return invert_orthogonal_fma();
+        } else {
+            int p = this.properties;
+            if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return invert_general_mulAdd();
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, Joml.BIT_IDENTITY);
+            if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return new Float2x3(1.0f, 0.0f, -this.m02, 0.0f, 1.0f, -this.m12, Joml.BIT_TRANSLATION);
+            float _t2 = -this.m10 * this.m12;
+            float _t3 = -this.m11 * this.m12;
+            return new Float2x3(this.m11, this.m10, ((_t2) - (this.m02) * (this.m11)) - ((this.m10) * (this.m12) + (_t2)), -this.m10, this.m11, ((this.m02) * (this.m10) + (_t3)) - ((this.m11) * (this.m12) + (_t3)), Joml.BIT_ORTHOGONAL);
+        }
+    }
+
+    /**
+     * Degenerate-input path of {@code invert}: its methods leave here when the determinant or its
+     * reciprocal leaves the normal floating-point range (a singular matrix, one scaled far from 1,
+     * NaN); reached only through them.
+     */
+    private Float2x3 invert_degenerate_orthogonal_fma() {
+        float _t0 = unitScale(this.m10, this.m11, this.m10);
+        float _t1 = unitScale(this.m00, this.m01, this.m00);
+        float _t8 = this.m11 * _t0;
+        float _t9 = this.m00 * _t1;
+        float _t10 = this.m01 * _t1;
+        float _t11 = this.m10 * _t0;
+        float _t12 = this.m02 * _t1;
+        float _t13 = this.m12 * _t0;
+        float _t17 = -(_t10 * _t11);
+        float _t18 = -(_t10 * _t13);
+        float _t19 = -(_t12 * _t11);
+        float _t22_inv = 1.0f / (java.lang.Math.fma(_t9, _t8, _t17) - java.lang.Math.fma(_t10, _t11, _t17));
+        float _sp1 = _t0 * _t22_inv;
+        float _sp0 = _t1 * _t22_inv;
+        return new Float2x3(_t8 * _sp0, -(_t10 * _sp1), (java.lang.Math.fma(_t10, _t13, _t18) - java.lang.Math.fma(_t12, _t8, _t18)) * _t22_inv, -(_t11 * _sp0), _t9 * _sp1, (java.lang.Math.fma(_t12, _t11, _t19) - java.lang.Math.fma(_t9, _t13, _t19)) * _t22_inv, Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Degenerate-input path of {@code invert}: its methods leave here when the determinant or its
+     * reciprocal leaves the normal floating-point range (a singular matrix, one scaled far from 1,
+     * NaN); reached only through them.
+     */
+    private Float2x3 invert_degenerate_general_fma() {
+        float _t0 = unitScale(this.m10, this.m11, this.m10);
+        float _t1 = unitScale(this.m00, this.m01, this.m00);
+        float _t8 = this.m11 * _t0;
+        float _t9 = this.m00 * _t1;
+        float _t10 = this.m01 * _t1;
+        float _t11 = this.m10 * _t0;
+        float _t12 = this.m02 * _t1;
+        float _t13 = this.m12 * _t0;
+        float _t17 = -(_t10 * _t11);
+        float _t18 = -(_t10 * _t13);
+        float _t19 = -(_t12 * _t11);
+        float _t22_inv = 1.0f / (java.lang.Math.fma(_t9, _t8, _t17) - java.lang.Math.fma(_t10, _t11, _t17));
+        float _sp1 = _t0 * _t22_inv;
+        float _sp0 = _t1 * _t22_inv;
+        return new Float2x3(_t8 * _sp0, -(_t10 * _sp1), (java.lang.Math.fma(_t10, _t13, _t18) - java.lang.Math.fma(_t12, _t8, _t18)) * _t22_inv, -(_t11 * _sp0), _t9 * _sp1, (java.lang.Math.fma(_t12, _t11, _t19) - java.lang.Math.fma(_t9, _t13, _t19)) * _t22_inv, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Degenerate-input path of {@code invert}: its methods leave here when the determinant or its
+     * reciprocal leaves the normal floating-point range (a singular matrix, one scaled far from 1,
+     * NaN); reached only through them.
+     */
+    private Float2x3 invert_degenerate_general_mulAdd() {
+        float _t0 = unitScale(this.m10, this.m11, this.m10);
+        float _t1 = unitScale(this.m00, this.m01, this.m00);
+        float _t8 = this.m11 * _t0;
+        float _t9 = this.m00 * _t1;
+        float _t10 = this.m01 * _t1;
+        float _t11 = this.m10 * _t0;
+        float _t12 = this.m02 * _t1;
+        float _t13 = this.m12 * _t0;
+        float _t17 = -(_t10 * _t11);
+        float _t18 = -(_t10 * _t13);
+        float _t19 = -(_t12 * _t11);
+        float _t22_inv = 1.0f / (((_t9) * (_t8) + (_t17)) - ((_t10) * (_t11) + (_t17)));
+        float _sp1 = _t0 * _t22_inv;
+        float _sp0 = _t1 * _t22_inv;
+        return new Float2x3(_t8 * _sp0, -(_t10 * _sp1), (((_t10) * (_t13) + (_t18)) - ((_t12) * (_t8) + (_t18))) * _t22_inv, -(_t11 * _sp0), _t9 * _sp1, (((_t12) * (_t11) + (_t19)) - ((_t9) * (_t13) + (_t19))) * _t22_inv, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Degenerate-input path of {@code invert}: its methods leave here when the determinant or its
+     * reciprocal leaves the normal floating-point range (a singular matrix, one scaled far from 1,
+     * NaN); reached only through them.
+     */
+    private Float2x3 invert_degenerate_mulAdd() {
+        int p = this.properties;
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return invert_degenerate_general_mulAdd();
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, Joml.BIT_IDENTITY);
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return new Float2x3(1.0f, 0.0f, -this.m02, 0.0f, 1.0f, -this.m12, Joml.BIT_TRANSLATION);
+        float _t0 = unitScale(this.m10, this.m11, this.m10);
+        float _t1 = unitScale(this.m00, this.m01, this.m00);
+        float _t8 = this.m11 * _t0;
+        float _t9 = this.m00 * _t1;
+        float _t10 = this.m01 * _t1;
+        float _t11 = this.m10 * _t0;
+        float _t12 = this.m02 * _t1;
+        float _t13 = this.m12 * _t0;
+        float _t17 = -(_t10 * _t11);
+        float _t18 = -(_t10 * _t13);
+        float _t19 = -(_t12 * _t11);
+        float _t22_inv = 1.0f / (((_t9) * (_t8) + (_t17)) - ((_t10) * (_t11) + (_t17)));
+        float _sp1 = _t0 * _t22_inv;
+        float _sp0 = _t1 * _t22_inv;
+        return new Float2x3(_t8 * _sp0, -(_t10 * _sp1), (((_t10) * (_t13) + (_t18)) - ((_t12) * (_t8) + (_t18))) * _t22_inv, -(_t11 * _sp0), _t9 * _sp1, (((_t12) * (_t11) + (_t19)) - ((_t9) * (_t13) + (_t19))) * _t22_inv, Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private per-column body of {@code invertProduct_general_s4197a8e1_tail}, stored into
+     * {@code _m}. Shared by 2 identical private paths of {@code invertProduct}; reached only
+     * through it.
+     */
+    private void invertProduct_general_s4197a8e1_tail_s373ec483_c0_fma(float _t42, float _t43, float _t52, float _t36, float _t37, float _t45, float _t55, float _t41, float[] _m) {
+        _m[0] = java.lang.Math.fma(_t42, _t43, _t52) + java.lang.Math.fma(_t36, _t37, -_t52);
+        _m[3] = java.lang.Math.fma(_t45, _t37, _t55) + java.lang.Math.fma(_t43, _t41, -_t55);
+    }
+
+    /**
+     * Private per-column body of {@code invertProduct_general_s4197a8e1_tail}, stored into
+     * {@code _m}. Shared by 2 identical private paths of {@code invertProduct}; reached only
+     * through it.
+     */
+    private void invertProduct_general_s4197a8e1_tail_s373ec483_c1_fma(float _t42, float _t38, float _t54, float _t44, float _t36, float _t45, float _t53, float _t41, float[] _m) {
+        _m[1] = java.lang.Math.fma(_t42, _t38, _t54) + java.lang.Math.fma(_t44, _t36, -_t54);
+        _m[4] = java.lang.Math.fma(_t45, _t44, _t53) + java.lang.Math.fma(_t41, _t38, -_t53);
+    }
+
+    /**
+     * Private per-column body of {@code invertProduct_general_s4197a8e1_tail}, stored into
+     * {@code _m}. Shared by 2 identical private paths of {@code invertProduct}; reached only
+     * through it.
+     */
+    private void invertProduct_general_s4197a8e1_tail_s373ec483_c2_fma(float _t42, float _t50, float _t51, float _t36, Float2x3 other, float _t10, float _t24_inv, float _t45, float _t41, float _t11, float[] _m) {
+        _m[2] = java.lang.Math.fma(_t42, _t50, java.lang.Math.fma(_t51, _t36, -((java.lang.Math.fma(other.m02, other.m11, _t10) - java.lang.Math.fma(other.m01, other.m12, _t10)) * _t24_inv)));
+        _m[5] = java.lang.Math.fma(_t45, _t51, java.lang.Math.fma(_t50, _t41, -((java.lang.Math.fma(other.m00, other.m12, _t11) - java.lang.Math.fma(other.m02, other.m10, _t11)) * _t24_inv)));
+    }
+
+    /**
+     * Private per-column body of {@code invertProduct_general_s4197a8e1_tail}, stored into
+     * {@code _m}. Shared by 2 identical private paths of {@code invertProduct}; reached only
+     * through it.
+     */
+    private void invertProduct_general_s4197a8e1_tail_s373ec483_c2_mulAdd(float _t42, float _t50, float _t51, float _t36, Float2x3 other, float _t10, float _t24_inv, float _t45, float _t41, float _t11, float[] _m) {
+        _m[2] = ((_t42) * (_t50) + (((_t51) * (_t36) - ((((other.m02) * (other.m11) + (_t10)) - ((other.m01) * (other.m12) + (_t10))) * _t24_inv))));
+        _m[5] = ((_t45) * (_t51) + (((_t50) * (_t41) - ((((other.m00) * (other.m12) + (_t11)) - ((other.m02) * (other.m10) + (_t11))) * _t24_inv))));
+    }
+
+    /** Private tail of {@code invertProduct_general}; reached only through it. */
+    private Float2x3 invertProduct_general_s4197a8e1_tail_fma(float _t25, Float2x3 other, float _t24, float _t24_inv, float _t25_inv, float _t8, float _t9, float _t36, float _t10, float _t11, int _props) {
+        float _t37 = this.m11 / _t25;
+        float _t38 = this.m00 / _t25;
+        float _t41 = other.m00 / _t24;
+        float _t42 = -(other.m01 * _t24_inv);
+        float _t43 = -(this.m10 * _t25_inv);
+        float _t44 = -(this.m01 * _t25_inv);
+        float _t45 = -(other.m10 * _t24_inv);
+        float[] _m = new float[6];
+        invertProduct_general_s4197a8e1_tail_s373ec483_c0_fma(_t42, _t43, _t36 * _t37, _t36, _t37, _t45, _t43 * _t41, _t41, _m);
+        invertProduct_general_s4197a8e1_tail_s373ec483_c1_fma(_t42, _t38, _t44 * _t36, _t44, _t36, _t45, _t41 * _t38, _t41, _m);
+        invertProduct_general_s4197a8e1_tail_s373ec483_c2_fma(_t42, -((java.lang.Math.fma(this.m00, this.m12, _t8) - java.lang.Math.fma(this.m02, this.m10, _t8)) * _t25_inv), -((java.lang.Math.fma(this.m02, this.m11, _t9) - java.lang.Math.fma(this.m01, this.m12, _t9)) * _t25_inv), _t36, other, _t10, _t24_inv, _t45, _t41, _t11, _m);
+        return new Float2x3(_m[0], _m[1], _m[2], _m[3], _m[4], _m[5], _props);
+    }
+
+    /** Private tail of {@code invertProduct_general}; reached only through it. */
+    private Float2x3 invertProduct_general_s4197a8e1_tail_mulAdd(float _t25, Float2x3 other, float _t24, float _t24_inv, float _t25_inv, float _t8, float _t9, float _t36, float _t10, float _t11, int _props) {
+        float _t37 = this.m11 / _t25;
+        float _t38 = this.m00 / _t25;
+        float _t41 = other.m00 / _t24;
+        float _t42 = -(other.m01 * _t24_inv);
+        float _t43 = -(this.m10 * _t25_inv);
+        float _t44 = -(this.m01 * _t25_inv);
+        float _t45 = -(other.m10 * _t24_inv);
+        float[] _m = new float[6];
+        {
+            float _t52 = _t36 * _t37;
+            float _t55 = _t43 * _t41;
+            _m[0] = ((_t42) * (_t43) + (_t52)) + ((_t36) * (_t37) - (_t52));
+            _m[3] = ((_t45) * (_t37) + (_t55)) + ((_t43) * (_t41) - (_t55));
+        }
+        {
+            float _t54 = _t44 * _t36;
+            float _t53 = _t41 * _t38;
+            _m[1] = ((_t42) * (_t38) + (_t54)) + ((_t44) * (_t36) - (_t54));
+            _m[4] = ((_t45) * (_t44) + (_t53)) + ((_t41) * (_t38) - (_t53));
+        }
+        invertProduct_general_s4197a8e1_tail_s373ec483_c2_mulAdd(_t42, -((((this.m00) * (this.m12) + (_t8)) - ((this.m02) * (this.m10) + (_t8))) * _t25_inv), -((((this.m02) * (this.m11) + (_t9)) - ((this.m01) * (this.m12) + (_t9))) * _t25_inv), _t36, other, _t10, _t24_inv, _t45, _t41, _t11, _m);
+        return new Float2x3(_m[0], _m[1], _m[2], _m[3], _m[4], _m[5], _props);
+    }
+
+    /**
+     * Private body of {@code invertProduct}, specialized by runtime matrix properties; reached only
+     * through the public {@code invertProduct} dispatcher.
+     */
+    private Float2x3 invertProduct_general_fma(Float2x3 other) {
+        float _t6 = -(other.m01 * other.m10);
+        float _t7 = -(this.m01 * this.m10);
+        float _t24 = java.lang.Math.fma(other.m00, other.m11, _t6) - java.lang.Math.fma(other.m01, other.m10, _t6);
+        if (!(java.lang.Math.abs(_t24) > 1.1754944E-38f && java.lang.Math.abs(_t24) < 8.507059E37f)) return invertProduct_degenerate_fma(other);
+        float _t25 = java.lang.Math.fma(this.m00, this.m11, _t7) - java.lang.Math.fma(this.m01, this.m10, _t7);
+        if (!(java.lang.Math.abs(_t25) > 1.1754944E-38f && java.lang.Math.abs(_t25) < 8.507059E37f)) return invertProduct_degenerate_fma(other);
+        return invertProduct_general_s4197a8e1_tail_fma(_t25, other, _t24, 1.0f / _t24, 1.0f / _t25, -(this.m02 * this.m10), -(this.m01 * this.m12), other.m11 / _t24, -(other.m01 * other.m12), -(other.m02 * other.m10), Joml.BIT_AFFINE & other.properties);
+    }
+
+    /**
+     * Private body of {@code invertProduct}, specialized by runtime matrix properties; reached only
+     * through the public {@code invertProduct} dispatcher.
+     */
+    private Float2x3 invertProduct_general_mulAdd(Float2x3 other) {
+        float _t6 = -(other.m01 * other.m10);
+        float _t7 = -(this.m01 * this.m10);
+        float _t24 = ((other.m00) * (other.m11) + (_t6)) - ((other.m01) * (other.m10) + (_t6));
+        if (!(java.lang.Math.abs(_t24) > 1.1754944E-38f && java.lang.Math.abs(_t24) < 8.507059E37f)) return invertProduct_degenerate_mulAdd(other);
+        float _t25 = ((this.m00) * (this.m11) + (_t7)) - ((this.m01) * (this.m10) + (_t7));
+        if (!(java.lang.Math.abs(_t25) > 1.1754944E-38f && java.lang.Math.abs(_t25) < 8.507059E37f)) return invertProduct_degenerate_mulAdd(other);
+        return invertProduct_general_s4197a8e1_tail_mulAdd(_t25, other, _t24, 1.0f / _t24, 1.0f / _t25, -(this.m02 * this.m10), -(this.m01 * this.m12), other.m11 / _t24, -(other.m01 * other.m12), -(other.m02 * other.m10), Joml.BIT_AFFINE & other.properties);
+    }
+
+    /**
+     * Private body of {@code invertProduct}, specialized by runtime matrix properties; reached only
+     * through the public {@code invertProduct} dispatcher.
+     */
+    private Float2x3 invertProduct_identity_fma(Float2x3 other) {
+        float _t3 = -(other.m01 * other.m10);
+        float _t4 = -(other.m01 * other.m12);
+        float _t5 = -(other.m02 * other.m10);
+        float _t9 = java.lang.Math.fma(other.m00, other.m11, _t3) - java.lang.Math.fma(other.m01, other.m10, _t3);
+        if (!(java.lang.Math.abs(_t9) > 1.1754944E-38f && java.lang.Math.abs(_t9) < 8.507059E37f)) return invertProduct_degenerate_fma(other);
+        float _t9_inv = 1.0f / _t9;
+        return new Float2x3(other.m11 / _t9, -(other.m01 * _t9_inv), -((java.lang.Math.fma(other.m02, other.m11, _t4) - java.lang.Math.fma(other.m01, other.m12, _t4)) * _t9_inv), -(other.m10 * _t9_inv), other.m00 / _t9, -((java.lang.Math.fma(other.m00, other.m12, _t5) - java.lang.Math.fma(other.m02, other.m10, _t5)) * _t9_inv), other.properties);
+    }
+
+    /**
+     * Private body of {@code invertProduct}, specialized by runtime matrix properties; reached only
+     * through the public {@code invertProduct} dispatcher.
+     */
+    private Float2x3 invertProduct_identity_mulAdd(Float2x3 other) {
+        float _t3 = -(other.m01 * other.m10);
+        float _t4 = -(other.m01 * other.m12);
+        float _t5 = -(other.m02 * other.m10);
+        float _t9 = ((other.m00) * (other.m11) + (_t3)) - ((other.m01) * (other.m10) + (_t3));
+        if (!(java.lang.Math.abs(_t9) > 1.1754944E-38f && java.lang.Math.abs(_t9) < 8.507059E37f)) return invertProduct_degenerate_mulAdd(other);
+        float _t9_inv = 1.0f / _t9;
+        return new Float2x3(other.m11 / _t9, -(other.m01 * _t9_inv), -((((other.m02) * (other.m11) + (_t4)) - ((other.m01) * (other.m12) + (_t4))) * _t9_inv), -(other.m10 * _t9_inv), other.m00 / _t9, -((((other.m00) * (other.m12) + (_t5)) - ((other.m02) * (other.m10) + (_t5))) * _t9_inv), other.properties);
+    }
+
+    /**
+     * Private body of {@code invertProduct}, specialized by runtime matrix properties; reached only
+     * through the public {@code invertProduct} dispatcher.
+     */
+    private Float2x3 invertProduct_translation_fma(Float2x3 other) {
+        float _t2 = -this.m02;
+        float _t3 = -this.m12;
+        float _t7 = -(other.m01 * other.m10);
+        float _t8 = -(other.m01 * other.m12);
+        float _t9 = -(other.m02 * other.m10);
+        float _t13 = java.lang.Math.fma(other.m00, other.m11, _t7) - java.lang.Math.fma(other.m01, other.m10, _t7);
+        if (!(java.lang.Math.abs(_t13) > 1.1754944E-38f && java.lang.Math.abs(_t13) < 8.507059E37f)) return invertProduct_degenerate_fma(other);
+        float _t13_inv = 1.0f / _t13;
+        float _t18 = other.m11 / _t13;
+        float _t21 = other.m00 / _t13;
+        float _t22 = -(other.m01 * _t13_inv);
+        float _t23 = -(other.m10 * _t13_inv);
+        return new Float2x3(_t18, _t22, java.lang.Math.fma(_t2, _t18, java.lang.Math.fma(_t3, _t22, -((java.lang.Math.fma(other.m02, other.m11, _t8) - java.lang.Math.fma(other.m01, other.m12, _t8)) * _t13_inv))), _t23, _t21, java.lang.Math.fma(_t2, _t23, java.lang.Math.fma(_t3, _t21, -((java.lang.Math.fma(other.m00, other.m12, _t9) - java.lang.Math.fma(other.m02, other.m10, _t9)) * _t13_inv))), Joml.BIT_TRANSLATION & other.properties);
+    }
+
+    /**
+     * Private body of {@code invertProduct}, specialized by runtime matrix properties; reached only
+     * through the public {@code invertProduct} dispatcher.
+     */
+    private Float2x3 invertProduct_translation_mulAdd(Float2x3 other) {
+        float _t2 = -this.m02;
+        float _t3 = -this.m12;
+        float _t7 = -(other.m01 * other.m10);
+        float _t8 = -(other.m01 * other.m12);
+        float _t9 = -(other.m02 * other.m10);
+        float _t13 = ((other.m00) * (other.m11) + (_t7)) - ((other.m01) * (other.m10) + (_t7));
+        if (!(java.lang.Math.abs(_t13) > 1.1754944E-38f && java.lang.Math.abs(_t13) < 8.507059E37f)) return invertProduct_degenerate_mulAdd(other);
+        float _t13_inv = 1.0f / _t13;
+        float _t18 = other.m11 / _t13;
+        float _t21 = other.m00 / _t13;
+        float _t22 = -(other.m01 * _t13_inv);
+        float _t23 = -(other.m10 * _t13_inv);
+        return new Float2x3(_t18, _t22, ((_t2) * (_t18) + (((_t3) * (_t22) - ((((other.m02) * (other.m11) + (_t8)) - ((other.m01) * (other.m12) + (_t8))) * _t13_inv)))), _t23, _t21, ((_t2) * (_t23) + (((_t3) * (_t21) - ((((other.m00) * (other.m12) + (_t9)) - ((other.m02) * (other.m10) + (_t9))) * _t13_inv)))), Joml.BIT_TRANSLATION & other.properties);
+    }
+
+    /** Private per-column body of {@code invertProduct_orthogonal_s4197a8e1_tail}, stored into {@code _m}; reached only through it. */
+    private void invertProduct_orthogonal_s4197a8e1_tail_s41a41344_c0_fma(float _t0, float _t32, float _t40, float _t4, float _t36, float _t37, float _t39, float _t35, float[] _m, int _at) {
+        _m[_at] = java.lang.Math.fma(_t0, _t32, _t40) + java.lang.Math.fma(_t4, _t36, -_t40);
+        _m[_at + 3] = java.lang.Math.fma(_t0, _t37, _t39) + java.lang.Math.fma(_t4, _t35, -_t39);
+    }
+
+    /** Private tail of {@code invertProduct_orthogonal}; reached only through it. */
+    private Float2x3 invertProduct_orthogonal_s4197a8e1_tail_fma(Float2x3 other, float _t27, float _t27_inv, float _t5, float _t32, float _t4, float _t0, float _t2, float _t25, float _t26, float _t14, float _t15, int _props) {
+        float _t35 = other.m00 / _t27;
+        float _t36 = -(other.m01 * _t27_inv);
+        float _t37 = -(other.m10 * _t27_inv);
+        float[] _m = new float[6];
+        invertProduct_orthogonal_s4197a8e1_tail_s41a41344_c0_fma(_t0, _t32, _t4 * _t36, _t4, _t36, _t37, _t4 * _t35, _t35, _m, 0);
+        invertProduct_orthogonal_s4197a8e1_tail_s41a41344_c0_fma(_t2, _t36, _t5 * _t32, _t5, _t32, _t35, _t5 * _t37, _t37, _m, 1);
+        invertProduct_general_s4197a8e1_tail_s373ec483_c2_fma(_t36, _t25, _t26, _t32, other, _t14, _t27_inv, _t37, _t35, _t15, _m);
+        return new Float2x3(_m[0], _m[1], _m[2], _m[3], _m[4], _m[5], _props);
+    }
+
+    /** Private tail of {@code invertProduct_orthogonal}; reached only through it. */
+    private Float2x3 invertProduct_orthogonal_s4197a8e1_tail_mulAdd(Float2x3 other, float _t27, float _t27_inv, float _t5, float _t32, float _t4, float _t0, float _t2, float _t25, float _t26, float _t14, float _t15, int _props) {
+        float _t35 = other.m00 / _t27;
+        float _t36 = -(other.m01 * _t27_inv);
+        float _t37 = -(other.m10 * _t27_inv);
+        float[] _m = new float[6];
+        {
+            float _t40 = _t4 * _t36;
+            float _t39 = _t4 * _t35;
+            _m[0] = ((_t0) * (_t32) + (_t40)) + ((_t4) * (_t36) - (_t40));
+            _m[0 + 3] = ((_t0) * (_t37) + (_t39)) + ((_t4) * (_t35) - (_t39));
+        }
+        {
+            float _t40 = _t5 * _t32;
+            float _t39 = _t5 * _t37;
+            _m[1] = ((_t2) * (_t36) + (_t40)) + ((_t5) * (_t32) - (_t40));
+            _m[1 + 3] = ((_t2) * (_t35) + (_t39)) + ((_t5) * (_t37) - (_t39));
+        }
+        invertProduct_general_s4197a8e1_tail_s373ec483_c2_mulAdd(_t36, _t25, _t26, _t32, other, _t14, _t27_inv, _t37, _t35, _t15, _m);
+        return new Float2x3(_m[0], _m[1], _m[2], _m[3], _m[4], _m[5], _props);
+    }
+
+    /**
+     * Private body of {@code invertProduct}, specialized by runtime matrix properties; reached only
+     * through the public {@code invertProduct} dispatcher.
+     */
+    private Float2x3 invertProduct_orthogonal_fma(Float2x3 other) {
+        float _t11 = -(other.m01 * other.m10);
+        float _t27 = java.lang.Math.fma(other.m00, other.m11, _t11) - java.lang.Math.fma(other.m01, other.m10, _t11);
+        if (!(java.lang.Math.abs(_t27) > 1.1754944E-38f && java.lang.Math.abs(_t27) < 8.507059E37f)) return invertProduct_degenerate_fma(other);
+        float _t12 = -(this.m00 * this.m12);
+        float _t13 = -(this.m02 * this.m11);
+        return invertProduct_orthogonal_s4197a8e1_tail_fma(other, _t27, 1.0f / _t27, -this.m01, other.m11 / _t27, -this.m10, this.m11, this.m00, java.lang.Math.fma(this.m02, this.m10, _t12) - java.lang.Math.fma(this.m00, this.m12, _t12), java.lang.Math.fma(this.m01, this.m12, _t13) - java.lang.Math.fma(this.m02, this.m11, _t13), -(other.m01 * other.m12), -(other.m02 * other.m10), Joml.BIT_ORTHOGONAL & other.properties);
+    }
+
+    /**
+     * Private body of {@code invertProduct}, specialized by runtime matrix properties; reached only
+     * through the public {@code invertProduct} dispatcher.
+     */
+    private Float2x3 invertProduct_orthogonal_mulAdd(Float2x3 other) {
+        float _t11 = -(other.m01 * other.m10);
+        float _t27 = ((other.m00) * (other.m11) + (_t11)) - ((other.m01) * (other.m10) + (_t11));
+        if (!(java.lang.Math.abs(_t27) > 1.1754944E-38f && java.lang.Math.abs(_t27) < 8.507059E37f)) return invertProduct_degenerate_mulAdd(other);
+        float _t12 = -(this.m00 * this.m12);
+        float _t13 = -(this.m02 * this.m11);
+        return invertProduct_orthogonal_s4197a8e1_tail_mulAdd(other, _t27, 1.0f / _t27, -this.m01, other.m11 / _t27, -this.m10, this.m11, this.m00, ((this.m02) * (this.m10) + (_t12)) - ((this.m00) * (this.m12) + (_t12)), ((this.m01) * (this.m12) + (_t13)) - ((this.m02) * (this.m11) + (_t13)), -(other.m01 * other.m12), -(other.m02 * other.m10), Joml.BIT_ORTHOGONAL & other.properties);
+    }
+
+    /**
+     * Private body of {@code invertProduct}, specialized by runtime matrix properties; reached only
+     * through the public {@code invertProduct} dispatcher.
+     */
+    private Float2x3 invertProduct_orthogonal_identity_fma(Float2x3 other) {
+        float _t2 = -(this.m02 * this.m11);
+        float _t3 = -(this.m00 * this.m12);
+        return new Float2x3(this.m11, -this.m01, java.lang.Math.fma(this.m01, this.m12, _t2) - java.lang.Math.fma(this.m02, this.m11, _t2), -this.m10, this.m00, java.lang.Math.fma(this.m02, this.m10, _t3) - java.lang.Math.fma(this.m00, this.m12, _t3), Joml.BIT_ORTHOGONAL & other.properties);
+    }
+
+    /**
+     * Private body of {@code invertProduct}, specialized by runtime matrix properties; reached only
+     * through the public {@code invertProduct} dispatcher.
+     */
+    private Float2x3 invertProduct_orthogonal_identity_mulAdd(Float2x3 other) {
+        float _t2 = -(this.m02 * this.m11);
+        float _t3 = -(this.m00 * this.m12);
+        return new Float2x3(this.m11, -this.m01, ((this.m01) * (this.m12) + (_t2)) - ((this.m02) * (this.m11) + (_t2)), -this.m10, this.m00, ((this.m02) * (this.m10) + (_t3)) - ((this.m00) * (this.m12) + (_t3)), Joml.BIT_ORTHOGONAL & other.properties);
+    }
+
+    /**
+     * Private body of {@code invertProduct}, specialized by runtime matrix properties; reached only
+     * through the public {@code invertProduct} dispatcher.
+     */
+    private Float2x3 invertProduct_orthogonal_translation_fma(Float2x3 other) {
+        float _t2 = -(this.m02 * this.m11);
+        float _t3 = -(this.m00 * this.m12);
+        return new Float2x3(this.m11, -this.m01, -other.m02 + (java.lang.Math.fma(this.m01, this.m12, _t2) - java.lang.Math.fma(this.m02, this.m11, _t2)), -this.m10, this.m00, -other.m12 + (java.lang.Math.fma(this.m02, this.m10, _t3) - java.lang.Math.fma(this.m00, this.m12, _t3)), Joml.BIT_ORTHOGONAL & other.properties);
+    }
+
+    /**
+     * Private body of {@code invertProduct}, specialized by runtime matrix properties; reached only
+     * through the public {@code invertProduct} dispatcher.
+     */
+    private Float2x3 invertProduct_orthogonal_translation_mulAdd(Float2x3 other) {
+        float _t2 = -(this.m02 * this.m11);
+        float _t3 = -(this.m00 * this.m12);
+        return new Float2x3(this.m11, -this.m01, -other.m02 + (((this.m01) * (this.m12) + (_t2)) - ((this.m02) * (this.m11) + (_t2))), -this.m10, this.m00, -other.m12 + (((this.m02) * (this.m10) + (_t3)) - ((this.m00) * (this.m12) + (_t3))), Joml.BIT_ORTHOGONAL & other.properties);
+    }
+
+    /**
+     * Private body of {@code invertProduct}, specialized by runtime matrix properties; reached only
+     * through the public {@code invertProduct} dispatcher.
+     */
+    private Float2x3 invertProduct_general_identity_fma(Float2x3 other) {
+        float _t3 = -(this.m01 * this.m10);
+        float _t4 = -(this.m01 * this.m12);
+        float _t5 = -(this.m02 * this.m10);
+        float _t9 = java.lang.Math.fma(this.m00, this.m11, _t3) - java.lang.Math.fma(this.m01, this.m10, _t3);
+        if (!(java.lang.Math.abs(_t9) > 1.1754944E-38f && java.lang.Math.abs(_t9) < 8.507059E37f)) return invertProduct_degenerate_fma(other);
+        float _t9_inv = 1.0f / _t9;
+        return new Float2x3(this.m11 / _t9, -(this.m01 * _t9_inv), -((java.lang.Math.fma(this.m02, this.m11, _t4) - java.lang.Math.fma(this.m01, this.m12, _t4)) * _t9_inv), -(this.m10 * _t9_inv), this.m00 / _t9, -((java.lang.Math.fma(this.m00, this.m12, _t5) - java.lang.Math.fma(this.m02, this.m10, _t5)) * _t9_inv), Joml.BIT_AFFINE & other.properties);
+    }
+
+    /**
+     * Private body of {@code invertProduct}, specialized by runtime matrix properties; reached only
+     * through the public {@code invertProduct} dispatcher.
+     */
+    private Float2x3 invertProduct_general_identity_mulAdd(Float2x3 other) {
+        float _t3 = -(this.m01 * this.m10);
+        float _t4 = -(this.m01 * this.m12);
+        float _t5 = -(this.m02 * this.m10);
+        float _t9 = ((this.m00) * (this.m11) + (_t3)) - ((this.m01) * (this.m10) + (_t3));
+        if (!(java.lang.Math.abs(_t9) > 1.1754944E-38f && java.lang.Math.abs(_t9) < 8.507059E37f)) return invertProduct_degenerate_mulAdd(other);
+        float _t9_inv = 1.0f / _t9;
+        return new Float2x3(this.m11 / _t9, -(this.m01 * _t9_inv), -((((this.m02) * (this.m11) + (_t4)) - ((this.m01) * (this.m12) + (_t4))) * _t9_inv), -(this.m10 * _t9_inv), this.m00 / _t9, -((((this.m00) * (this.m12) + (_t5)) - ((this.m02) * (this.m10) + (_t5))) * _t9_inv), Joml.BIT_AFFINE & other.properties);
+    }
+
+    /**
+     * Private body of {@code invertProduct}, specialized by runtime matrix properties; reached only
+     * through the public {@code invertProduct} dispatcher.
+     */
+    private Float2x3 invertProduct_general_translation_fma(Float2x3 other) {
+        float _t3 = -(this.m01 * this.m10);
+        float _t4 = -(this.m01 * this.m12);
+        float _t5 = -(this.m02 * this.m10);
+        float _t9 = java.lang.Math.fma(this.m00, this.m11, _t3) - java.lang.Math.fma(this.m01, this.m10, _t3);
+        if (!(java.lang.Math.abs(_t9) > 1.1754944E-38f && java.lang.Math.abs(_t9) < 8.507059E37f)) return invertProduct_degenerate_fma(other);
+        float _t9_inv = 1.0f / _t9;
+        return new Float2x3(this.m11 / _t9, -(this.m01 * _t9_inv), -other.m02 - (java.lang.Math.fma(this.m02, this.m11, _t4) - java.lang.Math.fma(this.m01, this.m12, _t4)) * _t9_inv, -(this.m10 * _t9_inv), this.m00 / _t9, -other.m12 - (java.lang.Math.fma(this.m00, this.m12, _t5) - java.lang.Math.fma(this.m02, this.m10, _t5)) * _t9_inv, Joml.BIT_AFFINE & other.properties);
+    }
+
+    /**
+     * Private body of {@code invertProduct}, specialized by runtime matrix properties; reached only
+     * through the public {@code invertProduct} dispatcher.
+     */
+    private Float2x3 invertProduct_general_translation_mulAdd(Float2x3 other) {
+        float _t3 = -(this.m01 * this.m10);
+        float _t4 = -(this.m01 * this.m12);
+        float _t5 = -(this.m02 * this.m10);
+        float _t9 = ((this.m00) * (this.m11) + (_t3)) - ((this.m01) * (this.m10) + (_t3));
+        if (!(java.lang.Math.abs(_t9) > 1.1754944E-38f && java.lang.Math.abs(_t9) < 8.507059E37f)) return invertProduct_degenerate_mulAdd(other);
+        float _t9_inv = 1.0f / _t9;
+        return new Float2x3(this.m11 / _t9, -(this.m01 * _t9_inv), -other.m02 - (((this.m02) * (this.m11) + (_t4)) - ((this.m01) * (this.m12) + (_t4))) * _t9_inv, -(this.m10 * _t9_inv), this.m00 / _t9, -other.m12 - (((this.m00) * (this.m12) + (_t5)) - ((this.m02) * (this.m10) + (_t5))) * _t9_inv, Joml.BIT_AFFINE & other.properties);
+    }
+
+    /**
+     * Compute the inverse of the product of this matrix and {@code other}, i.e.
+     * {@code (this * other)^-1}, returning the result as a value.
+     * <p>
+     * It is computed as the product of the two factors' inverses in reverse order, so its accuracy
+     * is bounded by the condition numbers of the two factors, not by the condition number of
+     * {@code this * other}, which can be as large as their product.
+     * <p>
+     * Valid input: the product of this matrix and {@code other} must be invertible.
+     *
+     * @param other the right factor of the product
+     * @return the resulting matrix
+     */
+    public Float2x3 invertProduct(Float2x3 other) {
+        if (!org.joml2.internal.FmaSwitch.ON) return invertProduct_mulAdd(other);
+        int p = this.properties;
+        int q = other.properties;
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) {
+            if ((q & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return invertProduct_general_fma(other);
+            if ((q & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return invertProduct_general_identity_fma(other);
+            return invertProduct_general_translation_fma(other);
+        }
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) {
+            if ((q & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return invertProduct_identity_fma(other);
+            if ((q & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, other.properties);
+            return new Float2x3(1.0f, 0.0f, -other.m02, 0.0f, 1.0f, -other.m12, other.properties);
+        }
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) {
+            if ((q & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return invertProduct_translation_fma(other);
+            if ((q & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(1.0f, 0.0f, -this.m02, 0.0f, 1.0f, -this.m12, Joml.BIT_TRANSLATION & other.properties);
+            return new Float2x3(1.0f, 0.0f, -other.m02 - this.m02, 0.0f, 1.0f, -other.m12 - this.m12, Joml.BIT_TRANSLATION & other.properties);
+        }
+        if ((q & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return invertProduct_orthogonal_fma(other);
+        if ((q & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return invertProduct_orthogonal_identity_fma(other);
+        return invertProduct_orthogonal_translation_fma(other);
+    }
+
+    /** {@code invertProduct} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private Float2x3 invertProduct_mulAdd(Float2x3 other) {
+        int p = this.properties;
+        int q = other.properties;
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) {
+            if ((q & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return invertProduct_general_mulAdd(other);
+            if ((q & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return invertProduct_general_identity_mulAdd(other);
+            return invertProduct_general_translation_mulAdd(other);
+        }
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) {
+            if ((q & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return invertProduct_identity_mulAdd(other);
+            if ((q & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, other.properties);
+            return new Float2x3(1.0f, 0.0f, -other.m02, 0.0f, 1.0f, -other.m12, other.properties);
+        }
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) {
+            if ((q & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return invertProduct_translation_mulAdd(other);
+            if ((q & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(1.0f, 0.0f, -this.m02, 0.0f, 1.0f, -this.m12, Joml.BIT_TRANSLATION & other.properties);
+            return new Float2x3(1.0f, 0.0f, -other.m02 - this.m02, 0.0f, 1.0f, -other.m12 - this.m12, Joml.BIT_TRANSLATION & other.properties);
+        }
+        if ((q & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return invertProduct_orthogonal_mulAdd(other);
+        if ((q & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return invertProduct_orthogonal_identity_mulAdd(other);
+        return invertProduct_orthogonal_translation_mulAdd(other);
+    }
+
+    /**
+     * Private per-column body of {@code invertProduct_s7cdca6cb_tail}, stored into {@code _m}.
+     * Shared by 2 identical private paths of {@code invertProduct}; reached only through it.
+     */
+    private void invertProduct_s7cdca6cb_tail_s4403d0ca_c2_fma(float _t42, float _t50, float _t51, float _t36, float m02, float m11, float _t10, float m01, float m12, float _t24_inv, float _t45, float _t41, float m00, float _t11, float m10, float[] _m) {
+        _m[2] = java.lang.Math.fma(_t42, _t50, java.lang.Math.fma(_t51, _t36, -((java.lang.Math.fma(m02, m11, _t10) - java.lang.Math.fma(m01, m12, _t10)) * _t24_inv)));
+        _m[5] = java.lang.Math.fma(_t45, _t51, java.lang.Math.fma(_t50, _t41, -((java.lang.Math.fma(m00, m12, _t11) - java.lang.Math.fma(m02, m10, _t11)) * _t24_inv)));
+    }
+
+    /**
+     * Private per-column body of {@code invertProduct_s7cdca6cb_tail}, stored into {@code _m}.
+     * Shared by 2 identical private paths of {@code invertProduct}; reached only through it.
+     */
+    private void invertProduct_s7cdca6cb_tail_s4403d0ca_c2_mulAdd(float _t42, float _t50, float _t51, float _t36, float m02, float m11, float _t10, float m01, float m12, float _t24_inv, float _t45, float _t41, float m00, float _t11, float m10, float[] _m) {
+        _m[2] = ((_t42) * (_t50) + (((_t51) * (_t36) - ((((m02) * (m11) + (_t10)) - ((m01) * (m12) + (_t10))) * _t24_inv))));
+        _m[5] = ((_t45) * (_t51) + (((_t50) * (_t41) - ((((m00) * (m12) + (_t11)) - ((m02) * (m10) + (_t11))) * _t24_inv))));
+    }
+
+    /** Private tail of {@code invertProduct}; reached only through it. */
+    private Float2x3 invertProduct_s7cdca6cb_tail_fma(float _t25, float m00, float _t24, float m01, float _t24_inv, float _t25_inv, float m10, float _t8, float _t9, float _t36, float _t37, float m02, float m11, float _t10, float m12, float _t11, int _props) {
+        float _t38 = this.m00 / _t25;
+        float _t41 = m00 / _t24;
+        float _t42 = -(m01 * _t24_inv);
+        float _t43 = -(this.m10 * _t25_inv);
+        float _t44 = -(this.m01 * _t25_inv);
+        float _t45 = -(m10 * _t24_inv);
+        float[] _m = new float[6];
+        invertProduct_general_s4197a8e1_tail_s373ec483_c0_fma(_t42, _t43, _t36 * _t37, _t36, _t37, _t45, _t43 * _t41, _t41, _m);
+        invertProduct_general_s4197a8e1_tail_s373ec483_c1_fma(_t42, _t38, _t44 * _t36, _t44, _t36, _t45, _t41 * _t38, _t41, _m);
+        invertProduct_s7cdca6cb_tail_s4403d0ca_c2_fma(_t42, -((java.lang.Math.fma(this.m00, this.m12, _t8) - java.lang.Math.fma(this.m02, this.m10, _t8)) * _t25_inv), -((java.lang.Math.fma(this.m02, this.m11, _t9) - java.lang.Math.fma(this.m01, this.m12, _t9)) * _t25_inv), _t36, m02, m11, _t10, m01, m12, _t24_inv, _t45, _t41, m00, _t11, m10, _m);
+        return new Float2x3(_m[0], _m[1], _m[2], _m[3], _m[4], _m[5], _props);
+    }
+
+    /** Private tail of {@code invertProduct}; reached only through it. */
+    private Float2x3 invertProduct_s7cdca6cb_tail_mulAdd(float _t25, float m00, float _t24, float m01, float _t24_inv, float _t25_inv, float m10, float _t8, float _t9, float _t36, float _t37, float m02, float m11, float _t10, float m12, float _t11, int _props) {
+        float _t38 = this.m00 / _t25;
+        float _t41 = m00 / _t24;
+        float _t42 = -(m01 * _t24_inv);
+        float _t43 = -(this.m10 * _t25_inv);
+        float _t44 = -(this.m01 * _t25_inv);
+        float _t45 = -(m10 * _t24_inv);
+        float[] _m = new float[6];
+        {
+            float _t52 = _t36 * _t37;
+            float _t55 = _t43 * _t41;
+            _m[0] = ((_t42) * (_t43) + (_t52)) + ((_t36) * (_t37) - (_t52));
+            _m[3] = ((_t45) * (_t37) + (_t55)) + ((_t43) * (_t41) - (_t55));
+        }
+        {
+            float _t54 = _t44 * _t36;
+            float _t53 = _t41 * _t38;
+            _m[1] = ((_t42) * (_t38) + (_t54)) + ((_t44) * (_t36) - (_t54));
+            _m[4] = ((_t45) * (_t44) + (_t53)) + ((_t41) * (_t38) - (_t53));
+        }
+        invertProduct_s7cdca6cb_tail_s4403d0ca_c2_mulAdd(_t42, -((((this.m00) * (this.m12) + (_t8)) - ((this.m02) * (this.m10) + (_t8))) * _t25_inv), -((((this.m02) * (this.m11) + (_t9)) - ((this.m01) * (this.m12) + (_t9))) * _t25_inv), _t36, m02, m11, _t10, m01, m12, _t24_inv, _t45, _t41, m00, _t11, m10, _m);
+        return new Float2x3(_m[0], _m[1], _m[2], _m[3], _m[4], _m[5], _props);
+    }
+
+    /**
+     * Compute the inverse of the product of this matrix and ({@code m00}, {@code m01}, {@code m02},
+     * {@code m10}, {@code m11}, {@code m12}), returning the result as a value.
+     * <p>
+     * It is computed as the product of the two factors' inverses in reverse order, so its accuracy
+     * is bounded by the condition numbers of the two factors, not by the condition number of the
+     * product, which can be as large as their product.
+     * <p>
+     * Valid input: the product of this matrix and {@code (m00, m01, m02, m10, m11, m12)} must be
+     * invertible.
+     *
+     * @param m00 the element in row 0, column 0 of the matrix
+     * @param m01 the element in row 0, column 1 of the matrix
+     * @param m02 the element in row 0, column 2 of the matrix
+     * @param m10 the element in row 1, column 0 of the matrix
+     * @param m11 the element in row 1, column 1 of the matrix
+     * @param m12 the element in row 1, column 2 of the matrix
+     * @return the resulting matrix
+     */
+    public Float2x3 invertProduct(float m00, float m01, float m02, float m10, float m11, float m12) {
+        if (!org.joml2.internal.FmaSwitch.ON) return invertProduct_mulAdd(m00, m01, m02, m10, m11, m12);
+        float _t6 = -(m01 * m10);
+        float _t7 = -(this.m01 * this.m10);
+        float _t24 = java.lang.Math.fma(m00, m11, _t6) - java.lang.Math.fma(m01, m10, _t6);
+        if (!(java.lang.Math.abs(_t24) > 1.1754944E-38f && java.lang.Math.abs(_t24) < 8.507059E37f)) return invertProduct_degenerate_fma(m00, m01, m02, m10, m11, m12);
+        float _t25 = java.lang.Math.fma(this.m00, this.m11, _t7) - java.lang.Math.fma(this.m01, this.m10, _t7);
+        if (!(java.lang.Math.abs(_t25) > 1.1754944E-38f && java.lang.Math.abs(_t25) < 8.507059E37f)) return invertProduct_degenerate_fma(m00, m01, m02, m10, m11, m12);
+        return invertProduct_s7cdca6cb_tail_fma(_t25, m00, _t24, m01, 1.0f / _t24, 1.0f / _t25, m10, -(this.m02 * this.m10), -(this.m01 * this.m12), m11 / _t24, this.m11 / _t25, m02, m11, -(m01 * m12), m12, -(m02 * m10), Joml.BIT_AFFINE);
+    }
+
+    /** {@code invertProduct} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private Float2x3 invertProduct_mulAdd(float m00, float m01, float m02, float m10, float m11, float m12) {
+        float _t6 = -(m01 * m10);
+        float _t7 = -(this.m01 * this.m10);
+        float _t24 = ((m00) * (m11) + (_t6)) - ((m01) * (m10) + (_t6));
+        if (!(java.lang.Math.abs(_t24) > 1.1754944E-38f && java.lang.Math.abs(_t24) < 8.507059E37f)) return invertProduct_degenerate_mulAdd(m00, m01, m02, m10, m11, m12);
+        float _t25 = ((this.m00) * (this.m11) + (_t7)) - ((this.m01) * (this.m10) + (_t7));
+        if (!(java.lang.Math.abs(_t25) > 1.1754944E-38f && java.lang.Math.abs(_t25) < 8.507059E37f)) return invertProduct_degenerate_mulAdd(m00, m01, m02, m10, m11, m12);
+        return invertProduct_s7cdca6cb_tail_mulAdd(_t25, m00, _t24, m01, 1.0f / _t24, 1.0f / _t25, m10, -(this.m02 * this.m10), -(this.m01 * this.m12), m11 / _t24, this.m11 / _t25, m02, m11, -(m01 * m12), m12, -(m02 * m10), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Degenerate-input path of {@code invertProduct}: its methods leave here when the determinant
+     * or its reciprocal leaves the normal floating-point range (a singular matrix, one scaled far
+     * from 1, NaN); reached only through them.
+     */
+    private Float2x3 invertProduct_degenerate_general_fma(Float2x3 other, int _props) {
+        float[] _bundle0 = invertProduct_degenerate_general_s6cc4c1e3_1(other);
+        float[] _bundle1 = invertProduct_degenerate_general_s6cc4c1e3_2_fma(other, _bundle0[0], _bundle0[1], _bundle0[2], _bundle0[3], _bundle0[4], _bundle0[5], _bundle0[6], _bundle0[7], _bundle0[8], _bundle0[9], _bundle0[10], _bundle0[11]);
+        float[] _bundle2 = invertProduct_degenerate_general_s6cc4c1e3_3_fma(_bundle0, _bundle1);
+        return new Float2x3(_bundle2[0], _bundle2[1], _bundle2[2], _bundle2[3], _bundle2[4], _bundle2[5], _props);
+    }
+
+    /**
+     * Degenerate-input path of {@code invertProduct}: its methods leave here when the determinant
+     * or its reciprocal leaves the normal floating-point range (a singular matrix, one scaled far
+     * from 1, NaN); reached only through them.
+     */
+    private Float2x3 invertProduct_degenerate_general_mulAdd(Float2x3 other, int _props) {
+        float[] _bundle0 = invertProduct_degenerate_general_s6cc4c1e3_1(other);
+        float[] _bundle1 = invertProduct_degenerate_general_s6cc4c1e3_2_mulAdd(other, _bundle0[0], _bundle0[1], _bundle0[2], _bundle0[3], _bundle0[4], _bundle0[5], _bundle0[6], _bundle0[7], _bundle0[8], _bundle0[9], _bundle0[10], _bundle0[11]);
+        float[] _bundle2 = invertProduct_degenerate_general_s6cc4c1e3_3_mulAdd(_bundle0, _bundle1);
+        return new Float2x3(_bundle2[0], _bundle2[1], _bundle2[2], _bundle2[3], _bundle2[4], _bundle2[5], _props);
+    }
+
+    /** Part 1 of {@code invertProduct_degenerate_general}, split to fit the inline budget; reached only through it. */
+    private float[] invertProduct_degenerate_general_s6cc4c1e3_1(Float2x3 other) {
+        float _t0 = unitScale(other.m00, other.m01, other.m00);
+        float _t1 = unitScale(other.m10, other.m11, other.m10);
+        float _t2 = unitScale(this.m10, this.m11, this.m10);
+        float _t3 = unitScale(this.m00, this.m01, this.m00);
+        return new float[] {_t0, _t1, _t2, _t3, other.m01 * _t0, other.m00 * _t0, other.m11 * _t1, other.m10 * _t1, this.m10 * _t2, this.m00 * _t3, this.m11 * _t2, this.m01 * _t3};
+    }
+
+    /** Part 2 of {@code invertProduct_degenerate_general}, split to fit the inline budget; reached only through it. */
+    private float[] invertProduct_degenerate_general_s6cc4c1e3_2_fma(Float2x3 other, float _t0, float _t1, float _t2, float _t3, float _t16, float _t17, float _t18, float _t19, float _t20, float _t21, float _t22, float _t23) {
+        float _t24 = this.m12 * _t2;
+        float _t25 = this.m02 * _t3;
+        float _t42 = -(_t16 * _t19);
+        float _t43 = -(_t23 * _t20);
+        float _t44 = -(_t25 * _t20);
+        float _t45 = -(_t23 * _t24);
+        float _t56 = java.lang.Math.fma(_t17, _t18, _t42) - java.lang.Math.fma(_t16, _t19, _t42);
+        float _t56_inv = 1.0f / _t56;
+        float _t57 = java.lang.Math.fma(_t21, _t22, _t43) - java.lang.Math.fma(_t23, _t20, _t43);
+        float _t57_inv = 1.0f / _t57;
+        return new float[] {other.m02 * _t0, other.m12 * _t1, _t56_inv, _t18 * _t0 / _t56, _t22 * _t3 / _t57, _t21 * _t2 / _t57, _t17 * _t1 / _t56, -(_t16 * _t1 * _t56_inv), -(_t20 * _t3 * _t57_inv), -(_t23 * _t2 * _t57_inv), -(_t19 * _t0 * _t56_inv), -((java.lang.Math.fma(_t21, _t24, _t44) - java.lang.Math.fma(_t25, _t20, _t44)) * _t57_inv), -((java.lang.Math.fma(_t25, _t22, _t45) - java.lang.Math.fma(_t23, _t24, _t45)) * _t57_inv)};
+    }
+
+    /** Part 2 of {@code invertProduct_degenerate_general}, split to fit the inline budget; reached only through it. */
+    private float[] invertProduct_degenerate_general_s6cc4c1e3_2_mulAdd(Float2x3 other, float _t0, float _t1, float _t2, float _t3, float _t16, float _t17, float _t18, float _t19, float _t20, float _t21, float _t22, float _t23) {
+        float _t24 = this.m12 * _t2;
+        float _t25 = this.m02 * _t3;
+        float _t42 = -(_t16 * _t19);
+        float _t43 = -(_t23 * _t20);
+        float _t44 = -(_t25 * _t20);
+        float _t45 = -(_t23 * _t24);
+        float _t56 = ((_t17) * (_t18) + (_t42)) - ((_t16) * (_t19) + (_t42));
+        float _t56_inv = 1.0f / _t56;
+        float _t57 = ((_t21) * (_t22) + (_t43)) - ((_t23) * (_t20) + (_t43));
+        float _t57_inv = 1.0f / _t57;
+        return new float[] {other.m02 * _t0, other.m12 * _t1, _t56_inv, _t18 * _t0 / _t56, _t22 * _t3 / _t57, _t21 * _t2 / _t57, _t17 * _t1 / _t56, -(_t16 * _t1 * _t56_inv), -(_t20 * _t3 * _t57_inv), -(_t23 * _t2 * _t57_inv), -(_t19 * _t0 * _t56_inv), -((((_t21) * (_t24) + (_t44)) - ((_t25) * (_t20) + (_t44))) * _t57_inv), -((((_t25) * (_t22) + (_t45)) - ((_t23) * (_t24) + (_t45))) * _t57_inv)};
+    }
+
+    /**
+     * Part 3 of {@code invertProduct_degenerate_general}, split to fit the inline budget. Shared by
+     * 2 identical private paths of {@code invertProduct}; reached only through it.
+     */
+    private float[] invertProduct_degenerate_general_s6cc4c1e3_3_fma(float[] _bundle0, float[] _bundle1) {
+        float _t16 = _bundle0[4];
+        float _t19 = _bundle0[7];
+        float _t26 = _bundle1[0];
+        float _t27 = _bundle1[1];
+        float _t56_inv = _bundle1[2];
+        float _t70 = _bundle1[3];
+        float _t71 = _bundle1[4];
+        float _t72 = _bundle1[5];
+        float _t75 = _bundle1[6];
+        float _t76 = _bundle1[7];
+        float _t77 = _bundle1[8];
+        float _t78 = _bundle1[9];
+        float _t79 = _bundle1[10];
+        float _t84 = _bundle1[11];
+        float _t85 = _bundle1[12];
+        float _t46 = -(_t16 * _t27);
+        float _t47 = -(_t26 * _t19);
+        float _t86 = _t70 * _t71;
+        float _t87 = _t75 * _t72;
+        float _t88 = _t78 * _t70;
+        float _t89 = _t77 * _t75;
+        return new float[] {java.lang.Math.fma(_t76, _t77, _t86) + java.lang.Math.fma(_t70, _t71, -_t86), java.lang.Math.fma(_t76, _t72, _t88) + java.lang.Math.fma(_t78, _t70, -_t88), java.lang.Math.fma(_t84, _t76, java.lang.Math.fma(_t85, _t70, -((java.lang.Math.fma(_t26, _bundle0[6], _t46) - java.lang.Math.fma(_t16, _t27, _t46)) * _t56_inv))), java.lang.Math.fma(_t79, _t71, _t89) + java.lang.Math.fma(_t77, _t75, -_t89), java.lang.Math.fma(_t79, _t78, _t87) + java.lang.Math.fma(_t75, _t72, -_t87), java.lang.Math.fma(_t84, _t75, java.lang.Math.fma(_t85, _t79, -((java.lang.Math.fma(_bundle0[5], _t27, _t47) - java.lang.Math.fma(_t26, _t19, _t47)) * _t56_inv)))};
+    }
+
+    /**
+     * Part 3 of {@code invertProduct_degenerate_general}, split to fit the inline budget. Shared by
+     * 2 identical private paths of {@code invertProduct}; reached only through it.
+     */
+    private float[] invertProduct_degenerate_general_s6cc4c1e3_3_mulAdd(float[] _bundle0, float[] _bundle1) {
+        float _t16 = _bundle0[4];
+        float _t19 = _bundle0[7];
+        float _t26 = _bundle1[0];
+        float _t27 = _bundle1[1];
+        float _t56_inv = _bundle1[2];
+        float _t70 = _bundle1[3];
+        float _t71 = _bundle1[4];
+        float _t72 = _bundle1[5];
+        float _t75 = _bundle1[6];
+        float _t76 = _bundle1[7];
+        float _t77 = _bundle1[8];
+        float _t78 = _bundle1[9];
+        float _t79 = _bundle1[10];
+        float _t84 = _bundle1[11];
+        float _t85 = _bundle1[12];
+        float _t46 = -(_t16 * _t27);
+        float _t47 = -(_t26 * _t19);
+        float _t86 = _t70 * _t71;
+        float _t87 = _t75 * _t72;
+        float _t88 = _t78 * _t70;
+        float _t89 = _t77 * _t75;
+        return new float[] {((_t76) * (_t77) + (_t86)) + ((_t70) * (_t71) - (_t86)), ((_t76) * (_t72) + (_t88)) + ((_t78) * (_t70) - (_t88)), ((_t84) * (_t76) + (((_t85) * (_t70) - ((((_t26) * (_bundle0[6]) + (_t46)) - ((_t16) * (_t27) + (_t46))) * _t56_inv)))), ((_t79) * (_t71) + (_t89)) + ((_t77) * (_t75) - (_t89)), ((_t79) * (_t78) + (_t87)) + ((_t75) * (_t72) - (_t87)), ((_t84) * (_t75) + (((_t85) * (_t79) - ((((_bundle0[5]) * (_t27) + (_t47)) - ((_t26) * (_t19) + (_t47))) * _t56_inv))))};
+    }
+
+    /**
+     * Degenerate-input path of {@code invertProduct}: its methods leave here when the determinant
+     * or its reciprocal leaves the normal floating-point range (a singular matrix, one scaled far
+     * from 1, NaN); reached only through them.
+     */
+    private Float2x3 invertProduct_degenerate_identity_fma(Float2x3 other) {
+        float _t0 = unitScale(other.m10, other.m11, other.m10);
+        float _t1 = unitScale(other.m00, other.m01, other.m00);
+        float _t8 = other.m11 * _t0;
+        float _t9 = other.m00 * _t1;
+        float _t10 = other.m01 * _t1;
+        float _t11 = other.m10 * _t0;
+        float _t12 = other.m02 * _t1;
+        float _t13 = other.m12 * _t0;
+        float _t17 = -(_t10 * _t11);
+        float _t18 = -(_t10 * _t13);
+        float _t19 = -(_t12 * _t11);
+        float _t22 = java.lang.Math.fma(_t9, _t8, _t17) - java.lang.Math.fma(_t10, _t11, _t17);
+        float _t22_inv = 1.0f / _t22;
+        return new Float2x3(_t8 * _t1 / _t22, -(_t10 * _t0 * _t22_inv), -((java.lang.Math.fma(_t12, _t8, _t18) - java.lang.Math.fma(_t10, _t13, _t18)) * _t22_inv), -(_t11 * _t1 * _t22_inv), _t9 * _t0 / _t22, -((java.lang.Math.fma(_t9, _t13, _t19) - java.lang.Math.fma(_t12, _t11, _t19)) * _t22_inv), other.properties);
+    }
+
+    /**
+     * Degenerate-input path of {@code invertProduct}: its methods leave here when the determinant
+     * or its reciprocal leaves the normal floating-point range (a singular matrix, one scaled far
+     * from 1, NaN); reached only through them.
+     */
+    private Float2x3 invertProduct_degenerate_identity_mulAdd(Float2x3 other) {
+        float _t0 = unitScale(other.m10, other.m11, other.m10);
+        float _t1 = unitScale(other.m00, other.m01, other.m00);
+        float _t8 = other.m11 * _t0;
+        float _t9 = other.m00 * _t1;
+        float _t10 = other.m01 * _t1;
+        float _t11 = other.m10 * _t0;
+        float _t12 = other.m02 * _t1;
+        float _t13 = other.m12 * _t0;
+        float _t17 = -(_t10 * _t11);
+        float _t18 = -(_t10 * _t13);
+        float _t19 = -(_t12 * _t11);
+        float _t22 = ((_t9) * (_t8) + (_t17)) - ((_t10) * (_t11) + (_t17));
+        float _t22_inv = 1.0f / _t22;
+        return new Float2x3(_t8 * _t1 / _t22, -(_t10 * _t0 * _t22_inv), -((((_t12) * (_t8) + (_t18)) - ((_t10) * (_t13) + (_t18))) * _t22_inv), -(_t11 * _t1 * _t22_inv), _t9 * _t0 / _t22, -((((_t9) * (_t13) + (_t19)) - ((_t12) * (_t11) + (_t19))) * _t22_inv), other.properties);
+    }
+
+    /** Private tail of {@code invertProduct_degenerate_translation}; reached only through it. */
+    private Float2x3 invertProduct_degenerate_translation_s4197a8e1_tail_mulAdd(float _t17, float _t7, float _t32_inv, float _t37, float _t41, float _t4, float _t5, float _t18, float _t14, float _t28, float _t16, float _t19, float _t40, float _t15, float _t29, int _props) {
+        float _t42 = -(_t17 * _t7 * _t32_inv);
+        float[] _m = new float[6];
+        _m[0] = _t37;
+        _m[0 + 3] = _t42;
+        _m[1] = _t41;
+        _m[1 + 3] = _t40;
+        invertProduct_s7cdca6cb_tail_s4403d0ca_c2_mulAdd(_t41, _t4, _t5, _t37, _t18, _t14, _t28, _t16, _t19, _t32_inv, _t42, _t40, _t15, _t29, _t17, _m);
+        return new Float2x3(_m[0], _m[1], _m[2], _m[3], _m[4], _m[5], _props);
+    }
+
+    /**
+     * Degenerate-input path of {@code invertProduct}: its methods leave here when the determinant
+     * or its reciprocal leaves the normal floating-point range (a singular matrix, one scaled far
+     * from 1, NaN); reached only through them.
+     */
+    private Float2x3 invertProduct_degenerate_translation_fma(Float2x3 other) {
+        float _t6 = unitScale(other.m10, other.m11, other.m10);
+        float _t7 = unitScale(other.m00, other.m01, other.m00);
+        float _t14 = other.m11 * _t6;
+        float _t15 = other.m00 * _t7;
+        float _t16 = other.m01 * _t7;
+        float _t17 = other.m10 * _t6;
+        float _t18 = other.m02 * _t7;
+        float _t19 = other.m12 * _t6;
+        float _t27 = -(_t16 * _t17);
+        float _t32 = java.lang.Math.fma(_t15, _t14, _t27) - java.lang.Math.fma(_t16, _t17, _t27);
+        float _t32_inv = 1.0f / _t32;
+        float _t37 = _t14 * _t7 / _t32;
+        float _t41 = -(_t16 * _t6 * _t32_inv);
+        float _t4 = -this.m12;
+        float _t5 = -this.m02;
+        float _t40 = _t15 * _t6 / _t32;
+        int _props = Joml.BIT_TRANSLATION & other.properties;
+        float _t42 = -(_t17 * _t7 * _t32_inv);
+        float[] _m = new float[6];
+        _m[0] = _t37;
+        _m[0 + 3] = _t42;
+        _m[1] = _t41;
+        _m[1 + 3] = _t40;
+        invertProduct_s7cdca6cb_tail_s4403d0ca_c2_fma(_t41, _t4, _t5, _t37, _t18, _t14, -(_t16 * _t19), _t16, _t19, _t32_inv, _t42, _t40, _t15, -(_t18 * _t17), _t17, _m);
+        return new Float2x3(_m[0], _m[1], _m[2], _m[3], _m[4], _m[5], _props);
+    }
+
+    /**
+     * Degenerate-input path of {@code invertProduct}: its methods leave here when the determinant
+     * or its reciprocal leaves the normal floating-point range (a singular matrix, one scaled far
+     * from 1, NaN); reached only through them.
+     */
+    private Float2x3 invertProduct_degenerate_translation_mulAdd(Float2x3 other) {
+        float _t6 = unitScale(other.m10, other.m11, other.m10);
+        float _t7 = unitScale(other.m00, other.m01, other.m00);
+        float _t14 = other.m11 * _t6;
+        float _t15 = other.m00 * _t7;
+        float _t16 = other.m01 * _t7;
+        float _t17 = other.m10 * _t6;
+        float _t18 = other.m02 * _t7;
+        float _t19 = other.m12 * _t6;
+        float _t27 = -(_t16 * _t17);
+        float _t32 = ((_t15) * (_t14) + (_t27)) - ((_t16) * (_t17) + (_t27));
+        float _t32_inv = 1.0f / _t32;
+        return invertProduct_degenerate_translation_s4197a8e1_tail_mulAdd(_t17, _t7, _t32_inv, _t14 * _t7 / _t32, -(_t16 * _t6 * _t32_inv), -this.m12, -this.m02, _t18, _t14, -(_t16 * _t19), _t16, _t19, _t15 * _t6 / _t32, _t15, -(_t18 * _t17), Joml.BIT_TRANSLATION & other.properties);
+    }
+
+    /**
+     * Degenerate-input path of {@code invertProduct}: its methods leave here when the determinant
+     * or its reciprocal leaves the normal floating-point range (a singular matrix, one scaled far
+     * from 1, NaN); reached only through them.
+     */
+    private Float2x3 invertProduct_degenerate_orthogonal_identity_fma(int _props) {
+        float _t0 = unitScale(this.m10, this.m11, this.m10);
+        float _t1 = unitScale(this.m00, this.m01, this.m00);
+        float _t8 = this.m11 * _t0;
+        float _t9 = this.m00 * _t1;
+        float _t10 = this.m01 * _t1;
+        float _t11 = this.m10 * _t0;
+        float _t12 = this.m02 * _t1;
+        float _t13 = this.m12 * _t0;
+        float _t17 = -(_t10 * _t11);
+        float _t18 = -(_t10 * _t13);
+        float _t19 = -(_t12 * _t11);
+        float _t22 = java.lang.Math.fma(_t9, _t8, _t17) - java.lang.Math.fma(_t10, _t11, _t17);
+        float _t22_inv = 1.0f / _t22;
+        return new Float2x3(_t8 * _t1 / _t22, -(_t10 * _t0 * _t22_inv), -((java.lang.Math.fma(_t12, _t8, _t18) - java.lang.Math.fma(_t10, _t13, _t18)) * _t22_inv), -(_t11 * _t1 * _t22_inv), _t9 * _t0 / _t22, -((java.lang.Math.fma(_t9, _t13, _t19) - java.lang.Math.fma(_t12, _t11, _t19)) * _t22_inv), _props);
+    }
+
+    /**
+     * Degenerate-input path of {@code invertProduct}: its methods leave here when the determinant
+     * or its reciprocal leaves the normal floating-point range (a singular matrix, one scaled far
+     * from 1, NaN); reached only through them.
+     */
+    private Float2x3 invertProduct_degenerate_orthogonal_identity_mulAdd(int _props) {
+        float _t0 = unitScale(this.m10, this.m11, this.m10);
+        float _t1 = unitScale(this.m00, this.m01, this.m00);
+        float _t8 = this.m11 * _t0;
+        float _t9 = this.m00 * _t1;
+        float _t10 = this.m01 * _t1;
+        float _t11 = this.m10 * _t0;
+        float _t12 = this.m02 * _t1;
+        float _t13 = this.m12 * _t0;
+        float _t17 = -(_t10 * _t11);
+        float _t18 = -(_t10 * _t13);
+        float _t19 = -(_t12 * _t11);
+        float _t22 = ((_t9) * (_t8) + (_t17)) - ((_t10) * (_t11) + (_t17));
+        float _t22_inv = 1.0f / _t22;
+        return new Float2x3(_t8 * _t1 / _t22, -(_t10 * _t0 * _t22_inv), -((((_t12) * (_t8) + (_t18)) - ((_t10) * (_t13) + (_t18))) * _t22_inv), -(_t11 * _t1 * _t22_inv), _t9 * _t0 / _t22, -((((_t9) * (_t13) + (_t19)) - ((_t12) * (_t11) + (_t19))) * _t22_inv), _props);
+    }
+
+    /** Private per-column body of {@code invertProduct_degenerate_orthogonal_translation}, stored into {@code _m}; reached only through it. */
+    private void invertProduct_degenerate_orthogonal_translation_s62762597_c2_fma(float _t12, float _t8, float _t18, float _t10, float _t13, float _t22_inv, Float2x3 other, float _t9, float _t19, float _t11, float[] _m) {
+        _m[2] = -((java.lang.Math.fma(_t12, _t8, _t18) - java.lang.Math.fma(_t10, _t13, _t18)) * _t22_inv) - other.m02;
+        _m[5] = -((java.lang.Math.fma(_t9, _t13, _t19) - java.lang.Math.fma(_t12, _t11, _t19)) * _t22_inv) - other.m12;
+    }
+
+    /**
+     * Degenerate-input path of {@code invertProduct}: its methods leave here when the determinant
+     * or its reciprocal leaves the normal floating-point range (a singular matrix, one scaled far
+     * from 1, NaN); reached only through them.
+     */
+    private Float2x3 invertProduct_degenerate_orthogonal_translation_fma(Float2x3 other, int _props) {
+        float _t0 = unitScale(this.m10, this.m11, this.m10);
+        float _t1 = unitScale(this.m00, this.m01, this.m00);
+        float _t8 = this.m11 * _t0;
+        float _t9 = this.m00 * _t1;
+        float _t10 = this.m01 * _t1;
+        float _t11 = this.m10 * _t0;
+        float _t12 = this.m02 * _t1;
+        float _t13 = this.m12 * _t0;
+        float _t17 = -(_t10 * _t11);
+        float _t22 = java.lang.Math.fma(_t9, _t8, _t17) - java.lang.Math.fma(_t10, _t11, _t17);
+        float _t22_inv = 1.0f / _t22;
+        float[] _m = new float[6];
+        _m[0] = _t8 * _t1 / _t22;
+        _m[3] = -(_t11 * _t1 * _t22_inv);
+        _m[1] = -(_t10 * _t0 * _t22_inv);
+        _m[4] = _t9 * _t0 / _t22;
+        invertProduct_degenerate_orthogonal_translation_s62762597_c2_fma(_t12, _t8, -(_t10 * _t13), _t10, _t13, _t22_inv, other, _t9, -(_t12 * _t11), _t11, _m);
+        return new Float2x3(_m[0], _m[1], _m[2], _m[3], _m[4], _m[5], _props);
+    }
+
+    /**
+     * Degenerate-input path of {@code invertProduct}: its methods leave here when the determinant
+     * or its reciprocal leaves the normal floating-point range (a singular matrix, one scaled far
+     * from 1, NaN); reached only through them.
+     */
+    private Float2x3 invertProduct_degenerate_orthogonal_translation_mulAdd(Float2x3 other, int _props) {
+        float _t0 = unitScale(this.m10, this.m11, this.m10);
+        float _t1 = unitScale(this.m00, this.m01, this.m00);
+        float _t8 = this.m11 * _t0;
+        float _t9 = this.m00 * _t1;
+        float _t10 = this.m01 * _t1;
+        float _t11 = this.m10 * _t0;
+        float _t12 = this.m02 * _t1;
+        float _t13 = this.m12 * _t0;
+        float _t17 = -(_t10 * _t11);
+        float _t22 = ((_t9) * (_t8) + (_t17)) - ((_t10) * (_t11) + (_t17));
+        float _t22_inv = 1.0f / _t22;
+        float[] _m = new float[6];
+        _m[0] = _t8 * _t1 / _t22;
+        _m[3] = -(_t11 * _t1 * _t22_inv);
+        _m[1] = -(_t10 * _t0 * _t22_inv);
+        _m[4] = _t9 * _t0 / _t22;
+        {
+            float _t18 = -(_t10 * _t13);
+            float _t19 = -(_t12 * _t11);
+            _m[2] = -((((_t12) * (_t8) + (_t18)) - ((_t10) * (_t13) + (_t18))) * _t22_inv) - other.m02;
+            _m[5] = -((((_t9) * (_t13) + (_t19)) - ((_t12) * (_t11) + (_t19))) * _t22_inv) - other.m12;
+        }
+        return new Float2x3(_m[0], _m[1], _m[2], _m[3], _m[4], _m[5], _props);
+    }
+
+    /**
+     * Degenerate-input path of {@code invertProduct}: its methods leave here when the determinant
+     * or its reciprocal leaves the normal floating-point range (a singular matrix, one scaled far
+     * from 1, NaN); reached only through them.
+     */
+    private Float2x3 invertProduct_degenerate_fma(Float2x3 other) {
+        int p = this.properties;
+        int q = other.properties;
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) {
+            if ((q & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return invertProduct_degenerate_general_fma(other, Joml.BIT_AFFINE & q);
+            if ((q & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return invertProduct_degenerate_orthogonal_identity_fma(Joml.BIT_AFFINE & q);
+            return invertProduct_degenerate_orthogonal_translation_fma(other, Joml.BIT_AFFINE & q);
+        }
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) {
+            if ((q & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return invertProduct_degenerate_identity_fma(other);
+            if ((q & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, other.properties);
+            return new Float2x3(1.0f, 0.0f, -other.m02, 0.0f, 1.0f, -other.m12, other.properties);
+        }
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) {
+            if ((q & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return invertProduct_degenerate_translation_fma(other);
+            if ((q & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(1.0f, 0.0f, -this.m02, 0.0f, 1.0f, -this.m12, Joml.BIT_TRANSLATION & other.properties);
+            return new Float2x3(1.0f, 0.0f, -other.m02 - this.m02, 0.0f, 1.0f, -other.m12 - this.m12, Joml.BIT_TRANSLATION & other.properties);
+        }
+        if ((q & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return invertProduct_degenerate_general_fma(other, Joml.BIT_ORTHOGONAL & q);
+        if ((q & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return invertProduct_degenerate_orthogonal_identity_fma(Joml.BIT_ORTHOGONAL & q);
+        return invertProduct_degenerate_orthogonal_translation_fma(other, Joml.BIT_ORTHOGONAL & q);
+    }
+
+    /**
+     * Degenerate-input path of {@code invertProduct}: its methods leave here when the determinant
+     * or its reciprocal leaves the normal floating-point range (a singular matrix, one scaled far
+     * from 1, NaN); reached only through them.
+     */
+    private Float2x3 invertProduct_degenerate_mulAdd(Float2x3 other) {
+        int p = this.properties;
+        int q = other.properties;
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) {
+            if ((q & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return invertProduct_degenerate_general_mulAdd(other, Joml.BIT_AFFINE & q);
+            if ((q & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return invertProduct_degenerate_orthogonal_identity_mulAdd(Joml.BIT_AFFINE & q);
+            return invertProduct_degenerate_orthogonal_translation_mulAdd(other, Joml.BIT_AFFINE & q);
+        }
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) {
+            if ((q & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return invertProduct_degenerate_identity_mulAdd(other);
+            if ((q & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, other.properties);
+            return new Float2x3(1.0f, 0.0f, -other.m02, 0.0f, 1.0f, -other.m12, other.properties);
+        }
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) {
+            if ((q & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return invertProduct_degenerate_translation_mulAdd(other);
+            if ((q & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(1.0f, 0.0f, -this.m02, 0.0f, 1.0f, -this.m12, Joml.BIT_TRANSLATION & other.properties);
+            return new Float2x3(1.0f, 0.0f, -other.m02 - this.m02, 0.0f, 1.0f, -other.m12 - this.m12, Joml.BIT_TRANSLATION & other.properties);
+        }
+        if ((q & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return invertProduct_degenerate_general_mulAdd(other, Joml.BIT_ORTHOGONAL & q);
+        if ((q & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return invertProduct_degenerate_orthogonal_identity_mulAdd(Joml.BIT_ORTHOGONAL & q);
+        return invertProduct_degenerate_orthogonal_translation_mulAdd(other, Joml.BIT_ORTHOGONAL & q);
+    }
+
+    /**
+     * Degenerate-input path of {@code invertProduct}: its methods leave here when the determinant
+     * or its reciprocal leaves the normal floating-point range (a singular matrix, one scaled far
+     * from 1, NaN); reached only through them.
+     */
+    private Float2x3 invertProduct_degenerate_fma(float m00, float m01, float m02, float m10, float m11, float m12) {
+        float[] _bundle0 = invertProduct_degenerate_sc5df03fc_1(m00, m01, m10, m11);
+        float[] _bundle1 = invertProduct_degenerate_sc5df03fc_2_fma(m02, m12, _bundle0[0], _bundle0[1], _bundle0[2], _bundle0[3], _bundle0[4], _bundle0[5], _bundle0[6], _bundle0[7], _bundle0[8], _bundle0[9], _bundle0[10]);
+        float[] _bundle2 = invertProduct_degenerate_general_s6cc4c1e3_3_fma(_bundle0, _bundle1);
+        return new Float2x3(_bundle2[0], _bundle2[1], _bundle2[2], _bundle2[3], _bundle2[4], _bundle2[5], Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Degenerate-input path of {@code invertProduct}: its methods leave here when the determinant
+     * or its reciprocal leaves the normal floating-point range (a singular matrix, one scaled far
+     * from 1, NaN); reached only through them.
+     */
+    private Float2x3 invertProduct_degenerate_mulAdd(float m00, float m01, float m02, float m10, float m11, float m12) {
+        float[] _bundle0 = invertProduct_degenerate_sc5df03fc_1(m00, m01, m10, m11);
+        float[] _bundle1 = invertProduct_degenerate_sc5df03fc_2_mulAdd(m02, m12, _bundle0[0], _bundle0[1], _bundle0[2], _bundle0[3], _bundle0[4], _bundle0[5], _bundle0[6], _bundle0[7], _bundle0[8], _bundle0[9], _bundle0[10]);
+        float[] _bundle2 = invertProduct_degenerate_general_s6cc4c1e3_3_mulAdd(_bundle0, _bundle1);
+        return new Float2x3(_bundle2[0], _bundle2[1], _bundle2[2], _bundle2[3], _bundle2[4], _bundle2[5], Joml.BIT_AFFINE);
+    }
+
+    /** Part 1 of {@code invertProduct_degenerate}, split to fit the inline budget; reached only through it. */
+    private float[] invertProduct_degenerate_sc5df03fc_1(float m00, float m01, float m10, float m11) {
+        float _t0 = unitScale(m00, m01, m00);
+        float _t1 = unitScale(m10, m11, m10);
+        float _t2 = unitScale(this.m10, this.m11, this.m10);
+        float _t3 = unitScale(this.m00, this.m01, this.m00);
+        return new float[] {_t0, _t1, _t2, _t3, m01 * _t0, m00 * _t0, m11 * _t1, m10 * _t1, this.m10 * _t2, this.m00 * _t3, this.m11 * _t2};
+    }
+
+    /** Part 2 of {@code invertProduct_degenerate}, split to fit the inline budget; reached only through it. */
+    private float[] invertProduct_degenerate_sc5df03fc_2_fma(float m02, float m12, float _t0, float _t1, float _t2, float _t3, float _t16, float _t17, float _t18, float _t19, float _t20, float _t21, float _t22) {
+        float _t23 = this.m01 * _t3;
+        float _t24 = this.m12 * _t2;
+        float _t25 = this.m02 * _t3;
+        float _t42 = -(_t16 * _t19);
+        float _t43 = -(_t23 * _t20);
+        float _t44 = -(_t25 * _t20);
+        float _t45 = -(_t23 * _t24);
+        float _t56 = java.lang.Math.fma(_t17, _t18, _t42) - java.lang.Math.fma(_t16, _t19, _t42);
+        float _t56_inv = 1.0f / _t56;
+        float _t57 = java.lang.Math.fma(_t21, _t22, _t43) - java.lang.Math.fma(_t23, _t20, _t43);
+        float _t57_inv = 1.0f / _t57;
+        return new float[] {m02 * _t0, m12 * _t1, _t56_inv, _t18 * _t0 / _t56, _t22 * _t3 / _t57, _t21 * _t2 / _t57, _t17 * _t1 / _t56, -(_t16 * _t1 * _t56_inv), -(_t20 * _t3 * _t57_inv), -(_t23 * _t2 * _t57_inv), -(_t19 * _t0 * _t56_inv), -((java.lang.Math.fma(_t21, _t24, _t44) - java.lang.Math.fma(_t25, _t20, _t44)) * _t57_inv), -((java.lang.Math.fma(_t25, _t22, _t45) - java.lang.Math.fma(_t23, _t24, _t45)) * _t57_inv)};
+    }
+
+    /** Part 2 of {@code invertProduct_degenerate}, split to fit the inline budget; reached only through it. */
+    private float[] invertProduct_degenerate_sc5df03fc_2_mulAdd(float m02, float m12, float _t0, float _t1, float _t2, float _t3, float _t16, float _t17, float _t18, float _t19, float _t20, float _t21, float _t22) {
+        float _t23 = this.m01 * _t3;
+        float _t24 = this.m12 * _t2;
+        float _t25 = this.m02 * _t3;
+        float _t42 = -(_t16 * _t19);
+        float _t43 = -(_t23 * _t20);
+        float _t44 = -(_t25 * _t20);
+        float _t45 = -(_t23 * _t24);
+        float _t56 = ((_t17) * (_t18) + (_t42)) - ((_t16) * (_t19) + (_t42));
+        float _t56_inv = 1.0f / _t56;
+        float _t57 = ((_t21) * (_t22) + (_t43)) - ((_t23) * (_t20) + (_t43));
+        float _t57_inv = 1.0f / _t57;
+        return new float[] {m02 * _t0, m12 * _t1, _t56_inv, _t18 * _t0 / _t56, _t22 * _t3 / _t57, _t21 * _t2 / _t57, _t17 * _t1 / _t56, -(_t16 * _t1 * _t56_inv), -(_t20 * _t3 * _t57_inv), -(_t23 * _t2 * _t57_inv), -(_t19 * _t0 * _t56_inv), -((((_t21) * (_t24) + (_t44)) - ((_t25) * (_t20) + (_t44))) * _t57_inv), -((((_t25) * (_t22) + (_t45)) - ((_t23) * (_t24) + (_t45))) * _t57_inv)};
+    }
+
+    /**
+     * Private body of {@code transpose}, specialized by runtime matrix properties; reached only
+     * through the public {@code transpose} dispatcher.
+     */
+    private Float3x2 transpose_identity() {
+        return new Float3x2(1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f);
+    }
+
+    /**
+     * Private body of {@code transpose}, specialized by runtime matrix properties; reached only
+     * through the public {@code transpose} dispatcher.
+     */
+    private Float3x2 transpose_translation() {
+        return new Float3x2(1.0f, 0.0f, 0.0f, 1.0f, this.m02, this.m12);
+    }
+
+    /**
+     * Private body of {@code transpose}, specialized by runtime matrix properties; reached only
+     * through the public {@code transpose} dispatcher.
+     */
+    private Float3x2 transpose_general() {
+        return new Float3x2(this.m00, this.m10, this.m01, this.m11, this.m02, this.m12);
+    }
+
+    /**
+     * Transpose this matrix, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting matrix
+     */
+    public Float3x2 transpose() {
+        int p = this.properties;
+        if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return transpose_general();
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return transpose_identity();
+        return transpose_translation();
+    }
+
+    /**
+     * Add {@code other} to this matrix, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param other the matrix to add
+     * @return the resulting matrix
+     */
+    public Float2x3 add(Float2x3 other) {
+        return new Float2x3(other.m00 + this.m00, other.m01 + this.m01, other.m02 + this.m02, other.m10 + this.m10, other.m11 + this.m11, other.m12 + this.m12, Joml.BIT_AFFINE & other.properties);
+    }
+
+    /**
+     * Add ({@code m00}, {@code m01}, {@code m02}, {@code m10}, {@code m11}, {@code m12}) to this
+     * matrix, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param m00 the element in row 0, column 0 of the matrix
+     * @param m01 the element in row 0, column 1 of the matrix
+     * @param m02 the element in row 0, column 2 of the matrix
+     * @param m10 the element in row 1, column 0 of the matrix
+     * @param m11 the element in row 1, column 1 of the matrix
+     * @param m12 the element in row 1, column 2 of the matrix
+     * @return the resulting matrix
+     */
+    public Float2x3 add(float m00, float m01, float m02, float m10, float m11, float m12) {
+        return new Float2x3(m00 + this.m00, m01 + this.m01, m02 + this.m02, m10 + this.m10, m11 + this.m11, m12 + this.m12, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties. Shared by the
+     * identical private paths of {@code mul}, {@code preMul}, {@code preScale} and {@code scale};
+     * reached only through them.
+     */
+    private Float2x3 mul_identity(float scalar) {
+        return new Float2x3(scalar, 0.0f, 0.0f, 0.0f, scalar, 0.0f, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Multiply each component of this matrix by {@code scalar}, returning the result as a value.
+     * <p>
+     * Only the stored elements take part: the implicit last row {@code (0, 0, 1)} stays as it is,
+     * so the result is still affine.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param scalar the factor to multiply each component by
+     * @return the resulting matrix
+     */
+    public Float2x3 mul(float scalar) {
+        int p = this.properties;
+        if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return (org.joml2.internal.FmaSwitch.ON ? new Float2x3(scalar * this.m00, scalar * this.m01, scalar * this.m02, scalar * this.m10, scalar * this.m11, scalar * this.m12, Joml.BIT_AFFINE) : new Float2x3(scalar * this.m00, scalar * this.m01, scalar * this.m02, scalar * this.m10, scalar * this.m11, scalar * this.m12, Joml.BIT_AFFINE));
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return mul_identity(scalar);
+        return (org.joml2.internal.FmaSwitch.ON ? new Float2x3(scalar, 0.0f, scalar * this.m02, 0.0f, scalar, scalar * this.m12, Joml.BIT_AFFINE) : new Float2x3(scalar, 0.0f, scalar * this.m02, 0.0f, scalar, scalar * this.m12, Joml.BIT_AFFINE));
+    }
+
+    /**
+     * Negate this matrix, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting matrix
+     */
+    public Float2x3 negate() {
+        return new Float2x3(-this.m00, -this.m01, -this.m02, -this.m10, -this.m11, -this.m12, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Subtract {@code other} from this matrix, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param other the matrix to subtract
+     * @return the resulting matrix
+     */
+    public Float2x3 sub(Float2x3 other) {
+        return new Float2x3(this.m00 - other.m00, this.m01 - other.m01, this.m02 - other.m02, this.m10 - other.m10, this.m11 - other.m11, this.m12 - other.m12, Joml.BIT_AFFINE & other.properties);
+    }
+
+    /**
+     * Subtract ({@code m00}, {@code m01}, {@code m02}, {@code m10}, {@code m11}, {@code m12}) from
+     * this matrix, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param m00 the element in row 0, column 0 of the matrix
+     * @param m01 the element in row 0, column 1 of the matrix
+     * @param m02 the element in row 0, column 2 of the matrix
+     * @param m10 the element in row 1, column 0 of the matrix
+     * @param m11 the element in row 1, column 1 of the matrix
+     * @param m12 the element in row 1, column 2 of the matrix
+     * @return the resulting matrix
+     */
+    public Float2x3 sub(float m00, float m01, float m02, float m10, float m11, float m12) {
+        return new Float2x3(this.m00 - m00, this.m01 - m01, this.m02 - m02, this.m10 - m10, this.m11 - m11, this.m12 - m12, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Return a matrix with the values of {@code v}: that matrix itself (an immutable value needs no
+     * copy).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param v the matrix to copy
+     * @return the resulting matrix
+     */
+    public Float2x3 set(Float2x3 v) {
+        return v;
+    }
+
+    /**
+     * Create a new matrix from the given values.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param m00 the element in row 0, column 0 of the matrix
+     * @param m01 the element in row 0, column 1 of the matrix
+     * @param m02 the element in row 0, column 2 of the matrix
+     * @param m10 the element in row 1, column 0 of the matrix
+     * @param m11 the element in row 1, column 1 of the matrix
+     * @param m12 the element in row 1, column 2 of the matrix
+     * @return the resulting matrix
+     */
+    public Float2x3 set(float m00, float m01, float m02, float m10, float m11, float m12) {
+        return new Float2x3(m00, m01, m02, m10, m11, m12);
+    }
+
+    /**
+     * Create a new matrix from the given 2x2 matrix, copying the overlapping cells and filling the
+     * rest with identity.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param m the matrix to copy from
+     * @return the resulting matrix
+     */
+    public Float2x3 set(Float2x2 m) {
+        return new Float2x3(m.m00(), m.m01(), 0.0f, m.m10(), m.m11(), 0.0f);
+    }
+
+    /**
+     * Create a new matrix from the given 3x3 matrix, copying the overlapping cells and dropping the
+     * rest.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param m the matrix to copy from
+     * @return the resulting matrix
+     */
+    public Float2x3 set(Float3x3 m) {
+        return new Float2x3(m.m00(), m.m01(), m.m02(), m.m10(), m.m11(), m.m12());
+    }
+
+    /**
+     * Replace the translation of this matrix, keeping every other element.
+     * <p>
+     * Only the first two elements of the last column change, so a square matrix keeps the
+     * projective element that sits below them. Unlike {@code translate}, this replaces the
+     * translation instead of composing a translation onto the existing transformation.
+     * <p>
+     * The result is returned as a value; {@code this} is not modified.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param t the translation offsets
+     * @return the resulting matrix
+     */
+    public Float2x3 withTranslation(Float2 t) {
+        float tX = t.x();
+        float tY = t.y();
+        int p = this.properties;
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return withTranslation_general(tX, tY);
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return withTranslation_identity(tX, tY);
+        return withTranslation_orthogonal(tX, tY);
+    }
+
+    /**
+     * Private body of {@code withTranslation}, specialized by runtime matrix properties. Shared by
+     * the identical private paths of {@code withTranslation}, {@code preTranslate} and
+     * {@code translate}; reached only through them.
+     */
+    private Float2x3 withTranslation_identity(float tX, float tY) {
+        return new Float2x3(1.0f, 0.0f, tX, 0.0f, 1.0f, tY, Joml.BIT_TRANSLATION);
+    }
+
+    /**
+     * Private body of {@code withTranslation}, specialized by runtime matrix properties; reached
+     * only through the public {@code withTranslation} dispatcher.
+     */
+    private Float2x3 withTranslation_orthogonal(float tX, float tY) {
+        return new Float2x3(this.m00, this.m01, tX, this.m10, this.m11, tY, Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private body of {@code withTranslation}, specialized by runtime matrix properties; reached
+     * only through the public {@code withTranslation} dispatcher.
+     */
+    private Float2x3 withTranslation_general(float tX, float tY) {
+        return new Float2x3(this.m00, this.m01, tX, this.m10, this.m11, tY, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Replace the translation of this matrix, keeping every other element.
+     * <p>
+     * Only the first two elements of the last column change, so a square matrix keeps the
+     * projective element that sits below them. Unlike {@code translate}, this replaces the
+     * translation instead of composing a translation onto the existing transformation.
+     * <p>
+     * The result is returned as a value; {@code this} is not modified.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param tX the {@code x} component of the translation offsets {@code (tX, tY)}
+     * @param tY the {@code y} component of the translation offsets {@code (tX, tY)}
+     * @return the resulting matrix
+     */
+    public Float2x3 withTranslation(float tX, float tY) {
+        int p = this.properties;
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return withTranslation_general(tX, tY);
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return withTranslation_identity(tX, tY);
+        return withTranslation_orthogonal(tX, tY);
+    }
+
+    /**
+     * Convert this matrix to {@code double} precision, returning the result as a new instance.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return a new {@code Double2x3} holding the result
+     */
+    public Double2x3 toDouble() {
+        return new Double2x3(this.m00, this.m01, this.m02, this.m10, this.m11, this.m12, this.properties);
+    }
+
+    /**
+     * Private body of {@code to2x2}, specialized by runtime matrix properties; reached only through
+     * the public {@code to2x2} dispatcher.
+     */
+    private Float2x2 to2x2_general() {
+        return new Float2x2(this.m00, this.m01, this.m10, this.m11, 0);
+    }
+
+    /**
+     * Extract the upper-left 2x2 linear block of this matrix (dropping the translation column),
+     * returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting matrix
+     */
+    public Float2x2 to2x2() {
+        if ((this.properties & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return new Float2x2(1.0f, 0.0f, 0.0f, 1.0f, Joml.BIT_IDENTITY);
+        return to2x2_general();
+    }
+
+    /**
+     * Extend this matrix to a 3x3 matrix, filling the missing cells with identity, returning the
+     * result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the resulting matrix
+     */
+    public Float3x3 to3x3() {
+        int p = this.properties;
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return new Float3x3(this.m00, this.m01, this.m02, this.m10, this.m11, this.m12, 0.0f, 0.0f, 1.0f, Joml.BIT_AFFINE);
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float3x3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, Joml.BIT_IDENTITY);
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return new Float3x3(1.0f, 0.0f, this.m02, 0.0f, 1.0f, this.m12, 0.0f, 0.0f, 1.0f, Joml.BIT_TRANSLATION);
+        return new Float3x3(this.m00, this.m01, this.m02, this.m10, this.m11, this.m12, 0.0f, 0.0f, 1.0f, Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Create an identity matrix.
+     * <p>
+     * Valid input: the method reads no input.
+     *
+     * @return the resulting matrix
+     */
+    public static Float2x3 makeIdentity() {
+        return new Float2x3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, Joml.BIT_IDENTITY);
+    }
+
+    /**
+     * Linearly interpolate between this matrix and {@code other} using the interpolation factor
+     * {@code t}, returning the result as a value.
+     * <p>
+     * The interpolation starts at this matrix (interpolation factor {@code 0}) and ends at
+     * {@code other} (interpolation factor {@code 1}). Each linearly interpolated component is
+     * {@code this + (other - this) * t}, as in JOML and glMatrix: monotone in {@code t} and exact
+     * at {@code 0}, but at {@code 1} exact only up to the rounding of {@code other - this}, which
+     * shows when this component is much larger in magnitude than the other one (1e8 towards 1 ends
+     * at 0).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param other the matrix to interpolate towards
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return the resulting matrix
+     */
+    public Float2x3 lerp(Float2x3 other, float t) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new Float2x3(java.lang.Math.fma(t, other.m00 - this.m00, this.m00), java.lang.Math.fma(t, other.m01 - this.m01, this.m01), java.lang.Math.fma(t, other.m02 - this.m02, this.m02), java.lang.Math.fma(t, other.m10 - this.m10, this.m10), java.lang.Math.fma(t, other.m11 - this.m11, this.m11), java.lang.Math.fma(t, other.m12 - this.m12, this.m12), ((Joml.UNIQUE_IDENTITY | Joml.UNIQUE_TRANSLATION | Joml.UNIQUE_AFFINE) & this.properties & other.properties) | ((Joml.UNIQUE_TRANSLATION & this.properties & other.properties) >> 1));
+        } else {
+            return new Float2x3(((t) * (other.m00 - this.m00) + (this.m00)), ((t) * (other.m01 - this.m01) + (this.m01)), ((t) * (other.m02 - this.m02) + (this.m02)), ((t) * (other.m10 - this.m10) + (this.m10)), ((t) * (other.m11 - this.m11) + (this.m11)), ((t) * (other.m12 - this.m12) + (this.m12)), ((Joml.UNIQUE_IDENTITY | Joml.UNIQUE_TRANSLATION | Joml.UNIQUE_AFFINE) & this.properties & other.properties) | ((Joml.UNIQUE_TRANSLATION & this.properties & other.properties) >> 1));
+        }
+    }
+
+    /**
+     * Linearly interpolate between this matrix and ({@code m00}, {@code m01}, {@code m02},
+     * {@code m10}, {@code m11}, {@code m12}) using the interpolation factor {@code t}, returning
+     * the result as a value.
+     * <p>
+     * The interpolation starts at this matrix (interpolation factor {@code 0}) and ends at
+     * ({@code m00}, {@code m01}, {@code m02}, {@code m10}, {@code m11}, {@code m12}) (interpolation
+     * factor {@code 1}). Each linearly interpolated component is {@code this + (other - this) * t},
+     * as in JOML and glMatrix: monotone in {@code t} and exact at {@code 0}, but at {@code 1} exact
+     * only up to the rounding of {@code other - this}, which shows when this component is much
+     * larger in magnitude than the other one (1e8 towards 1 ends at 0).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param m00 the element in row 0, column 0 of the matrix
+     * @param m01 the element in row 0, column 1 of the matrix
+     * @param m02 the element in row 0, column 2 of the matrix
+     * @param m10 the element in row 1, column 0 of the matrix
+     * @param m11 the element in row 1, column 1 of the matrix
+     * @param m12 the element in row 1, column 2 of the matrix
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return the resulting matrix
+     */
+    public Float2x3 lerp(float m00, float m01, float m02, float m10, float m11, float m12, float t) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new Float2x3(java.lang.Math.fma(t, m00 - this.m00, this.m00), java.lang.Math.fma(t, m01 - this.m01, this.m01), java.lang.Math.fma(t, m02 - this.m02, this.m02), java.lang.Math.fma(t, m10 - this.m10, this.m10), java.lang.Math.fma(t, m11 - this.m11, this.m11), java.lang.Math.fma(t, m12 - this.m12, this.m12), Joml.BIT_AFFINE);
+        } else {
+            return new Float2x3(((t) * (m00 - this.m00) + (this.m00)), ((t) * (m01 - this.m01) + (this.m01)), ((t) * (m02 - this.m02) + (this.m02)), ((t) * (m10 - this.m10) + (this.m10)), ((t) * (m11 - this.m11) + (this.m11)), ((t) * (m12 - this.m12) + (this.m12)), Joml.BIT_AFFINE);
+        }
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties; reached only through
+     * the public {@code mul} dispatcher.
+     */
+    private Float2x3 mul_general_fma(Float2x3 right) {
+        return new Float2x3(java.lang.Math.fma(right.m00, this.m00, right.m10 * this.m01), java.lang.Math.fma(right.m01, this.m00, right.m11 * this.m01), java.lang.Math.fma(right.m02, this.m00, java.lang.Math.fma(right.m12, this.m01, this.m02)), java.lang.Math.fma(right.m00, this.m10, right.m10 * this.m11), java.lang.Math.fma(right.m01, this.m10, right.m11 * this.m11), java.lang.Math.fma(right.m02, this.m10, java.lang.Math.fma(right.m12, this.m11, this.m12)), Joml.BIT_AFFINE & right.properties);
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties; reached only through
+     * the public {@code mul} dispatcher.
+     */
+    private Float2x3 mul_general_mulAdd(Float2x3 right) {
+        return new Float2x3(((right.m00) * (this.m00) + (right.m10 * this.m01)), ((right.m01) * (this.m00) + (right.m11 * this.m01)), ((right.m02) * (this.m00) + (((right.m12) * (this.m01) + (this.m02)))), ((right.m00) * (this.m10) + (right.m10 * this.m11)), ((right.m01) * (this.m10) + (right.m11 * this.m11)), ((right.m02) * (this.m10) + (((right.m12) * (this.m11) + (this.m12)))), Joml.BIT_AFFINE & right.properties);
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties. Shared by the
+     * identical private paths of {@code mul} and {@code preScale}; reached only through them.
+     */
+    private Float2x3 mul_translation_fma(Float2x3 right) {
+        return new Float2x3(right.m00, right.m01, right.m02 + this.m02, right.m10, right.m11, right.m12 + this.m12, Joml.BIT_TRANSLATION & right.properties);
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties. Shared by the
+     * identical private paths of {@code mul} and {@code preScale}; reached only through them.
+     */
+    private Float2x3 mul_translation_mulAdd(Float2x3 right) {
+        return new Float2x3(right.m00, right.m01, right.m02 + this.m02, right.m10, right.m11, right.m12 + this.m12, Joml.BIT_TRANSLATION & right.properties);
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties; reached only through
+     * the public {@code mul} dispatcher.
+     */
+    private Float2x3 mul_orthogonal_fma(Float2x3 right) {
+        return new Float2x3(java.lang.Math.fma(right.m00, this.m11, right.m10 * -this.m10), java.lang.Math.fma(right.m01, this.m11, right.m11 * -this.m10), java.lang.Math.fma(right.m12, -this.m10, java.lang.Math.fma(right.m02, this.m11, this.m02)), java.lang.Math.fma(right.m00, this.m10, right.m10 * this.m11), java.lang.Math.fma(right.m01, this.m10, right.m11 * this.m11), java.lang.Math.fma(right.m02, this.m10, java.lang.Math.fma(right.m12, this.m11, this.m12)), Joml.BIT_ORTHOGONAL & right.properties);
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties; reached only through
+     * the public {@code mul} dispatcher.
+     */
+    private Float2x3 mul_orthogonal_mulAdd(Float2x3 right) {
+        return new Float2x3(((right.m00) * (this.m11) - (right.m10 * this.m10)), ((right.m01) * (this.m11) - (right.m11 * this.m10)), ((((right.m02) * (this.m11) + (this.m02))) - (right.m12) * (this.m10)), ((right.m00) * (this.m10) + (right.m10 * this.m11)), ((right.m01) * (this.m10) + (right.m11 * this.m11)), ((right.m02) * (this.m10) + (((right.m12) * (this.m11) + (this.m12)))), Joml.BIT_ORTHOGONAL & right.properties);
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties; reached only through
+     * the public {@code mul} dispatcher.
+     */
+    private Float2x3 mul_orthogonal_translation_fma(Float2x3 right, int _props) {
+        return new Float2x3(this.m00, this.m01, java.lang.Math.fma(right.m02, this.m00, java.lang.Math.fma(right.m12, this.m01, this.m02)), this.m10, this.m11, java.lang.Math.fma(right.m02, this.m10, java.lang.Math.fma(right.m12, this.m11, this.m12)), _props);
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties; reached only through
+     * the public {@code mul} dispatcher.
+     */
+    private Float2x3 mul_orthogonal_translation_mulAdd(Float2x3 right, int _props) {
+        return new Float2x3(this.m00, this.m01, ((right.m02) * (this.m00) + (((right.m12) * (this.m01) + (this.m02)))), this.m10, this.m11, ((right.m02) * (this.m10) + (((right.m12) * (this.m11) + (this.m12)))), _props);
+    }
+
+    /**
+     * Multiply this matrix by {@code right}, returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code R} the operand, then the new matrix will be
+     * {@code M * R}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code M * R * v}, the transformation of the operand will be applied first.
+     * <p>
+     * Both operands are identity-extended to this matrix's square size for the multiplication, and
+     * the product is projected back onto this shape.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param right the right operand
+     * @return the resulting matrix
+     */
+    public Float2x3 mul(Float2x3 right) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            int p = this.properties;
+            int q = right.properties;
+            if ((q & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return this;
+            if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) {
+                if ((q & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return mul_orthogonal_translation_fma(right, Joml.BIT_AFFINE & q);
+                return mul_general_fma(right);
+            }
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return right;
+            if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) {
+                if ((q & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return new Float2x3(1.0f, 0.0f, right.m02 + this.m02, 0.0f, 1.0f, right.m12 + this.m12, Joml.BIT_TRANSLATION & right.properties);
+                return mul_translation_fma(right);
+            }
+            if ((q & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return mul_orthogonal_translation_fma(right, Joml.BIT_ORTHOGONAL & q);
+            return mul_orthogonal_fma(right);
+        } else {
+            int p = this.properties;
+            int q = right.properties;
+            if ((q & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return this;
+            if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) {
+                if ((q & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return mul_orthogonal_translation_mulAdd(right, Joml.BIT_AFFINE & q);
+                return mul_general_mulAdd(right);
+            }
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return right;
+            if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) {
+                if ((q & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return new Float2x3(1.0f, 0.0f, right.m02 + this.m02, 0.0f, 1.0f, right.m12 + this.m12, Joml.BIT_TRANSLATION & right.properties);
+                return mul_translation_mulAdd(right);
+            }
+            if ((q & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return mul_orthogonal_translation_mulAdd(right, Joml.BIT_ORTHOGONAL & q);
+            return mul_orthogonal_mulAdd(right);
+        }
+    }
+
+    /**
+     * Multiply this matrix by ({@code m00}, {@code m01}, {@code m02}, {@code m10}, {@code m11},
+     * {@code m12}), returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code R} the operand, then the new matrix will be
+     * {@code M * R}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code M * R * v}, the transformation of the operand will be applied first.
+     * <p>
+     * Both operands are identity-extended to this matrix's square size for the multiplication, and
+     * the product is projected back onto this shape.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param m00 the element in row 0, column 0 of the matrix
+     * @param m01 the element in row 0, column 1 of the matrix
+     * @param m02 the element in row 0, column 2 of the matrix
+     * @param m10 the element in row 1, column 0 of the matrix
+     * @param m11 the element in row 1, column 1 of the matrix
+     * @param m12 the element in row 1, column 2 of the matrix
+     * @return the resulting matrix
+     */
+    public Float2x3 mul(float m00, float m01, float m02, float m10, float m11, float m12) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new Float2x3(java.lang.Math.fma(m00, this.m00, m10 * this.m01), java.lang.Math.fma(m01, this.m00, m11 * this.m01), java.lang.Math.fma(m02, this.m00, java.lang.Math.fma(m12, this.m01, this.m02)), java.lang.Math.fma(m00, this.m10, m10 * this.m11), java.lang.Math.fma(m01, this.m10, m11 * this.m11), java.lang.Math.fma(m02, this.m10, java.lang.Math.fma(m12, this.m11, this.m12)), Joml.BIT_AFFINE);
+        } else {
+            return new Float2x3(((m00) * (this.m00) + (m10 * this.m01)), ((m01) * (this.m00) + (m11 * this.m01)), ((m02) * (this.m00) + (((m12) * (this.m01) + (this.m02)))), ((m00) * (this.m10) + (m10 * this.m11)), ((m01) * (this.m10) + (m11 * this.m11)), ((m02) * (this.m10) + (((m12) * (this.m11) + (this.m12)))), Joml.BIT_AFFINE);
+        }
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties; reached only through
+     * the public {@code mul} dispatcher.
+     */
+    private Float2x3 mul_orthogonal_fma(Float2x2 right) {
+        float _right_m00 = right.m00();
+        float _right_m10 = right.m10();
+        float _right_m01 = right.m01();
+        float _right_m11 = right.m11();
+        return new Float2x3(java.lang.Math.fma(_right_m00, this.m11, _right_m10 * -this.m10), java.lang.Math.fma(_right_m01, this.m11, _right_m11 * -this.m10), this.m02, java.lang.Math.fma(_right_m00, this.m10, _right_m10 * this.m11), java.lang.Math.fma(_right_m01, this.m10, _right_m11 * this.m11), this.m12, (right.properties() & Joml.UNIQUE_IDENTITY) != 0 ? Joml.BIT_ORTHOGONAL : Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties; reached only through
+     * the public {@code mul} dispatcher.
+     */
+    private Float2x3 mul_orthogonal_mulAdd(Float2x2 right) {
+        float _right_m00 = right.m00();
+        float _right_m10 = right.m10();
+        float _right_m01 = right.m01();
+        float _right_m11 = right.m11();
+        return new Float2x3(((_right_m00) * (this.m11) - (_right_m10 * this.m10)), ((_right_m01) * (this.m11) - (_right_m11 * this.m10)), this.m02, ((_right_m00) * (this.m10) + (_right_m10 * this.m11)), ((_right_m01) * (this.m10) + (_right_m11 * this.m11)), this.m12, (right.properties() & Joml.UNIQUE_IDENTITY) != 0 ? Joml.BIT_ORTHOGONAL : Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties; reached only through
+     * the public {@code mul} dispatcher.
+     */
+    private Float2x3 mul_general_fma(Float2x2 right) {
+        float _right_m00 = right.m00();
+        float _right_m10 = right.m10();
+        float _right_m01 = right.m01();
+        float _right_m11 = right.m11();
+        return new Float2x3(java.lang.Math.fma(_right_m00, this.m00, _right_m10 * this.m01), java.lang.Math.fma(_right_m01, this.m00, _right_m11 * this.m01), this.m02, java.lang.Math.fma(_right_m00, this.m10, _right_m10 * this.m11), java.lang.Math.fma(_right_m01, this.m10, _right_m11 * this.m11), this.m12, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties; reached only through
+     * the public {@code mul} dispatcher.
+     */
+    private Float2x3 mul_general_mulAdd(Float2x2 right) {
+        float _right_m00 = right.m00();
+        float _right_m10 = right.m10();
+        float _right_m01 = right.m01();
+        float _right_m11 = right.m11();
+        return new Float2x3(((_right_m00) * (this.m00) + (_right_m10 * this.m01)), ((_right_m01) * (this.m00) + (_right_m11 * this.m01)), this.m02, ((_right_m00) * (this.m10) + (_right_m10 * this.m11)), ((_right_m01) * (this.m10) + (_right_m11 * this.m11)), this.m12, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Multiply this matrix by {@code right}, returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code R} the operand, then the new matrix will be
+     * {@code M * R}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code M * R * v}, the transformation of the operand will be applied first.
+     * <p>
+     * The operand is identity-extended to this matrix's square size before the multiplication, and
+     * the product is projected back onto this shape.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param right the right operand
+     * @return the resulting matrix
+     */
+    public Float2x3 mul(Float2x2 right) {
+        int p = this.properties;
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return (org.joml2.internal.FmaSwitch.ON ? mul_general_fma(right) : mul_general_mulAdd(right));
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(right.m00(), right.m01(), 0.0f, right.m10(), right.m11(), 0.0f, (right.properties() & Joml.UNIQUE_IDENTITY) != 0 ? Joml.BIT_IDENTITY : Joml.BIT_AFFINE);
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return (org.joml2.internal.FmaSwitch.ON ? new Float2x3(right.m00(), right.m01(), this.m02, right.m10(), right.m11(), this.m12, (right.properties() & Joml.UNIQUE_IDENTITY) != 0 ? Joml.BIT_TRANSLATION : Joml.BIT_AFFINE) : new Float2x3(right.m00(), right.m01(), this.m02, right.m10(), right.m11(), this.m12, (right.properties() & Joml.UNIQUE_IDENTITY) != 0 ? Joml.BIT_TRANSLATION : Joml.BIT_AFFINE));
+        return (org.joml2.internal.FmaSwitch.ON ? mul_orthogonal_fma(right) : mul_orthogonal_mulAdd(right));
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties; reached only through
+     * the public {@code mul} dispatcher.
+     */
+    private Float3x3 mul_general_fma(Float3x3 right) {
+        float _right_m20 = right.m20();
+        float _right_m00 = right.m00();
+        float _right_m10 = right.m10();
+        float _right_m21 = right.m21();
+        float _right_m01 = right.m01();
+        float _right_m11 = right.m11();
+        float _right_m22 = right.m22();
+        float _right_m02 = right.m02();
+        float _right_m12 = right.m12();
+        return new Float3x3(java.lang.Math.fma(_right_m20, this.m02, java.lang.Math.fma(_right_m00, this.m00, _right_m10 * this.m01)), java.lang.Math.fma(_right_m21, this.m02, java.lang.Math.fma(_right_m01, this.m00, _right_m11 * this.m01)), java.lang.Math.fma(_right_m22, this.m02, java.lang.Math.fma(_right_m02, this.m00, _right_m12 * this.m01)), java.lang.Math.fma(_right_m20, this.m12, java.lang.Math.fma(_right_m00, this.m10, _right_m10 * this.m11)), java.lang.Math.fma(_right_m21, this.m12, java.lang.Math.fma(_right_m01, this.m10, _right_m11 * this.m11)), java.lang.Math.fma(_right_m22, this.m12, java.lang.Math.fma(_right_m02, this.m10, _right_m12 * this.m11)), _right_m20, _right_m21, _right_m22, 0);
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties; reached only through
+     * the public {@code mul} dispatcher.
+     */
+    private Float3x3 mul_general_mulAdd(Float3x3 right) {
+        float _right_m20 = right.m20();
+        float _right_m00 = right.m00();
+        float _right_m10 = right.m10();
+        float _right_m21 = right.m21();
+        float _right_m01 = right.m01();
+        float _right_m11 = right.m11();
+        float _right_m22 = right.m22();
+        float _right_m02 = right.m02();
+        float _right_m12 = right.m12();
+        return new Float3x3(((_right_m20) * (this.m02) + (((_right_m00) * (this.m00) + (_right_m10 * this.m01)))), ((_right_m21) * (this.m02) + (((_right_m01) * (this.m00) + (_right_m11 * this.m01)))), ((_right_m22) * (this.m02) + (((_right_m02) * (this.m00) + (_right_m12 * this.m01)))), ((_right_m20) * (this.m12) + (((_right_m00) * (this.m10) + (_right_m10 * this.m11)))), ((_right_m21) * (this.m12) + (((_right_m01) * (this.m10) + (_right_m11 * this.m11)))), ((_right_m22) * (this.m12) + (((_right_m02) * (this.m10) + (_right_m12 * this.m11)))), _right_m20, _right_m21, _right_m22, 0);
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties. Shared by the
+     * identical private paths of {@code mul} and {@code preScale}; reached only through them.
+     */
+    private Float3x3 mul_translation_fma(Float3x3 right) {
+        float _right_m20 = right.m20();
+        float _right_m21 = right.m21();
+        float _right_m22 = right.m22();
+        return new Float3x3(java.lang.Math.fma(_right_m20, this.m02, right.m00()), java.lang.Math.fma(_right_m21, this.m02, right.m01()), java.lang.Math.fma(_right_m22, this.m02, right.m02()), java.lang.Math.fma(_right_m20, this.m12, right.m10()), java.lang.Math.fma(_right_m21, this.m12, right.m11()), java.lang.Math.fma(_right_m22, this.m12, right.m12()), _right_m20, _right_m21, _right_m22, Joml.BIT_TRANSLATION & right.properties());
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties. Shared by the
+     * identical private paths of {@code mul} and {@code preScale}; reached only through them.
+     */
+    private Float3x3 mul_translation_mulAdd(Float3x3 right) {
+        float _right_m20 = right.m20();
+        float _right_m21 = right.m21();
+        float _right_m22 = right.m22();
+        return new Float3x3(((_right_m20) * (this.m02) + (right.m00())), ((_right_m21) * (this.m02) + (right.m01())), ((_right_m22) * (this.m02) + (right.m02())), ((_right_m20) * (this.m12) + (right.m10())), ((_right_m21) * (this.m12) + (right.m11())), ((_right_m22) * (this.m12) + (right.m12())), _right_m20, _right_m21, _right_m22, Joml.BIT_TRANSLATION & right.properties());
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties; reached only through
+     * the public {@code mul} dispatcher.
+     */
+    private Float3x3 mul_orthogonal_fma(Float3x3 right) {
+        float _right_m20 = right.m20();
+        float _right_m00 = right.m00();
+        float _right_m10 = right.m10();
+        float _right_m21 = right.m21();
+        float _right_m01 = right.m01();
+        float _right_m11 = right.m11();
+        float _right_m22 = right.m22();
+        float _right_m02 = right.m02();
+        float _right_m12 = right.m12();
+        return new Float3x3(java.lang.Math.fma(_right_m20, this.m02, java.lang.Math.fma(_right_m00, this.m11, _right_m10 * -this.m10)), java.lang.Math.fma(_right_m21, this.m02, java.lang.Math.fma(_right_m01, this.m11, _right_m11 * -this.m10)), java.lang.Math.fma(_right_m22, this.m02, java.lang.Math.fma(_right_m02, this.m11, _right_m12 * -this.m10)), java.lang.Math.fma(_right_m20, this.m12, java.lang.Math.fma(_right_m00, this.m10, _right_m10 * this.m11)), java.lang.Math.fma(_right_m21, this.m12, java.lang.Math.fma(_right_m01, this.m10, _right_m11 * this.m11)), java.lang.Math.fma(_right_m22, this.m12, java.lang.Math.fma(_right_m02, this.m10, _right_m12 * this.m11)), _right_m20, _right_m21, _right_m22, Joml.BIT_ORTHOGONAL & right.properties());
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties; reached only through
+     * the public {@code mul} dispatcher.
+     */
+    private Float3x3 mul_orthogonal_mulAdd(Float3x3 right) {
+        float _right_m20 = right.m20();
+        float _right_m00 = right.m00();
+        float _right_m10 = right.m10();
+        float _right_m21 = right.m21();
+        float _right_m01 = right.m01();
+        float _right_m11 = right.m11();
+        float _right_m22 = right.m22();
+        float _right_m02 = right.m02();
+        float _right_m12 = right.m12();
+        return new Float3x3(((_right_m20) * (this.m02) + (((_right_m00) * (this.m11) - (_right_m10 * this.m10)))), ((_right_m21) * (this.m02) + (((_right_m01) * (this.m11) - (_right_m11 * this.m10)))), ((_right_m22) * (this.m02) + (((_right_m02) * (this.m11) - (_right_m12 * this.m10)))), ((_right_m20) * (this.m12) + (((_right_m00) * (this.m10) + (_right_m10 * this.m11)))), ((_right_m21) * (this.m12) + (((_right_m01) * (this.m10) + (_right_m11 * this.m11)))), ((_right_m22) * (this.m12) + (((_right_m02) * (this.m10) + (_right_m12 * this.m11)))), _right_m20, _right_m21, _right_m22, Joml.BIT_ORTHOGONAL & right.properties());
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties; reached only through
+     * the public {@code mul} dispatcher.
+     */
+    private Float3x3 mul_orthogonal_translation_fma(Float3x3 right, int _props) {
+        float _right_m02 = right.m02();
+        float _right_m12 = right.m12();
+        return new Float3x3(this.m00, this.m01, java.lang.Math.fma(_right_m02, this.m00, java.lang.Math.fma(_right_m12, this.m01, this.m02)), this.m10, this.m11, java.lang.Math.fma(_right_m02, this.m10, java.lang.Math.fma(_right_m12, this.m11, this.m12)), 0.0f, 0.0f, 1.0f, _props);
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties; reached only through
+     * the public {@code mul} dispatcher.
+     */
+    private Float3x3 mul_orthogonal_translation_mulAdd(Float3x3 right, int _props) {
+        float _right_m02 = right.m02();
+        float _right_m12 = right.m12();
+        return new Float3x3(this.m00, this.m01, ((_right_m02) * (this.m00) + (((_right_m12) * (this.m01) + (this.m02)))), this.m10, this.m11, ((_right_m02) * (this.m10) + (((_right_m12) * (this.m11) + (this.m12)))), 0.0f, 0.0f, 1.0f, _props);
+    }
+
+    /**
+     * Multiply this matrix by the given matrix, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param right the right operand
+     * @return the resulting matrix
+     */
+    public Float3x3 mul(Float3x3 right) {
+        if (!org.joml2.internal.FmaSwitch.ON) return mul_mulAdd(right);
+        int p = this.properties;
+        int _right_properties = right.properties();
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) {
+            if ((_right_properties & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return mul_general_fma(right);
+            if ((_right_properties & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float3x3(this.m00, this.m01, this.m02, this.m10, this.m11, this.m12, 0.0f, 0.0f, 1.0f, Joml.BIT_AFFINE & _right_properties);
+            return mul_orthogonal_translation_fma(right, Joml.BIT_AFFINE & _right_properties);
+        }
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return right;
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) {
+            if ((_right_properties & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return mul_translation_fma(right);
+            if ((_right_properties & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float3x3(1.0f, 0.0f, this.m02, 0.0f, 1.0f, this.m12, 0.0f, 0.0f, 1.0f, Joml.BIT_TRANSLATION & _right_properties);
+            return new Float3x3(1.0f, 0.0f, right.m02() + this.m02, 0.0f, 1.0f, right.m12() + this.m12, 0.0f, 0.0f, 1.0f, Joml.BIT_TRANSLATION & right.properties());
+        }
+        if ((_right_properties & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return mul_orthogonal_fma(right);
+        if ((_right_properties & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float3x3(this.m00, this.m01, this.m02, this.m10, this.m11, this.m12, 0.0f, 0.0f, 1.0f, Joml.BIT_ORTHOGONAL & _right_properties);
+        return mul_orthogonal_translation_fma(right, Joml.BIT_ORTHOGONAL & _right_properties);
+    }
+
+    /** {@code mul} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private Float3x3 mul_mulAdd(Float3x3 right) {
+        int p = this.properties;
+        int _right_properties = right.properties();
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) {
+            if ((_right_properties & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return mul_general_mulAdd(right);
+            if ((_right_properties & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float3x3(this.m00, this.m01, this.m02, this.m10, this.m11, this.m12, 0.0f, 0.0f, 1.0f, Joml.BIT_AFFINE & _right_properties);
+            return mul_orthogonal_translation_mulAdd(right, Joml.BIT_AFFINE & _right_properties);
+        }
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return right;
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) {
+            if ((_right_properties & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return mul_translation_mulAdd(right);
+            if ((_right_properties & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float3x3(1.0f, 0.0f, this.m02, 0.0f, 1.0f, this.m12, 0.0f, 0.0f, 1.0f, Joml.BIT_TRANSLATION & _right_properties);
+            return new Float3x3(1.0f, 0.0f, right.m02() + this.m02, 0.0f, 1.0f, right.m12() + this.m12, 0.0f, 0.0f, 1.0f, Joml.BIT_TRANSLATION & right.properties());
+        }
+        if ((_right_properties & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return mul_orthogonal_mulAdd(right);
+        if ((_right_properties & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float3x3(this.m00, this.m01, this.m02, this.m10, this.m11, this.m12, 0.0f, 0.0f, 1.0f, Joml.BIT_ORTHOGONAL & _right_properties);
+        return mul_orthogonal_translation_mulAdd(right, Joml.BIT_ORTHOGONAL & _right_properties);
+    }
+
+    /**
+     * Private body of {@code preMul}, specialized by runtime matrix properties; reached only
+     * through the public {@code preMul} dispatcher.
+     */
+    private Float2x3 preMul_general_fma(Float2x3 other) {
+        return new Float2x3(java.lang.Math.fma(other.m00, this.m00, other.m01 * this.m10), java.lang.Math.fma(other.m00, this.m01, other.m01 * this.m11), java.lang.Math.fma(other.m00, this.m02, java.lang.Math.fma(other.m01, this.m12, other.m02)), java.lang.Math.fma(other.m10, this.m00, other.m11 * this.m10), java.lang.Math.fma(other.m10, this.m01, other.m11 * this.m11), java.lang.Math.fma(other.m10, this.m02, java.lang.Math.fma(other.m11, this.m12, other.m12)), Joml.BIT_AFFINE & other.properties);
+    }
+
+    /**
+     * Private body of {@code preMul}, specialized by runtime matrix properties; reached only
+     * through the public {@code preMul} dispatcher.
+     */
+    private Float2x3 preMul_general_mulAdd(Float2x3 other) {
+        return new Float2x3(((other.m00) * (this.m00) + (other.m01 * this.m10)), ((other.m00) * (this.m01) + (other.m01 * this.m11)), ((other.m00) * (this.m02) + (((other.m01) * (this.m12) + (other.m02)))), ((other.m10) * (this.m00) + (other.m11 * this.m10)), ((other.m10) * (this.m01) + (other.m11 * this.m11)), ((other.m10) * (this.m02) + (((other.m11) * (this.m12) + (other.m12)))), Joml.BIT_AFFINE & other.properties);
+    }
+
+    /**
+     * Private body of {@code preMul}, specialized by runtime matrix properties; reached only
+     * through the public {@code preMul} dispatcher.
+     */
+    private Float2x3 preMul_translation_fma(Float2x3 other) {
+        return new Float2x3(other.m00, other.m01, java.lang.Math.fma(other.m00, this.m02, java.lang.Math.fma(other.m01, this.m12, other.m02)), other.m10, other.m11, java.lang.Math.fma(other.m10, this.m02, java.lang.Math.fma(other.m11, this.m12, other.m12)), Joml.BIT_TRANSLATION & other.properties);
+    }
+
+    /**
+     * Private body of {@code preMul}, specialized by runtime matrix properties; reached only
+     * through the public {@code preMul} dispatcher.
+     */
+    private Float2x3 preMul_translation_mulAdd(Float2x3 other) {
+        return new Float2x3(other.m00, other.m01, ((other.m00) * (this.m02) + (((other.m01) * (this.m12) + (other.m02)))), other.m10, other.m11, ((other.m10) * (this.m02) + (((other.m11) * (this.m12) + (other.m12)))), Joml.BIT_TRANSLATION & other.properties);
+    }
+
+    /**
+     * Private body of {@code preMul}, specialized by runtime matrix properties; reached only
+     * through the public {@code preMul} dispatcher.
+     */
+    private Float2x3 preMul_orthogonal_fma(Float2x3 other) {
+        return new Float2x3(java.lang.Math.fma(other.m00, this.m11, other.m01 * this.m10), java.lang.Math.fma(other.m01, this.m11, other.m00 * -this.m10), java.lang.Math.fma(other.m00, this.m02, java.lang.Math.fma(other.m01, this.m12, other.m02)), java.lang.Math.fma(other.m10, this.m11, other.m11 * this.m10), java.lang.Math.fma(other.m11, this.m11, other.m10 * -this.m10), java.lang.Math.fma(other.m10, this.m02, java.lang.Math.fma(other.m11, this.m12, other.m12)), Joml.BIT_ORTHOGONAL & other.properties);
+    }
+
+    /**
+     * Private body of {@code preMul}, specialized by runtime matrix properties; reached only
+     * through the public {@code preMul} dispatcher.
+     */
+    private Float2x3 preMul_orthogonal_mulAdd(Float2x3 other) {
+        return new Float2x3(((other.m00) * (this.m11) + (other.m01 * this.m10)), ((other.m01) * (this.m11) - (other.m00 * this.m10)), ((other.m00) * (this.m02) + (((other.m01) * (this.m12) + (other.m02)))), ((other.m10) * (this.m11) + (other.m11 * this.m10)), ((other.m11) * (this.m11) - (other.m10 * this.m10)), ((other.m10) * (this.m02) + (((other.m11) * (this.m12) + (other.m12)))), Joml.BIT_ORTHOGONAL & other.properties);
+    }
+
+    /**
+     * Private body of {@code preMul}, specialized by runtime matrix properties; reached only
+     * through the public {@code preMul} dispatcher.
+     */
+    private Float2x3 preMul_orthogonal_translation(Float2x3 other, int _props) {
+        return new Float2x3(this.m00, this.m01, other.m02 + this.m02, this.m10, this.m11, other.m12 + this.m12, _props);
+    }
+
+    /**
+     * Pre-multiply the transformation {@code other} onto this matrix, returning the result as a
+     * value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code T} the given transformation matrix, then the
+     * new matrix will be {@code T * M}. So when transforming a vector {@code v} with the new matrix
+     * by using {@code T * M * v}, the given transformation will be applied last.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param other the left operand
+     * @return the resulting matrix
+     */
+    public Float2x3 preMul(Float2x3 other) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            int p = this.properties;
+            int q = other.properties;
+            if ((q & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return this;
+            if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) {
+                if ((q & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return preMul_orthogonal_translation(other, Joml.BIT_AFFINE & q);
+                return preMul_general_fma(other);
+            }
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return other;
+            if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) {
+                if ((q & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return new Float2x3(1.0f, 0.0f, other.m02 + this.m02, 0.0f, 1.0f, other.m12 + this.m12, Joml.BIT_TRANSLATION & other.properties);
+                return preMul_translation_fma(other);
+            }
+            if ((q & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return preMul_orthogonal_translation(other, Joml.BIT_ORTHOGONAL & q);
+            return preMul_orthogonal_fma(other);
+        } else {
+            int p = this.properties;
+            int q = other.properties;
+            if ((q & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return this;
+            if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) {
+                if ((q & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return preMul_orthogonal_translation(other, Joml.BIT_AFFINE & q);
+                return preMul_general_mulAdd(other);
+            }
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return other;
+            if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) {
+                if ((q & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return new Float2x3(1.0f, 0.0f, other.m02 + this.m02, 0.0f, 1.0f, other.m12 + this.m12, Joml.BIT_TRANSLATION & other.properties);
+                return preMul_translation_mulAdd(other);
+            }
+            if ((q & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return preMul_orthogonal_translation(other, Joml.BIT_ORTHOGONAL & q);
+            return preMul_orthogonal_mulAdd(other);
+        }
+    }
+
+    /**
+     * Pre-multiply the transformation ({@code m00}, {@code m01}, {@code m02}, {@code m10},
+     * {@code m11}, {@code m12}) onto this matrix, returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code T} the given transformation matrix, then the
+     * new matrix will be {@code T * M}. So when transforming a vector {@code v} with the new matrix
+     * by using {@code T * M * v}, the given transformation will be applied last.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param m00 the element in row 0, column 0 of the matrix
+     * @param m01 the element in row 0, column 1 of the matrix
+     * @param m02 the element in row 0, column 2 of the matrix
+     * @param m10 the element in row 1, column 0 of the matrix
+     * @param m11 the element in row 1, column 1 of the matrix
+     * @param m12 the element in row 1, column 2 of the matrix
+     * @return the resulting matrix
+     */
+    public Float2x3 preMul(float m00, float m01, float m02, float m10, float m11, float m12) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new Float2x3(java.lang.Math.fma(m00, this.m00, m01 * this.m10), java.lang.Math.fma(m00, this.m01, m01 * this.m11), java.lang.Math.fma(m00, this.m02, java.lang.Math.fma(m01, this.m12, m02)), java.lang.Math.fma(m10, this.m00, m11 * this.m10), java.lang.Math.fma(m10, this.m01, m11 * this.m11), java.lang.Math.fma(m10, this.m02, java.lang.Math.fma(m11, this.m12, m12)), Joml.BIT_AFFINE);
+        } else {
+            return new Float2x3(((m00) * (this.m00) + (m01 * this.m10)), ((m00) * (this.m01) + (m01 * this.m11)), ((m00) * (this.m02) + (((m01) * (this.m12) + (m02)))), ((m10) * (this.m00) + (m11 * this.m10)), ((m10) * (this.m01) + (m11 * this.m11)), ((m10) * (this.m02) + (((m11) * (this.m12) + (m12)))), Joml.BIT_AFFINE);
+        }
+    }
+
+    /**
+     * Private body of {@code preMul}, specialized by runtime matrix properties; reached only
+     * through the public {@code preMul} dispatcher.
+     */
+    private Float2x3 preMul_translation_fma(Float2x2 other) {
+        float _other_m00 = other.m00();
+        float _other_m01 = other.m01();
+        float _other_m10 = other.m10();
+        float _other_m11 = other.m11();
+        return new Float2x3(_other_m00, _other_m01, java.lang.Math.fma(_other_m00, this.m02, _other_m01 * this.m12), _other_m10, _other_m11, java.lang.Math.fma(_other_m10, this.m02, _other_m11 * this.m12), (other.properties() & Joml.UNIQUE_IDENTITY) != 0 ? Joml.BIT_TRANSLATION : Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code preMul}, specialized by runtime matrix properties; reached only
+     * through the public {@code preMul} dispatcher.
+     */
+    private Float2x3 preMul_translation_mulAdd(Float2x2 other) {
+        float _other_m00 = other.m00();
+        float _other_m01 = other.m01();
+        float _other_m10 = other.m10();
+        float _other_m11 = other.m11();
+        return new Float2x3(_other_m00, _other_m01, ((_other_m00) * (this.m02) + (_other_m01 * this.m12)), _other_m10, _other_m11, ((_other_m10) * (this.m02) + (_other_m11 * this.m12)), (other.properties() & Joml.UNIQUE_IDENTITY) != 0 ? Joml.BIT_TRANSLATION : Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code preMul}, specialized by runtime matrix properties; reached only
+     * through the public {@code preMul} dispatcher.
+     */
+    private Float2x3 preMul_orthogonal_fma(Float2x2 other) {
+        float _other_m00 = other.m00();
+        float _other_m01 = other.m01();
+        float _other_m10 = other.m10();
+        float _other_m11 = other.m11();
+        return new Float2x3(java.lang.Math.fma(_other_m00, this.m11, _other_m01 * this.m10), java.lang.Math.fma(_other_m01, this.m11, _other_m00 * -this.m10), java.lang.Math.fma(_other_m00, this.m02, _other_m01 * this.m12), java.lang.Math.fma(_other_m10, this.m11, _other_m11 * this.m10), java.lang.Math.fma(_other_m11, this.m11, _other_m10 * -this.m10), java.lang.Math.fma(_other_m10, this.m02, _other_m11 * this.m12), (other.properties() & Joml.UNIQUE_IDENTITY) != 0 ? Joml.BIT_ORTHOGONAL : Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code preMul}, specialized by runtime matrix properties; reached only
+     * through the public {@code preMul} dispatcher.
+     */
+    private Float2x3 preMul_orthogonal_mulAdd(Float2x2 other) {
+        float _other_m00 = other.m00();
+        float _other_m01 = other.m01();
+        float _other_m10 = other.m10();
+        float _other_m11 = other.m11();
+        return new Float2x3(((_other_m00) * (this.m11) + (_other_m01 * this.m10)), ((_other_m01) * (this.m11) - (_other_m00 * this.m10)), ((_other_m00) * (this.m02) + (_other_m01 * this.m12)), ((_other_m10) * (this.m11) + (_other_m11 * this.m10)), ((_other_m11) * (this.m11) - (_other_m10 * this.m10)), ((_other_m10) * (this.m02) + (_other_m11 * this.m12)), (other.properties() & Joml.UNIQUE_IDENTITY) != 0 ? Joml.BIT_ORTHOGONAL : Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code preMul}, specialized by runtime matrix properties; reached only
+     * through the public {@code preMul} dispatcher.
+     */
+    private Float2x3 preMul_general_fma(Float2x2 other) {
+        float _other_m00 = other.m00();
+        float _other_m01 = other.m01();
+        float _other_m10 = other.m10();
+        float _other_m11 = other.m11();
+        return new Float2x3(java.lang.Math.fma(_other_m00, this.m00, _other_m01 * this.m10), java.lang.Math.fma(_other_m00, this.m01, _other_m01 * this.m11), java.lang.Math.fma(_other_m00, this.m02, _other_m01 * this.m12), java.lang.Math.fma(_other_m10, this.m00, _other_m11 * this.m10), java.lang.Math.fma(_other_m10, this.m01, _other_m11 * this.m11), java.lang.Math.fma(_other_m10, this.m02, _other_m11 * this.m12), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code preMul}, specialized by runtime matrix properties; reached only
+     * through the public {@code preMul} dispatcher.
+     */
+    private Float2x3 preMul_general_mulAdd(Float2x2 other) {
+        float _other_m00 = other.m00();
+        float _other_m01 = other.m01();
+        float _other_m10 = other.m10();
+        float _other_m11 = other.m11();
+        return new Float2x3(((_other_m00) * (this.m00) + (_other_m01 * this.m10)), ((_other_m00) * (this.m01) + (_other_m01 * this.m11)), ((_other_m00) * (this.m02) + (_other_m01 * this.m12)), ((_other_m10) * (this.m00) + (_other_m11 * this.m10)), ((_other_m10) * (this.m01) + (_other_m11 * this.m11)), ((_other_m10) * (this.m02) + (_other_m11 * this.m12)), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Pre-multiply {@code other} onto this matrix, returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code R} the operand, then the new matrix will be
+     * {@code R * M}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code R * M * v}, the transformation of the operand will be applied last.
+     * <p>
+     * The operand is identity-extended to this matrix's square size before the multiplication, and
+     * the product is projected back onto this shape.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param other the left operand
+     * @return the resulting matrix
+     */
+    public Float2x3 preMul(Float2x2 other) {
+        int p = this.properties;
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return (org.joml2.internal.FmaSwitch.ON ? preMul_general_fma(other) : preMul_general_mulAdd(other));
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(other.m00(), other.m01(), 0.0f, other.m10(), other.m11(), 0.0f, (other.properties() & Joml.UNIQUE_IDENTITY) != 0 ? Joml.BIT_IDENTITY : Joml.BIT_AFFINE);
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return (org.joml2.internal.FmaSwitch.ON ? preMul_translation_fma(other) : preMul_translation_mulAdd(other));
+        return (org.joml2.internal.FmaSwitch.ON ? preMul_orthogonal_fma(other) : preMul_orthogonal_mulAdd(other));
+    }
+
+    /**
+     * Private body of {@code preMul}, specialized by runtime matrix properties; reached only
+     * through the public {@code preMul} dispatcher.
+     */
+    private Float3x3 preMul_general_fma(Float3x3 other) {
+        float _other_m00 = other.m00();
+        float _other_m01 = other.m01();
+        float _other_m10 = other.m10();
+        float _other_m11 = other.m11();
+        float _other_m20 = other.m20();
+        float _other_m21 = other.m21();
+        return new Float3x3(java.lang.Math.fma(_other_m00, this.m00, _other_m01 * this.m10), java.lang.Math.fma(_other_m00, this.m01, _other_m01 * this.m11), java.lang.Math.fma(_other_m00, this.m02, java.lang.Math.fma(_other_m01, this.m12, other.m02())), java.lang.Math.fma(_other_m10, this.m00, _other_m11 * this.m10), java.lang.Math.fma(_other_m10, this.m01, _other_m11 * this.m11), java.lang.Math.fma(_other_m10, this.m02, java.lang.Math.fma(_other_m11, this.m12, other.m12())), java.lang.Math.fma(_other_m20, this.m00, _other_m21 * this.m10), java.lang.Math.fma(_other_m20, this.m01, _other_m21 * this.m11), java.lang.Math.fma(_other_m20, this.m02, java.lang.Math.fma(_other_m21, this.m12, other.m22())), 0);
+    }
+
+    /**
+     * Private body of {@code preMul}, specialized by runtime matrix properties; reached only
+     * through the public {@code preMul} dispatcher.
+     */
+    private Float3x3 preMul_general_mulAdd(Float3x3 other) {
+        float _other_m00 = other.m00();
+        float _other_m01 = other.m01();
+        float _other_m10 = other.m10();
+        float _other_m11 = other.m11();
+        float _other_m20 = other.m20();
+        float _other_m21 = other.m21();
+        return new Float3x3(((_other_m00) * (this.m00) + (_other_m01 * this.m10)), ((_other_m00) * (this.m01) + (_other_m01 * this.m11)), ((_other_m00) * (this.m02) + (((_other_m01) * (this.m12) + (other.m02())))), ((_other_m10) * (this.m00) + (_other_m11 * this.m10)), ((_other_m10) * (this.m01) + (_other_m11 * this.m11)), ((_other_m10) * (this.m02) + (((_other_m11) * (this.m12) + (other.m12())))), ((_other_m20) * (this.m00) + (_other_m21 * this.m10)), ((_other_m20) * (this.m01) + (_other_m21 * this.m11)), ((_other_m20) * (this.m02) + (((_other_m21) * (this.m12) + (other.m22())))), 0);
+    }
+
+    /**
+     * Private body of {@code preMul}, specialized by runtime matrix properties; reached only
+     * through the public {@code preMul} dispatcher.
+     */
+    private Float3x3 preMul_translation_fma(Float3x3 other) {
+        float _other_m00 = other.m00();
+        float _other_m01 = other.m01();
+        float _other_m10 = other.m10();
+        float _other_m11 = other.m11();
+        float _other_m20 = other.m20();
+        float _other_m21 = other.m21();
+        return new Float3x3(_other_m00, _other_m01, java.lang.Math.fma(_other_m00, this.m02, java.lang.Math.fma(_other_m01, this.m12, other.m02())), _other_m10, _other_m11, java.lang.Math.fma(_other_m10, this.m02, java.lang.Math.fma(_other_m11, this.m12, other.m12())), _other_m20, _other_m21, java.lang.Math.fma(_other_m20, this.m02, java.lang.Math.fma(_other_m21, this.m12, other.m22())), Joml.BIT_TRANSLATION & other.properties());
+    }
+
+    /**
+     * Private body of {@code preMul}, specialized by runtime matrix properties; reached only
+     * through the public {@code preMul} dispatcher.
+     */
+    private Float3x3 preMul_translation_mulAdd(Float3x3 other) {
+        float _other_m00 = other.m00();
+        float _other_m01 = other.m01();
+        float _other_m10 = other.m10();
+        float _other_m11 = other.m11();
+        float _other_m20 = other.m20();
+        float _other_m21 = other.m21();
+        return new Float3x3(_other_m00, _other_m01, ((_other_m00) * (this.m02) + (((_other_m01) * (this.m12) + (other.m02())))), _other_m10, _other_m11, ((_other_m10) * (this.m02) + (((_other_m11) * (this.m12) + (other.m12())))), _other_m20, _other_m21, ((_other_m20) * (this.m02) + (((_other_m21) * (this.m12) + (other.m22())))), Joml.BIT_TRANSLATION & other.properties());
+    }
+
+    /**
+     * Private body of {@code preMul}, specialized by runtime matrix properties; reached only
+     * through the public {@code preMul} dispatcher.
+     */
+    private Float3x3 preMul_orthogonal_fma(Float3x3 other) {
+        float _other_m00 = other.m00();
+        float _other_m01 = other.m01();
+        float _other_m10 = other.m10();
+        float _other_m11 = other.m11();
+        float _other_m20 = other.m20();
+        float _other_m21 = other.m21();
+        return new Float3x3(java.lang.Math.fma(_other_m00, this.m11, _other_m01 * this.m10), java.lang.Math.fma(_other_m01, this.m11, _other_m00 * -this.m10), java.lang.Math.fma(_other_m00, this.m02, java.lang.Math.fma(_other_m01, this.m12, other.m02())), java.lang.Math.fma(_other_m10, this.m11, _other_m11 * this.m10), java.lang.Math.fma(_other_m11, this.m11, _other_m10 * -this.m10), java.lang.Math.fma(_other_m10, this.m02, java.lang.Math.fma(_other_m11, this.m12, other.m12())), java.lang.Math.fma(_other_m20, this.m11, _other_m21 * this.m10), java.lang.Math.fma(_other_m21, this.m11, _other_m20 * -this.m10), java.lang.Math.fma(_other_m20, this.m02, java.lang.Math.fma(_other_m21, this.m12, other.m22())), Joml.BIT_ORTHOGONAL & other.properties());
+    }
+
+    /**
+     * Private body of {@code preMul}, specialized by runtime matrix properties; reached only
+     * through the public {@code preMul} dispatcher.
+     */
+    private Float3x3 preMul_orthogonal_mulAdd(Float3x3 other) {
+        float _other_m00 = other.m00();
+        float _other_m01 = other.m01();
+        float _other_m10 = other.m10();
+        float _other_m11 = other.m11();
+        float _other_m20 = other.m20();
+        float _other_m21 = other.m21();
+        return new Float3x3(((_other_m00) * (this.m11) + (_other_m01 * this.m10)), ((_other_m01) * (this.m11) - (_other_m00 * this.m10)), ((_other_m00) * (this.m02) + (((_other_m01) * (this.m12) + (other.m02())))), ((_other_m10) * (this.m11) + (_other_m11 * this.m10)), ((_other_m11) * (this.m11) - (_other_m10 * this.m10)), ((_other_m10) * (this.m02) + (((_other_m11) * (this.m12) + (other.m12())))), ((_other_m20) * (this.m11) + (_other_m21 * this.m10)), ((_other_m21) * (this.m11) - (_other_m20 * this.m10)), ((_other_m20) * (this.m02) + (((_other_m21) * (this.m12) + (other.m22())))), Joml.BIT_ORTHOGONAL & other.properties());
+    }
+
+    /**
+     * Private body of {@code preMul}, specialized by runtime matrix properties; reached only
+     * through the public {@code preMul} dispatcher.
+     */
+    private Float3x3 preMul_orthogonal_translation(Float3x3 other, int _props) {
+        return new Float3x3(this.m00, this.m01, other.m02() + this.m02, this.m10, this.m11, other.m12() + this.m12, 0.0f, 0.0f, 1.0f, _props);
+    }
+
+    /**
+     * Pre-multiply the given matrix onto this matrix, i.e. compute {@code other * this}, returning
+     * the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param other the left operand
+     * @return the resulting matrix
+     */
+    public Float3x3 preMul(Float3x3 other) {
+        if (!org.joml2.internal.FmaSwitch.ON) return preMul_mulAdd(other);
+        int p = this.properties;
+        int _other_properties = other.properties();
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) {
+            if ((_other_properties & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return preMul_general_fma(other);
+            if ((_other_properties & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float3x3(this.m00, this.m01, this.m02, this.m10, this.m11, this.m12, 0.0f, 0.0f, 1.0f, Joml.BIT_AFFINE & _other_properties);
+            return preMul_orthogonal_translation(other, Joml.BIT_AFFINE & _other_properties);
+        }
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return other;
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) {
+            if ((_other_properties & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return preMul_translation_fma(other);
+            if ((_other_properties & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float3x3(1.0f, 0.0f, this.m02, 0.0f, 1.0f, this.m12, 0.0f, 0.0f, 1.0f, Joml.BIT_TRANSLATION & _other_properties);
+            return new Float3x3(1.0f, 0.0f, other.m02() + this.m02, 0.0f, 1.0f, other.m12() + this.m12, 0.0f, 0.0f, 1.0f, Joml.BIT_TRANSLATION & other.properties());
+        }
+        if ((_other_properties & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return preMul_orthogonal_fma(other);
+        if ((_other_properties & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float3x3(this.m00, this.m01, this.m02, this.m10, this.m11, this.m12, 0.0f, 0.0f, 1.0f, Joml.BIT_ORTHOGONAL & _other_properties);
+        return preMul_orthogonal_translation(other, Joml.BIT_ORTHOGONAL & _other_properties);
+    }
+
+    /** {@code preMul} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private Float3x3 preMul_mulAdd(Float3x3 other) {
+        int p = this.properties;
+        int _other_properties = other.properties();
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) {
+            if ((_other_properties & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return preMul_general_mulAdd(other);
+            if ((_other_properties & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float3x3(this.m00, this.m01, this.m02, this.m10, this.m11, this.m12, 0.0f, 0.0f, 1.0f, Joml.BIT_AFFINE & _other_properties);
+            return preMul_orthogonal_translation(other, Joml.BIT_AFFINE & _other_properties);
+        }
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return other;
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) {
+            if ((_other_properties & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return preMul_translation_mulAdd(other);
+            if ((_other_properties & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float3x3(1.0f, 0.0f, this.m02, 0.0f, 1.0f, this.m12, 0.0f, 0.0f, 1.0f, Joml.BIT_TRANSLATION & _other_properties);
+            return new Float3x3(1.0f, 0.0f, other.m02() + this.m02, 0.0f, 1.0f, other.m12() + this.m12, 0.0f, 0.0f, 1.0f, Joml.BIT_TRANSLATION & other.properties());
+        }
+        if ((_other_properties & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return preMul_orthogonal_mulAdd(other);
+        if ((_other_properties & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float3x3(this.m00, this.m01, this.m02, this.m10, this.m11, this.m12, 0.0f, 0.0f, 1.0f, Joml.BIT_ORTHOGONAL & _other_properties);
+        return preMul_orthogonal_translation(other, Joml.BIT_ORTHOGONAL & _other_properties);
+    }
+
+    /**
+     * Add {@code other} scaled by {@code weight} to this matrix, returning the result as a value.
+     * <p>
+     * Only the stored elements take part: the implicit last row {@code (0, 0, 1)} stays as it is,
+     * so the result is still affine.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param other the matrix to scale and add
+     * @param weight the factor to scale {@code other} by before adding
+     * @return the resulting matrix
+     */
+    public Float2x3 addScaled(Float2x3 other, float weight) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new Float2x3(java.lang.Math.fma(weight, other.m00, this.m00), java.lang.Math.fma(weight, other.m01, this.m01), java.lang.Math.fma(weight, other.m02, this.m02), java.lang.Math.fma(weight, other.m10, this.m10), java.lang.Math.fma(weight, other.m11, this.m11), java.lang.Math.fma(weight, other.m12, this.m12), Joml.BIT_AFFINE & other.properties);
+        } else {
+            return new Float2x3(((weight) * (other.m00) + (this.m00)), ((weight) * (other.m01) + (this.m01)), ((weight) * (other.m02) + (this.m02)), ((weight) * (other.m10) + (this.m10)), ((weight) * (other.m11) + (this.m11)), ((weight) * (other.m12) + (this.m12)), Joml.BIT_AFFINE & other.properties);
+        }
+    }
+
+    /**
+     * Add ({@code m00}, {@code m01}, {@code m02}, {@code m10}, {@code m11}, {@code m12}) scaled by
+     * {@code weight} to this matrix, returning the result as a value.
+     * <p>
+     * Only the stored elements take part: the implicit last row {@code (0, 0, 1)} stays as it is,
+     * so the result is still affine.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param m00 the element in row 0, column 0 of the matrix
+     * @param m01 the element in row 0, column 1 of the matrix
+     * @param m02 the element in row 0, column 2 of the matrix
+     * @param m10 the element in row 1, column 0 of the matrix
+     * @param m11 the element in row 1, column 1 of the matrix
+     * @param m12 the element in row 1, column 2 of the matrix
+     * @param weight the factor to scale ({@code m00}, {@code m01}, {@code m02}, {@code m10},
+     *        {@code m11}, {@code m12}) by before adding
+     * @return the resulting matrix
+     */
+    public Float2x3 addScaled(float m00, float m01, float m02, float m10, float m11, float m12, float weight) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            return new Float2x3(java.lang.Math.fma(weight, m00, this.m00), java.lang.Math.fma(weight, m01, this.m01), java.lang.Math.fma(weight, m02, this.m02), java.lang.Math.fma(weight, m10, this.m10), java.lang.Math.fma(weight, m11, this.m11), java.lang.Math.fma(weight, m12, this.m12), Joml.BIT_AFFINE);
+        } else {
+            return new Float2x3(((weight) * (m00) + (this.m00)), ((weight) * (m01) + (this.m01)), ((weight) * (m02) + (this.m02)), ((weight) * (m10) + (this.m10)), ((weight) * (m11) + (this.m11)), ((weight) * (m12) + (this.m12)), Joml.BIT_AFFINE);
+        }
+    }
+
+    /**
+     * Create a rotation by {@code angle}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angle the angle in radians
+     * @return the resulting matrix
+     */
+    public static Float2x3 makeRotation(float angle) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        return new Float2x3(_t0, -_t1, 0.0f, _t1, _t0, 0.0f, Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Create a scaling transformation that scales by {@code v}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param v the scale factors
+     * @return the resulting matrix
+     */
+    public static Float2x3 makeScaling(Float2 v) {
+        float vX = v.x();
+        float vY = v.y();
+        return new Float2x3(vX, 0.0f, 0.0f, 0.0f, vY, 0.0f, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Create a scaling transformation that scales by ({@code vX}, {@code vY}).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param vX the {@code x} component of the vector {@code (vX, vY)}
+     * @param vY the {@code y} component of the vector {@code (vX, vY)}
+     * @return the resulting matrix
+     */
+    public static Float2x3 makeScaling(float vX, float vY) {
+        return new Float2x3(vX, 0.0f, 0.0f, 0.0f, vY, 0.0f, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Create a scaling transformation that scales by {@code s}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param s the uniform scale factor
+     * @return the resulting matrix
+     */
+    public static Float2x3 makeScaling(float s) {
+        return new Float2x3(s, 0.0f, 0.0f, 0.0f, s, 0.0f, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Create a translation transformation that translates by {@code v}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param v the translation offsets
+     * @return the resulting matrix
+     */
+    public static Float2x3 makeTranslation(Float2 v) {
+        float vX = v.x();
+        float vY = v.y();
+        return new Float2x3(1.0f, 0.0f, vX, 0.0f, 1.0f, vY, Joml.BIT_TRANSLATION);
+    }
+
+    /**
+     * Create a translation transformation that translates by ({@code vX}, {@code vY}).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param vX the {@code x} component of the translation offsets {@code (vX, vY)}
+     * @param vY the {@code y} component of the translation offsets {@code (vX, vY)}
+     * @return the resulting matrix
+     */
+    public static Float2x3 makeTranslation(float vX, float vY) {
+        return new Float2x3(1.0f, 0.0f, vX, 0.0f, 1.0f, vY, Joml.BIT_TRANSLATION);
+    }
+
+    /**
+     * Create the 2D view transformation that maps the rectangle
+     * {@code [left, right] x [bottom, top]} onto {@code [-1, +1] x [-1, +1]}.
+     * <p>
+     * Valid input: {@code left} and {@code right} must differ; {@code bottom} and {@code top} must
+     * differ.
+     *
+     * @param left the x coordinate of the left edge of the view rectangle
+     * @param right the x coordinate of the right edge of the view rectangle
+     * @param bottom the y coordinate of the bottom edge of the view rectangle
+     * @param top the y coordinate of the top edge of the view rectangle
+     * @return the resulting matrix
+     */
+    public static Float2x3 makeView(float left, float right, float bottom, float top) {
+        float _t0_inv = 1.0f / (right - left);
+        float _t1_inv = 1.0f / (top - bottom);
+        return new Float2x3(_t0_inv + _t0_inv, 0.0f, -(left + right) * _t0_inv, 0.0f, _t1_inv + _t1_inv, -(bottom + top) * _t1_inv, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code preRotate}, specialized by runtime matrix properties; reached only
+     * through the public {@code preRotate} dispatcher.
+     */
+    private Float2x3 preRotate_translation_fma(float angle) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        return new Float2x3(_t0, -_t1, java.lang.Math.fma(this.m02, _t0, -(this.m12 * _t1)), _t1, _t0, java.lang.Math.fma(this.m02, _t1, this.m12 * _t0), Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private body of {@code preRotate}, specialized by runtime matrix properties; reached only
+     * through the public {@code preRotate} dispatcher.
+     */
+    private Float2x3 preRotate_translation_mulAdd(float angle) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        return new Float2x3(_t0, -_t1, ((this.m02) * (_t0) - (this.m12 * _t1)), _t1, _t0, ((this.m02) * (_t1) + (this.m12 * _t0)), Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private body of {@code preRotate}, specialized by runtime matrix properties; reached only
+     * through the public {@code preRotate} dispatcher.
+     */
+    private Float2x3 preRotate_orthogonal_fma(float angle) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        return new Float2x3(java.lang.Math.fma(this.m00, _t0, -(this.m10 * _t1)), java.lang.Math.fma(this.m01, _t0, -(this.m11 * _t1)), java.lang.Math.fma(this.m02, _t0, -(this.m12 * _t1)), java.lang.Math.fma(this.m00, _t1, this.m10 * _t0), java.lang.Math.fma(this.m01, _t1, this.m11 * _t0), java.lang.Math.fma(this.m02, _t1, this.m12 * _t0), Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private body of {@code preRotate}, specialized by runtime matrix properties; reached only
+     * through the public {@code preRotate} dispatcher.
+     */
+    private Float2x3 preRotate_orthogonal_mulAdd(float angle) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        return new Float2x3(((this.m00) * (_t0) - (this.m10 * _t1)), ((this.m01) * (_t0) - (this.m11 * _t1)), ((this.m02) * (_t0) - (this.m12 * _t1)), ((this.m00) * (_t1) + (this.m10 * _t0)), ((this.m01) * (_t1) + (this.m11 * _t0)), ((this.m02) * (_t1) + (this.m12 * _t0)), Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private body of {@code preRotate}, specialized by runtime matrix properties; reached only
+     * through the public {@code preRotate} dispatcher.
+     */
+    private Float2x3 preRotate_general_fma(float angle) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        return new Float2x3(java.lang.Math.fma(this.m00, _t0, -(this.m10 * _t1)), java.lang.Math.fma(this.m01, _t0, -(this.m11 * _t1)), java.lang.Math.fma(this.m02, _t0, -(this.m12 * _t1)), java.lang.Math.fma(this.m00, _t1, this.m10 * _t0), java.lang.Math.fma(this.m01, _t1, this.m11 * _t0), java.lang.Math.fma(this.m02, _t1, this.m12 * _t0), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code preRotate}, specialized by runtime matrix properties; reached only
+     * through the public {@code preRotate} dispatcher.
+     */
+    private Float2x3 preRotate_general_mulAdd(float angle) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        return new Float2x3(((this.m00) * (_t0) - (this.m10 * _t1)), ((this.m01) * (_t0) - (this.m11 * _t1)), ((this.m02) * (_t0) - (this.m12 * _t1)), ((this.m00) * (_t1) + (this.m10 * _t0)), ((this.m01) * (_t1) + (this.m11 * _t0)), ((this.m02) * (_t1) + (this.m12 * _t0)), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Pre-multiply a rotation by {@code angle} onto this matrix, returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code R} the rotation matrix, then the new matrix
+     * will be {@code R * M}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code R * M * v}, the rotation will be applied last.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angle the angle in radians
+     * @return the resulting matrix
+     */
+    public Float2x3 preRotate(float angle) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            int p = this.properties;
+            if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return preRotate_general_fma(angle);
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) {
+                float _t0 = Math.cosWithSin(angle);
+                float _t1 = Math.sinWithCos(angle);
+                return new Float2x3(_t0, -_t1, 0.0f, _t1, _t0, 0.0f, Joml.BIT_ORTHOGONAL);
+            }
+            if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return preRotate_translation_fma(angle);
+            return preRotate_orthogonal_fma(angle);
+        } else {
+            int p = this.properties;
+            if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return preRotate_general_mulAdd(angle);
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) {
+                float _t0 = Math.cosWithSin(angle);
+                float _t1 = Math.sinWithCos(angle);
+                return new Float2x3(_t0, -_t1, 0.0f, _t1, _t0, 0.0f, Joml.BIT_ORTHOGONAL);
+            }
+            if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return preRotate_translation_mulAdd(angle);
+            return preRotate_orthogonal_mulAdd(angle);
+        }
+    }
+
+    /**
+     * Pre-multiply the rotation {@code angle} about the pivot point {@code pivot} onto this matrix,
+     * returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code R} the rotation matrix, then the new matrix
+     * will be {@code R * M}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code R * M * v}, the rotation will be applied last.
+     * <p>
+     * The pivot sandwich {@code translate(pivot) * R * translate(-pivot)} is evaluated so that its
+     * translation part, {@code pivot - R * pivot}, keeps its accuracy for pivots far from the
+     * origin.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angle the angle in radians
+     * @param pivot the pivot point
+     * @return the resulting matrix
+     */
+    public Float2x3 preRotateAround(float angle, Float2 pivot) {
+        float pivotX = pivot.x();
+        float pivotY = pivot.y();
+        int p = this.properties;
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return (org.joml2.internal.FmaSwitch.ON ? preRotateAround_general_fma(angle, pivotX, pivotY) : preRotateAround_general_mulAdd(angle, pivotX, pivotY));
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return (org.joml2.internal.FmaSwitch.ON ? preRotateAround_identity_fma(angle, pivotX, pivotY) : preRotateAround_identity_mulAdd(angle, pivotX, pivotY));
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return (org.joml2.internal.FmaSwitch.ON ? preRotateAround_translation_fma(angle, pivotX, pivotY) : preRotateAround_translation_mulAdd(angle, pivotX, pivotY));
+        return (org.joml2.internal.FmaSwitch.ON ? preRotateAround_orthogonal_fma(angle, pivotX, pivotY) : preRotateAround_orthogonal_mulAdd(angle, pivotX, pivotY));
+    }
+
+    /**
+     * Private body of {@code preRotateAround}, specialized by runtime matrix properties. Shared by
+     * the identical private paths of {@code preRotateAround} and {@code rotateAround}; reached only
+     * through them.
+     */
+    private Float2x3 preRotateAround_identity_fma(float angle, float pivotX, float pivotY) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        float _t6 = _t0 > 0.0f ? _t1 * _t1 / (1.0f + _t0) : 1.0f - _t0;
+        return new Float2x3(_t0, -_t1, java.lang.Math.fma(pivotX, _t6, pivotY * _t1), _t1, _t0, java.lang.Math.fma(pivotY, _t6, -(pivotX * _t1)), Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private body of {@code preRotateAround}, specialized by runtime matrix properties. Shared by
+     * the identical private paths of {@code preRotateAround} and {@code rotateAround}; reached only
+     * through them.
+     */
+    private Float2x3 preRotateAround_identity_mulAdd(float angle, float pivotX, float pivotY) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        float _t6 = _t0 > 0.0f ? _t1 * _t1 / (1.0f + _t0) : 1.0f - _t0;
+        return new Float2x3(_t0, -_t1, ((pivotX) * (_t6) + (pivotY * _t1)), _t1, _t0, ((pivotY) * (_t6) - (pivotX * _t1)), Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private body of {@code preRotateAround}, specialized by runtime matrix properties; reached
+     * only through the public {@code preRotateAround} dispatcher.
+     */
+    private Float2x3 preRotateAround_translation_fma(float angle, float pivotX, float pivotY) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        float _t6 = _t0 > 0.0f ? _t1 * _t1 / (1.0f + _t0) : 1.0f - _t0;
+        return new Float2x3(_t0, -_t1, java.lang.Math.fma(pivotX, _t6, pivotY * _t1) + java.lang.Math.fma(this.m02, _t0, -(this.m12 * _t1)), _t1, _t0, java.lang.Math.fma(this.m02, _t1, this.m12 * _t0) + java.lang.Math.fma(pivotY, _t6, -(pivotX * _t1)), Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private body of {@code preRotateAround}, specialized by runtime matrix properties; reached
+     * only through the public {@code preRotateAround} dispatcher.
+     */
+    private Float2x3 preRotateAround_translation_mulAdd(float angle, float pivotX, float pivotY) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        float _t6 = _t0 > 0.0f ? _t1 * _t1 / (1.0f + _t0) : 1.0f - _t0;
+        return new Float2x3(_t0, -_t1, ((pivotX) * (_t6) + (pivotY * _t1)) + ((this.m02) * (_t0) - (this.m12 * _t1)), _t1, _t0, ((this.m02) * (_t1) + (this.m12 * _t0)) + ((pivotY) * (_t6) - (pivotX * _t1)), Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private body of {@code preRotateAround}, specialized by runtime matrix properties; reached
+     * only through the public {@code preRotateAround} dispatcher.
+     */
+    private Float2x3 preRotateAround_orthogonal_fma(float angle, float pivotX, float pivotY) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        float _t6 = _t0 > 0.0f ? _t1 * _t1 / (1.0f + _t0) : 1.0f - _t0;
+        return new Float2x3(java.lang.Math.fma(this.m00, _t0, -(this.m10 * _t1)), java.lang.Math.fma(this.m01, _t0, -(this.m11 * _t1)), java.lang.Math.fma(pivotX, _t6, pivotY * _t1) + java.lang.Math.fma(this.m02, _t0, -(this.m12 * _t1)), java.lang.Math.fma(this.m00, _t1, this.m10 * _t0), java.lang.Math.fma(this.m01, _t1, this.m11 * _t0), java.lang.Math.fma(this.m02, _t1, this.m12 * _t0) + java.lang.Math.fma(pivotY, _t6, -(pivotX * _t1)), Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private body of {@code preRotateAround}, specialized by runtime matrix properties; reached
+     * only through the public {@code preRotateAround} dispatcher.
+     */
+    private Float2x3 preRotateAround_orthogonal_mulAdd(float angle, float pivotX, float pivotY) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        float _t6 = _t0 > 0.0f ? _t1 * _t1 / (1.0f + _t0) : 1.0f - _t0;
+        return new Float2x3(((this.m00) * (_t0) - (this.m10 * _t1)), ((this.m01) * (_t0) - (this.m11 * _t1)), ((pivotX) * (_t6) + (pivotY * _t1)) + ((this.m02) * (_t0) - (this.m12 * _t1)), ((this.m00) * (_t1) + (this.m10 * _t0)), ((this.m01) * (_t1) + (this.m11 * _t0)), ((this.m02) * (_t1) + (this.m12 * _t0)) + ((pivotY) * (_t6) - (pivotX * _t1)), Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private body of {@code preRotateAround}, specialized by runtime matrix properties; reached
+     * only through the public {@code preRotateAround} dispatcher.
+     */
+    private Float2x3 preRotateAround_general_fma(float angle, float pivotX, float pivotY) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        float _t6 = _t0 > 0.0f ? _t1 * _t1 / (1.0f + _t0) : 1.0f - _t0;
+        return new Float2x3(java.lang.Math.fma(this.m00, _t0, -(this.m10 * _t1)), java.lang.Math.fma(this.m01, _t0, -(this.m11 * _t1)), java.lang.Math.fma(pivotX, _t6, pivotY * _t1) + java.lang.Math.fma(this.m02, _t0, -(this.m12 * _t1)), java.lang.Math.fma(this.m00, _t1, this.m10 * _t0), java.lang.Math.fma(this.m01, _t1, this.m11 * _t0), java.lang.Math.fma(this.m02, _t1, this.m12 * _t0) + java.lang.Math.fma(pivotY, _t6, -(pivotX * _t1)), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code preRotateAround}, specialized by runtime matrix properties; reached
+     * only through the public {@code preRotateAround} dispatcher.
+     */
+    private Float2x3 preRotateAround_general_mulAdd(float angle, float pivotX, float pivotY) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        float _t6 = _t0 > 0.0f ? _t1 * _t1 / (1.0f + _t0) : 1.0f - _t0;
+        return new Float2x3(((this.m00) * (_t0) - (this.m10 * _t1)), ((this.m01) * (_t0) - (this.m11 * _t1)), ((pivotX) * (_t6) + (pivotY * _t1)) + ((this.m02) * (_t0) - (this.m12 * _t1)), ((this.m00) * (_t1) + (this.m10 * _t0)), ((this.m01) * (_t1) + (this.m11 * _t0)), ((this.m02) * (_t1) + (this.m12 * _t0)) + ((pivotY) * (_t6) - (pivotX * _t1)), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Pre-multiply the rotation {@code angle} about the pivot point ({@code pivotX},
+     * {@code pivotY}) onto this matrix, returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code R} the rotation matrix, then the new matrix
+     * will be {@code R * M}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code R * M * v}, the rotation will be applied last.
+     * <p>
+     * The pivot sandwich {@code translate(pivot) * R * translate(-pivot)} is evaluated so that its
+     * translation part, {@code pivot - R * pivot}, keeps its accuracy for pivots far from the
+     * origin.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angle the angle in radians
+     * @param pivotX the {@code x} component of the vector {@code (pivotX, pivotY)}
+     * @param pivotY the {@code y} component of the vector {@code (pivotX, pivotY)}
+     * @return the resulting matrix
+     */
+    public Float2x3 preRotateAround(float angle, float pivotX, float pivotY) {
+        int p = this.properties;
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return (org.joml2.internal.FmaSwitch.ON ? preRotateAround_general_fma(angle, pivotX, pivotY) : preRotateAround_general_mulAdd(angle, pivotX, pivotY));
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return (org.joml2.internal.FmaSwitch.ON ? preRotateAround_identity_fma(angle, pivotX, pivotY) : preRotateAround_identity_mulAdd(angle, pivotX, pivotY));
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return (org.joml2.internal.FmaSwitch.ON ? preRotateAround_translation_fma(angle, pivotX, pivotY) : preRotateAround_translation_mulAdd(angle, pivotX, pivotY));
+        return (org.joml2.internal.FmaSwitch.ON ? preRotateAround_orthogonal_fma(angle, pivotX, pivotY) : preRotateAround_orthogonal_mulAdd(angle, pivotX, pivotY));
+    }
+
+    /**
+     * Pre-multiply a scaling by {@code v} onto this matrix, returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code S} the scaling matrix, then the new matrix
+     * will be {@code S * M}. So when transforming a vector {@code p} with the new matrix by using
+     * {@code S * M * p}, the scaling will be applied last.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param v the scale factors
+     * @return the resulting matrix
+     */
+    public Float2x3 preScale(Float2 v) {
+        float vX = v.x();
+        float vY = v.y();
+        int p = this.properties;
+        if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return new Float2x3(this.m00 * vX, this.m01 * vX, this.m02 * vX, this.m10 * vY, this.m11 * vY, this.m12 * vY, Joml.BIT_AFFINE);
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(vX, 0.0f, 0.0f, 0.0f, vY, 0.0f, Joml.BIT_AFFINE);
+        return new Float2x3(vX, 0.0f, this.m02 * vX, 0.0f, vY, this.m12 * vY, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Pre-multiply a scaling by ({@code vX}, {@code vY}) onto this matrix, returning the result as
+     * a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code S} the scaling matrix, then the new matrix
+     * will be {@code S * M}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code S * M * v}, the scaling will be applied last.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param vX the {@code x} component of the vector {@code (vX, vY)}
+     * @param vY the {@code y} component of the vector {@code (vX, vY)}
+     * @return the resulting matrix
+     */
+    public Float2x3 preScale(float vX, float vY) {
+        int p = this.properties;
+        if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return new Float2x3(this.m00 * vX, this.m01 * vX, this.m02 * vX, this.m10 * vY, this.m11 * vY, this.m12 * vY, Joml.BIT_AFFINE);
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(vX, 0.0f, 0.0f, 0.0f, vY, 0.0f, Joml.BIT_AFFINE);
+        return new Float2x3(vX, 0.0f, this.m02 * vX, 0.0f, vY, this.m12 * vY, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Pre-multiply a scaling by {@code s} onto this matrix, returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code S} the scaling matrix, then the new matrix
+     * will be {@code S * M}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code S * M * v}, the scaling will be applied last.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param s the uniform scale factor
+     * @return the resulting matrix
+     */
+    public Float2x3 preScale(float s) {
+        int p = this.properties;
+        if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return new Float2x3(s * this.m00, s * this.m01, s * this.m02, s * this.m10, s * this.m11, s * this.m12, Joml.BIT_AFFINE);
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return mul_identity(s);
+        return (org.joml2.internal.FmaSwitch.ON ? new Float2x3(s, 0.0f, s * this.m02, 0.0f, s, s * this.m12, Joml.BIT_AFFINE) : new Float2x3(s, 0.0f, s * this.m02, 0.0f, s, s * this.m12, Joml.BIT_AFFINE));
+    }
+
+    /**
+     * Pre-multiply a scaling by {@code s} about the pivot point {@code pivot} onto this matrix,
+     * returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code S} the scaling matrix, then the new matrix
+     * will be {@code S * M}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code S * M * v}, the scaling will be applied last.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param s the uniform scale factor
+     * @param pivot the pivot point
+     * @return the resulting matrix
+     */
+    public Float2x3 preScaleAround(float s, Float2 pivot) {
+        float pivotX = pivot.x();
+        float pivotY = pivot.y();
+        if (org.joml2.internal.FmaSwitch.ON) {
+            int p = this.properties;
+            if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return preScaleAround_general_fma(s, pivotX, pivotY);
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) {
+                float _t0 = 1.0f - s;
+                return new Float2x3(s, 0.0f, pivotX * _t0, 0.0f, s, pivotY * _t0, Joml.BIT_AFFINE);
+            }
+            return preScaleAround_translation_fma(s, pivotX, pivotY);
+        } else {
+            int p = this.properties;
+            if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return preScaleAround_general_mulAdd(s, pivotX, pivotY);
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) {
+                float _t0 = 1.0f - s;
+                return new Float2x3(s, 0.0f, pivotX * _t0, 0.0f, s, pivotY * _t0, Joml.BIT_AFFINE);
+            }
+            return preScaleAround_translation_mulAdd(s, pivotX, pivotY);
+        }
+    }
+
+    /**
+     * Private body of {@code preScaleAround}, specialized by runtime matrix properties; reached
+     * only through the public {@code preScaleAround} dispatcher.
+     */
+    private Float2x3 preScaleAround_translation_fma(float s, float pivotX, float pivotY) {
+        float _t0 = 1.0f - s;
+        return new Float2x3(s, 0.0f, java.lang.Math.fma(s, this.m02, pivotX * _t0), 0.0f, s, java.lang.Math.fma(s, this.m12, pivotY * _t0), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code preScaleAround}, specialized by runtime matrix properties; reached
+     * only through the public {@code preScaleAround} dispatcher.
+     */
+    private Float2x3 preScaleAround_translation_mulAdd(float s, float pivotX, float pivotY) {
+        float _t0 = 1.0f - s;
+        return new Float2x3(s, 0.0f, ((s) * (this.m02) + (pivotX * _t0)), 0.0f, s, ((s) * (this.m12) + (pivotY * _t0)), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code preScaleAround}, specialized by runtime matrix properties; reached
+     * only through the public {@code preScaleAround} dispatcher.
+     */
+    private Float2x3 preScaleAround_general_fma(float s, float pivotX, float pivotY) {
+        float _t0 = 1.0f - s;
+        return new Float2x3(s * this.m00, s * this.m01, java.lang.Math.fma(s, this.m02, pivotX * _t0), s * this.m10, s * this.m11, java.lang.Math.fma(s, this.m12, pivotY * _t0), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code preScaleAround}, specialized by runtime matrix properties; reached
+     * only through the public {@code preScaleAround} dispatcher.
+     */
+    private Float2x3 preScaleAround_general_mulAdd(float s, float pivotX, float pivotY) {
+        float _t0 = 1.0f - s;
+        return new Float2x3(s * this.m00, s * this.m01, ((s) * (this.m02) + (pivotX * _t0)), s * this.m10, s * this.m11, ((s) * (this.m12) + (pivotY * _t0)), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Pre-multiply a scaling by {@code s} about the pivot point ({@code pivotX}, {@code pivotY})
+     * onto this matrix, returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code S} the scaling matrix, then the new matrix
+     * will be {@code S * M}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code S * M * v}, the scaling will be applied last.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param s the uniform scale factor
+     * @param pivotX the {@code x} component of the vector {@code (pivotX, pivotY)}
+     * @param pivotY the {@code y} component of the vector {@code (pivotX, pivotY)}
+     * @return the resulting matrix
+     */
+    public Float2x3 preScaleAround(float s, float pivotX, float pivotY) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            int p = this.properties;
+            if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return preScaleAround_general_fma(s, pivotX, pivotY);
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) {
+                float _t0 = 1.0f - s;
+                return new Float2x3(s, 0.0f, pivotX * _t0, 0.0f, s, pivotY * _t0, Joml.BIT_AFFINE);
+            }
+            return preScaleAround_translation_fma(s, pivotX, pivotY);
+        } else {
+            int p = this.properties;
+            if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return preScaleAround_general_mulAdd(s, pivotX, pivotY);
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) {
+                float _t0 = 1.0f - s;
+                return new Float2x3(s, 0.0f, pivotX * _t0, 0.0f, s, pivotY * _t0, Joml.BIT_AFFINE);
+            }
+            return preScaleAround_translation_mulAdd(s, pivotX, pivotY);
+        }
+    }
+
+    /**
+     * Pre-multiply a scaling by {@code s} about the pivot point {@code pivot} onto this matrix,
+     * returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code S} the scaling matrix, then the new matrix
+     * will be {@code S * M}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code S * M * v}, the scaling will be applied last.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param s the scale factors
+     * @param pivot the pivot point
+     * @return the resulting matrix
+     */
+    public Float2x3 preScaleAround(Float2 s, Float2 pivot) {
+        float sX = s.x();
+        float sY = s.y();
+        float pivotX = pivot.x();
+        float pivotY = pivot.y();
+        if ((this.properties & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(sX, 0.0f, pivotX * (1.0f - sX), 0.0f, sY, pivotY * (1.0f - sY), Joml.BIT_AFFINE);
+        return (org.joml2.internal.FmaSwitch.ON ? preScaleAround_general_fma(sX, sY, pivotX, pivotY) : new Float2x3(sX * this.m00, sX * this.m01, ((pivotX) * (1.0f - sX) + (sX * this.m02)), sY * this.m10, sY * this.m11, ((pivotY) * (1.0f - sY) + (sY * this.m12)), Joml.BIT_AFFINE));
+    }
+
+    /**
+     * Private body of {@code preScaleAround}, specialized by runtime matrix properties; reached
+     * only through the public {@code preScaleAround} dispatcher.
+     */
+    private Float2x3 preScaleAround_general_fma(float sX, float sY, float pivotX, float pivotY) {
+        return new Float2x3(sX * this.m00, sX * this.m01, java.lang.Math.fma(pivotX, 1.0f - sX, sX * this.m02), sY * this.m10, sY * this.m11, java.lang.Math.fma(pivotY, 1.0f - sY, sY * this.m12), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Pre-multiply a scaling by ({@code sX}, {@code sY}) about the pivot point ({@code pivotX},
+     * {@code pivotY}) onto this matrix, returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code S} the scaling matrix, then the new matrix
+     * will be {@code S * M}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code S * M * v}, the scaling will be applied last.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param sX the {@code x} component of the vector {@code (sX, sY)}
+     * @param sY the {@code y} component of the vector {@code (sX, sY)}
+     * @param pivotX the {@code x} component of the vector {@code (pivotX, pivotY)}
+     * @param pivotY the {@code y} component of the vector {@code (pivotX, pivotY)}
+     * @return the resulting matrix
+     */
+    public Float2x3 preScaleAround(float sX, float sY, float pivotX, float pivotY) {
+        if ((this.properties & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(sX, 0.0f, pivotX * (1.0f - sX), 0.0f, sY, pivotY * (1.0f - sY), Joml.BIT_AFFINE);
+        return (org.joml2.internal.FmaSwitch.ON ? preScaleAround_general_fma(sX, sY, pivotX, pivotY) : new Float2x3(sX * this.m00, sX * this.m01, ((pivotX) * (1.0f - sX) + (sX * this.m02)), sY * this.m10, sY * this.m11, ((pivotY) * (1.0f - sY) + (sY * this.m12)), Joml.BIT_AFFINE));
+    }
+
+    /**
+     * Pre-multiply a translation by {@code v} onto this matrix, returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code T} the translation matrix, then the new matrix
+     * will be {@code T * M}. So when transforming a vector {@code p} with the new matrix by using
+     * {@code T * M * p}, the translation will be applied last.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param v the translation offsets
+     * @return the resulting matrix
+     */
+    public Float2x3 preTranslate(Float2 v) {
+        float vX = v.x();
+        float vY = v.y();
+        int p = this.properties;
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return new Float2x3(this.m00, this.m01, this.m02 + vX, this.m10, this.m11, this.m12 + vY, Joml.BIT_AFFINE);
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return withTranslation_identity(vX, vY);
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return new Float2x3(1.0f, 0.0f, this.m02 + vX, 0.0f, 1.0f, this.m12 + vY, Joml.BIT_TRANSLATION);
+        return new Float2x3(this.m00, this.m01, this.m02 + vX, this.m10, this.m11, this.m12 + vY, Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Pre-multiply a translation by ({@code vX}, {@code vY}) onto this matrix, returning the result
+     * as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code T} the translation matrix, then the new matrix
+     * will be {@code T * M}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code T * M * v}, the translation will be applied last.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param vX the {@code x} component of the vector {@code (vX, vY)}
+     * @param vY the {@code y} component of the vector {@code (vX, vY)}
+     * @return the resulting matrix
+     */
+    public Float2x3 preTranslate(float vX, float vY) {
+        int p = this.properties;
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return new Float2x3(this.m00, this.m01, this.m02 + vX, this.m10, this.m11, this.m12 + vY, Joml.BIT_AFFINE);
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return withTranslation_identity(vX, vY);
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return new Float2x3(1.0f, 0.0f, this.m02 + vX, 0.0f, 1.0f, this.m12 + vY, Joml.BIT_TRANSLATION);
+        return new Float2x3(this.m00, this.m01, this.m02 + vX, this.m10, this.m11, this.m12 + vY, Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private body of {@code rotate}, specialized by runtime matrix properties; reached only
+     * through the public {@code rotate} dispatcher.
+     */
+    private Float2x3 rotate_orthogonal_fma(float angle) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        return new Float2x3(java.lang.Math.fma(this.m00, _t0, this.m01 * _t1), java.lang.Math.fma(this.m01, _t0, -(this.m00 * _t1)), this.m02, java.lang.Math.fma(this.m10, _t0, this.m11 * _t1), java.lang.Math.fma(this.m11, _t0, -(this.m10 * _t1)), this.m12, Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private body of {@code rotate}, specialized by runtime matrix properties; reached only
+     * through the public {@code rotate} dispatcher.
+     */
+    private Float2x3 rotate_orthogonal_mulAdd(float angle) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        return new Float2x3(((this.m00) * (_t0) + (this.m01 * _t1)), ((this.m01) * (_t0) - (this.m00 * _t1)), this.m02, ((this.m10) * (_t0) + (this.m11 * _t1)), ((this.m11) * (_t0) - (this.m10 * _t1)), this.m12, Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private body of {@code rotate}, specialized by runtime matrix properties; reached only
+     * through the public {@code rotate} dispatcher.
+     */
+    private Float2x3 rotate_general_fma(float angle) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        return new Float2x3(java.lang.Math.fma(this.m00, _t0, this.m01 * _t1), java.lang.Math.fma(this.m01, _t0, -(this.m00 * _t1)), this.m02, java.lang.Math.fma(this.m10, _t0, this.m11 * _t1), java.lang.Math.fma(this.m11, _t0, -(this.m10 * _t1)), this.m12, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code rotate}, specialized by runtime matrix properties; reached only
+     * through the public {@code rotate} dispatcher.
+     */
+    private Float2x3 rotate_general_mulAdd(float angle) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        return new Float2x3(((this.m00) * (_t0) + (this.m01 * _t1)), ((this.m01) * (_t0) - (this.m00 * _t1)), this.m02, ((this.m10) * (_t0) + (this.m11 * _t1)), ((this.m11) * (_t0) - (this.m10 * _t1)), this.m12, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Apply a rotation by {@code angle} to this matrix, returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code R} the rotation matrix, then the new matrix
+     * will be {@code M * R}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code M * R * v}, the rotation will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angle the angle in radians
+     * @return the resulting matrix
+     */
+    public Float2x3 rotate(float angle) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            int p = this.properties;
+            if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return rotate_general_fma(angle);
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) {
+                float _t0 = Math.cosWithSin(angle);
+                float _t1 = Math.sinWithCos(angle);
+                return new Float2x3(_t0, -_t1, 0.0f, _t1, _t0, 0.0f, Joml.BIT_ORTHOGONAL);
+            }
+            if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) {
+                float _t0 = Math.cosWithSin(angle);
+                float _t1 = Math.sinWithCos(angle);
+                return new Float2x3(_t0, -_t1, this.m02, _t1, _t0, this.m12, Joml.BIT_ORTHOGONAL);
+            }
+            return rotate_orthogonal_fma(angle);
+        } else {
+            int p = this.properties;
+            if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return rotate_general_mulAdd(angle);
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) {
+                float _t0 = Math.cosWithSin(angle);
+                float _t1 = Math.sinWithCos(angle);
+                return new Float2x3(_t0, -_t1, 0.0f, _t1, _t0, 0.0f, Joml.BIT_ORTHOGONAL);
+            }
+            if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) {
+                float _t0 = Math.cosWithSin(angle);
+                float _t1 = Math.sinWithCos(angle);
+                return new Float2x3(_t0, -_t1, this.m02, _t1, _t0, this.m12, Joml.BIT_ORTHOGONAL);
+            }
+            return rotate_orthogonal_mulAdd(angle);
+        }
+    }
+
+    /**
+     * Apply the rotation {@code angle} about the pivot point {@code pivot} to this matrix,
+     * returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code R} the rotation matrix, then the new matrix
+     * will be {@code M * R}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code M * R * v}, the rotation will be applied first.
+     * <p>
+     * The pivot sandwich {@code translate(pivot) * R * translate(-pivot)} is evaluated so that its
+     * translation part, {@code pivot - R * pivot}, keeps its accuracy for pivots far from the
+     * origin.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angle the angle in radians
+     * @param pivot the pivot point
+     * @return the resulting matrix
+     */
+    public Float2x3 rotateAround(float angle, Float2 pivot) {
+        float pivotX = pivot.x();
+        float pivotY = pivot.y();
+        int p = this.properties;
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return (org.joml2.internal.FmaSwitch.ON ? rotateAround_general_fma(angle, pivotX, pivotY) : rotateAround_general_mulAdd(angle, pivotX, pivotY));
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return (org.joml2.internal.FmaSwitch.ON ? preRotateAround_identity_fma(angle, pivotX, pivotY) : preRotateAround_identity_mulAdd(angle, pivotX, pivotY));
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return (org.joml2.internal.FmaSwitch.ON ? rotateAround_translation_fma(angle, pivotX, pivotY) : rotateAround_translation_mulAdd(angle, pivotX, pivotY));
+        return (org.joml2.internal.FmaSwitch.ON ? rotateAround_orthogonal_fma(angle, pivotX, pivotY) : rotateAround_orthogonal_mulAdd(angle, pivotX, pivotY));
+    }
+
+    /**
+     * Private body of {@code rotateAround}, specialized by runtime matrix properties; reached only
+     * through the public {@code rotateAround} dispatcher.
+     */
+    private Float2x3 rotateAround_translation_fma(float angle, float pivotX, float pivotY) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        float _t6 = _t0 > 0.0f ? _t1 * _t1 / (1.0f + _t0) : 1.0f - _t0;
+        return new Float2x3(_t0, -_t1, java.lang.Math.fma(pivotX, _t6, java.lang.Math.fma(pivotY, _t1, this.m02)), _t1, _t0, java.lang.Math.fma(pivotY, _t6, java.lang.Math.fma(-pivotX, _t1, this.m12)), Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private body of {@code rotateAround}, specialized by runtime matrix properties; reached only
+     * through the public {@code rotateAround} dispatcher.
+     */
+    private Float2x3 rotateAround_translation_mulAdd(float angle, float pivotX, float pivotY) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        float _t6 = _t0 > 0.0f ? _t1 * _t1 / (1.0f + _t0) : 1.0f - _t0;
+        return new Float2x3(_t0, -_t1, ((pivotX) * (_t6) + (((pivotY) * (_t1) + (this.m02)))), _t1, _t0, ((pivotY) * (_t6) + (((this.m12) - (pivotX) * (_t1)))), Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private body of {@code rotateAround}, specialized by runtime matrix properties; reached only
+     * through the public {@code rotateAround} dispatcher.
+     */
+    private Float2x3 rotateAround_orthogonal_fma(float angle, float pivotX, float pivotY) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        float _t9 = _t0 > 0.0f ? _t1 * _t1 / (1.0f + _t0) : 1.0f - _t0;
+        float _t10 = java.lang.Math.fma(pivotX, _t9, pivotY * _t1);
+        float _t11 = java.lang.Math.fma(pivotY, _t9, -(pivotX * _t1));
+        return new Float2x3(java.lang.Math.fma(this.m00, _t0, this.m01 * _t1), java.lang.Math.fma(this.m01, _t0, -(this.m00 * _t1)), java.lang.Math.fma(this.m00, _t10, java.lang.Math.fma(this.m01, _t11, this.m02)), java.lang.Math.fma(this.m10, _t0, this.m11 * _t1), java.lang.Math.fma(this.m11, _t0, -(this.m10 * _t1)), java.lang.Math.fma(this.m10, _t10, java.lang.Math.fma(this.m11, _t11, this.m12)), Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private body of {@code rotateAround}, specialized by runtime matrix properties; reached only
+     * through the public {@code rotateAround} dispatcher.
+     */
+    private Float2x3 rotateAround_orthogonal_mulAdd(float angle, float pivotX, float pivotY) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        float _t9 = _t0 > 0.0f ? _t1 * _t1 / (1.0f + _t0) : 1.0f - _t0;
+        float _t10 = ((pivotX) * (_t9) + (pivotY * _t1));
+        float _t11 = ((pivotY) * (_t9) - (pivotX * _t1));
+        return new Float2x3(((this.m00) * (_t0) + (this.m01 * _t1)), ((this.m01) * (_t0) - (this.m00 * _t1)), ((this.m00) * (_t10) + (((this.m01) * (_t11) + (this.m02)))), ((this.m10) * (_t0) + (this.m11 * _t1)), ((this.m11) * (_t0) - (this.m10 * _t1)), ((this.m10) * (_t10) + (((this.m11) * (_t11) + (this.m12)))), Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private body of {@code rotateAround}, specialized by runtime matrix properties; reached only
+     * through the public {@code rotateAround} dispatcher.
+     */
+    private Float2x3 rotateAround_general_fma(float angle, float pivotX, float pivotY) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        float _t9 = _t0 > 0.0f ? _t1 * _t1 / (1.0f + _t0) : 1.0f - _t0;
+        float _t10 = java.lang.Math.fma(pivotX, _t9, pivotY * _t1);
+        float _t11 = java.lang.Math.fma(pivotY, _t9, -(pivotX * _t1));
+        return new Float2x3(java.lang.Math.fma(this.m00, _t0, this.m01 * _t1), java.lang.Math.fma(this.m01, _t0, -(this.m00 * _t1)), java.lang.Math.fma(this.m00, _t10, java.lang.Math.fma(this.m01, _t11, this.m02)), java.lang.Math.fma(this.m10, _t0, this.m11 * _t1), java.lang.Math.fma(this.m11, _t0, -(this.m10 * _t1)), java.lang.Math.fma(this.m10, _t10, java.lang.Math.fma(this.m11, _t11, this.m12)), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code rotateAround}, specialized by runtime matrix properties; reached only
+     * through the public {@code rotateAround} dispatcher.
+     */
+    private Float2x3 rotateAround_general_mulAdd(float angle, float pivotX, float pivotY) {
+        float _t0 = Math.cosWithSin(angle);
+        float _t1 = Math.sinWithCos(angle);
+        float _t9 = _t0 > 0.0f ? _t1 * _t1 / (1.0f + _t0) : 1.0f - _t0;
+        float _t10 = ((pivotX) * (_t9) + (pivotY * _t1));
+        float _t11 = ((pivotY) * (_t9) - (pivotX * _t1));
+        return new Float2x3(((this.m00) * (_t0) + (this.m01 * _t1)), ((this.m01) * (_t0) - (this.m00 * _t1)), ((this.m00) * (_t10) + (((this.m01) * (_t11) + (this.m02)))), ((this.m10) * (_t0) + (this.m11 * _t1)), ((this.m11) * (_t0) - (this.m10 * _t1)), ((this.m10) * (_t10) + (((this.m11) * (_t11) + (this.m12)))), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Apply the rotation {@code angle} about the pivot point ({@code pivotX}, {@code pivotY}) to
+     * this matrix, returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code R} the rotation matrix, then the new matrix
+     * will be {@code M * R}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code M * R * v}, the rotation will be applied first.
+     * <p>
+     * The pivot sandwich {@code translate(pivot) * R * translate(-pivot)} is evaluated so that its
+     * translation part, {@code pivot - R * pivot}, keeps its accuracy for pivots far from the
+     * origin.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angle the angle in radians
+     * @param pivotX the {@code x} component of the vector {@code (pivotX, pivotY)}
+     * @param pivotY the {@code y} component of the vector {@code (pivotX, pivotY)}
+     * @return the resulting matrix
+     */
+    public Float2x3 rotateAround(float angle, float pivotX, float pivotY) {
+        int p = this.properties;
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return (org.joml2.internal.FmaSwitch.ON ? rotateAround_general_fma(angle, pivotX, pivotY) : rotateAround_general_mulAdd(angle, pivotX, pivotY));
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return (org.joml2.internal.FmaSwitch.ON ? preRotateAround_identity_fma(angle, pivotX, pivotY) : preRotateAround_identity_mulAdd(angle, pivotX, pivotY));
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return (org.joml2.internal.FmaSwitch.ON ? rotateAround_translation_fma(angle, pivotX, pivotY) : rotateAround_translation_mulAdd(angle, pivotX, pivotY));
+        return (org.joml2.internal.FmaSwitch.ON ? rotateAround_orthogonal_fma(angle, pivotX, pivotY) : rotateAround_orthogonal_mulAdd(angle, pivotX, pivotY));
+    }
+
+    /**
+     * Apply a scaling by {@code v} to this matrix, returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code S} the scaling matrix, then the new matrix
+     * will be {@code M * S}. So when transforming a vector {@code p} with the new matrix by using
+     * {@code M * S * p}, the scaling will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param v the scale factors
+     * @return the resulting matrix
+     */
+    public Float2x3 scale(Float2 v) {
+        float vX = v.x();
+        float vY = v.y();
+        int p = this.properties;
+        if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return new Float2x3(this.m00 * vX, this.m01 * vY, this.m02, this.m10 * vX, this.m11 * vY, this.m12, Joml.BIT_AFFINE);
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(vX, 0.0f, 0.0f, 0.0f, vY, 0.0f, Joml.BIT_AFFINE);
+        return new Float2x3(vX, 0.0f, this.m02, 0.0f, vY, this.m12, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Apply a scaling by ({@code vX}, {@code vY}) to this matrix, returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code S} the scaling matrix, then the new matrix
+     * will be {@code M * S}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code M * S * v}, the scaling will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param vX the {@code x} component of the vector {@code (vX, vY)}
+     * @param vY the {@code y} component of the vector {@code (vX, vY)}
+     * @return the resulting matrix
+     */
+    public Float2x3 scale(float vX, float vY) {
+        int p = this.properties;
+        if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return new Float2x3(this.m00 * vX, this.m01 * vY, this.m02, this.m10 * vX, this.m11 * vY, this.m12, Joml.BIT_AFFINE);
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(vX, 0.0f, 0.0f, 0.0f, vY, 0.0f, Joml.BIT_AFFINE);
+        return new Float2x3(vX, 0.0f, this.m02, 0.0f, vY, this.m12, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code scale}, specialized by runtime matrix properties; reached only through
+     * the public {@code scale} dispatcher.
+     */
+    private Float2x3 scale_translation(float s) {
+        return new Float2x3(s, 0.0f, this.m02, 0.0f, s, this.m12, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code scale}, specialized by runtime matrix properties; reached only through
+     * the public {@code scale} dispatcher.
+     */
+    private Float2x3 scale_general(float s) {
+        return new Float2x3(s * this.m00, s * this.m01, this.m02, s * this.m10, s * this.m11, this.m12, Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Apply a scaling by {@code s} to this matrix, returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code S} the scaling matrix, then the new matrix
+     * will be {@code M * S}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code M * S * v}, the scaling will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param s the uniform scale factor
+     * @return the resulting matrix
+     */
+    public Float2x3 scale(float s) {
+        int p = this.properties;
+        if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return scale_general(s);
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return mul_identity(s);
+        return scale_translation(s);
+    }
+
+    /**
+     * Apply a scaling by {@code s} about the pivot point {@code pivot} to this matrix, returning
+     * the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code S} the scaling matrix, then the new matrix
+     * will be {@code M * S}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code M * S * v}, the scaling will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param s the uniform scale factor
+     * @param pivot the pivot point
+     * @return the resulting matrix
+     */
+    public Float2x3 scaleAround(float s, Float2 pivot) {
+        float pivotX = pivot.x();
+        float pivotY = pivot.y();
+        if (org.joml2.internal.FmaSwitch.ON) {
+            int p = this.properties;
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) {
+                float _t0 = 1.0f - s;
+                return new Float2x3(s, 0.0f, pivotX * _t0, 0.0f, s, pivotY * _t0, Joml.BIT_AFFINE);
+            }
+            if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return scaleAround_translation_fma(s, pivotX, pivotY);
+            return scaleAround_orthogonal_fma(s, pivotX, pivotY);
+        } else {
+            int p = this.properties;
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) {
+                float _t0 = 1.0f - s;
+                return new Float2x3(s, 0.0f, pivotX * _t0, 0.0f, s, pivotY * _t0, Joml.BIT_AFFINE);
+            }
+            if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return scaleAround_translation_mulAdd(s, pivotX, pivotY);
+            return scaleAround_orthogonal_mulAdd(s, pivotX, pivotY);
+        }
+    }
+
+    /**
+     * Private body of {@code scaleAround}, specialized by runtime matrix properties; reached only
+     * through the public {@code scaleAround} dispatcher.
+     */
+    private Float2x3 scaleAround_translation_fma(float s, float pivotX, float pivotY) {
+        float _t0 = 1.0f - s;
+        return new Float2x3(s, 0.0f, java.lang.Math.fma(pivotX, _t0, this.m02), 0.0f, s, java.lang.Math.fma(pivotY, _t0, this.m12), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code scaleAround}, specialized by runtime matrix properties; reached only
+     * through the public {@code scaleAround} dispatcher.
+     */
+    private Float2x3 scaleAround_translation_mulAdd(float s, float pivotX, float pivotY) {
+        float _t0 = 1.0f - s;
+        return new Float2x3(s, 0.0f, ((pivotX) * (_t0) + (this.m02)), 0.0f, s, ((pivotY) * (_t0) + (this.m12)), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code scaleAround}, specialized by runtime matrix properties; reached only
+     * through the public {@code scaleAround} dispatcher.
+     */
+    private Float2x3 scaleAround_orthogonal_fma(float s, float pivotX, float pivotY) {
+        float _t0 = 1.0f - s;
+        float _t1 = pivotX * _t0;
+        float _t2 = pivotY * _t0;
+        return new Float2x3(s * this.m00, s * this.m01, java.lang.Math.fma(this.m00, _t1, java.lang.Math.fma(this.m01, _t2, this.m02)), s * this.m10, s * this.m11, java.lang.Math.fma(this.m10, _t1, java.lang.Math.fma(this.m11, _t2, this.m12)), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code scaleAround}, specialized by runtime matrix properties; reached only
+     * through the public {@code scaleAround} dispatcher.
+     */
+    private Float2x3 scaleAround_orthogonal_mulAdd(float s, float pivotX, float pivotY) {
+        float _t0 = 1.0f - s;
+        float _t1 = pivotX * _t0;
+        float _t2 = pivotY * _t0;
+        return new Float2x3(s * this.m00, s * this.m01, ((this.m00) * (_t1) + (((this.m01) * (_t2) + (this.m02)))), s * this.m10, s * this.m11, ((this.m10) * (_t1) + (((this.m11) * (_t2) + (this.m12)))), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Apply a scaling by {@code s} about the pivot point ({@code pivotX}, {@code pivotY}) to this
+     * matrix, returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code S} the scaling matrix, then the new matrix
+     * will be {@code M * S}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code M * S * v}, the scaling will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param s the uniform scale factor
+     * @param pivotX the {@code x} component of the vector {@code (pivotX, pivotY)}
+     * @param pivotY the {@code y} component of the vector {@code (pivotX, pivotY)}
+     * @return the resulting matrix
+     */
+    public Float2x3 scaleAround(float s, float pivotX, float pivotY) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            int p = this.properties;
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) {
+                float _t0 = 1.0f - s;
+                return new Float2x3(s, 0.0f, pivotX * _t0, 0.0f, s, pivotY * _t0, Joml.BIT_AFFINE);
+            }
+            if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return scaleAround_translation_fma(s, pivotX, pivotY);
+            return scaleAround_orthogonal_fma(s, pivotX, pivotY);
+        } else {
+            int p = this.properties;
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) {
+                float _t0 = 1.0f - s;
+                return new Float2x3(s, 0.0f, pivotX * _t0, 0.0f, s, pivotY * _t0, Joml.BIT_AFFINE);
+            }
+            if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return scaleAround_translation_mulAdd(s, pivotX, pivotY);
+            return scaleAround_orthogonal_mulAdd(s, pivotX, pivotY);
+        }
+    }
+
+    /**
+     * Apply a scaling by {@code s} about the pivot point {@code pivot} to this matrix, returning
+     * the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code S} the scaling matrix, then the new matrix
+     * will be {@code M * S}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code M * S * v}, the scaling will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param s the scale factors
+     * @param pivot the pivot point
+     * @return the resulting matrix
+     */
+    public Float2x3 scaleAround(Float2 s, Float2 pivot) {
+        float sX = s.x();
+        float sY = s.y();
+        float pivotX = pivot.x();
+        float pivotY = pivot.y();
+        int p = this.properties;
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(sX, 0.0f, pivotX * (1.0f - sX), 0.0f, sY, pivotY * (1.0f - sY), Joml.BIT_AFFINE);
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return (org.joml2.internal.FmaSwitch.ON ? scaleAround_translation_fma(sX, sY, pivotX, pivotY) : new Float2x3(sX, 0.0f, ((pivotX) * (1.0f - sX) + (this.m02)), 0.0f, sY, ((pivotY) * (1.0f - sY) + (this.m12)), Joml.BIT_AFFINE));
+        return (org.joml2.internal.FmaSwitch.ON ? scaleAround_orthogonal_fma(sX, sY, pivotX, pivotY) : scaleAround_orthogonal_mulAdd(sX, sY, pivotX, pivotY));
+    }
+
+    /**
+     * Private body of {@code scaleAround}, specialized by runtime matrix properties; reached only
+     * through the public {@code scaleAround} dispatcher.
+     */
+    private Float2x3 scaleAround_translation_fma(float sX, float sY, float pivotX, float pivotY) {
+        return new Float2x3(sX, 0.0f, java.lang.Math.fma(pivotX, 1.0f - sX, this.m02), 0.0f, sY, java.lang.Math.fma(pivotY, 1.0f - sY, this.m12), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code scaleAround}, specialized by runtime matrix properties; reached only
+     * through the public {@code scaleAround} dispatcher.
+     */
+    private Float2x3 scaleAround_orthogonal_fma(float sX, float sY, float pivotX, float pivotY) {
+        float _t2 = pivotX * (1.0f - sX);
+        float _t3 = pivotY * (1.0f - sY);
+        return new Float2x3(sX * this.m00, sY * this.m01, java.lang.Math.fma(this.m00, _t2, java.lang.Math.fma(this.m01, _t3, this.m02)), sX * this.m10, sY * this.m11, java.lang.Math.fma(this.m10, _t2, java.lang.Math.fma(this.m11, _t3, this.m12)), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code scaleAround}, specialized by runtime matrix properties; reached only
+     * through the public {@code scaleAround} dispatcher.
+     */
+    private Float2x3 scaleAround_orthogonal_mulAdd(float sX, float sY, float pivotX, float pivotY) {
+        float _t2 = pivotX * (1.0f - sX);
+        float _t3 = pivotY * (1.0f - sY);
+        return new Float2x3(sX * this.m00, sY * this.m01, ((this.m00) * (_t2) + (((this.m01) * (_t3) + (this.m02)))), sX * this.m10, sY * this.m11, ((this.m10) * (_t2) + (((this.m11) * (_t3) + (this.m12)))), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Apply a scaling by ({@code sX}, {@code sY}) about the pivot point ({@code pivotX},
+     * {@code pivotY}) to this matrix, returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code S} the scaling matrix, then the new matrix
+     * will be {@code M * S}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code M * S * v}, the scaling will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param sX the {@code x} component of the vector {@code (sX, sY)}
+     * @param sY the {@code y} component of the vector {@code (sX, sY)}
+     * @param pivotX the {@code x} component of the vector {@code (pivotX, pivotY)}
+     * @param pivotY the {@code y} component of the vector {@code (pivotX, pivotY)}
+     * @return the resulting matrix
+     */
+    public Float2x3 scaleAround(float sX, float sY, float pivotX, float pivotY) {
+        int p = this.properties;
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2x3(sX, 0.0f, pivotX * (1.0f - sX), 0.0f, sY, pivotY * (1.0f - sY), Joml.BIT_AFFINE);
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return (org.joml2.internal.FmaSwitch.ON ? scaleAround_translation_fma(sX, sY, pivotX, pivotY) : new Float2x3(sX, 0.0f, ((pivotX) * (1.0f - sX) + (this.m02)), 0.0f, sY, ((pivotY) * (1.0f - sY) + (this.m12)), Joml.BIT_AFFINE));
+        return (org.joml2.internal.FmaSwitch.ON ? scaleAround_orthogonal_fma(sX, sY, pivotX, pivotY) : scaleAround_orthogonal_mulAdd(sX, sY, pivotX, pivotY));
+    }
+
+    /**
+     * Apply a translation by {@code v} to this matrix, returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code T} the translation matrix, then the new matrix
+     * will be {@code M * T}. So when transforming a vector {@code p} with the new matrix by using
+     * {@code M * T * p}, the translation will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param v the translation offsets
+     * @return the resulting matrix
+     */
+    public Float2x3 translate(Float2 v) {
+        float vX = v.x();
+        float vY = v.y();
+        if (org.joml2.internal.FmaSwitch.ON) {
+            int p = this.properties;
+            if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return translate_general_fma(vX, vY);
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return withTranslation_identity(vX, vY);
+            if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return new Float2x3(1.0f, 0.0f, this.m02 + vX, 0.0f, 1.0f, this.m12 + vY, Joml.BIT_TRANSLATION);
+            return translate_orthogonal_fma(vX, vY);
+        } else {
+            int p = this.properties;
+            if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return new Float2x3(this.m00, this.m01, ((this.m00) * (vX) + (((this.m01) * (vY) + (this.m02)))), this.m10, this.m11, ((this.m10) * (vX) + (((this.m11) * (vY) + (this.m12)))), Joml.BIT_AFFINE);
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return withTranslation_identity(vX, vY);
+            if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return new Float2x3(1.0f, 0.0f, this.m02 + vX, 0.0f, 1.0f, this.m12 + vY, Joml.BIT_TRANSLATION);
+            return new Float2x3(this.m00, this.m01, ((this.m00) * (vX) + (((this.m01) * (vY) + (this.m02)))), this.m10, this.m11, ((this.m10) * (vX) + (((this.m11) * (vY) + (this.m12)))), Joml.BIT_ORTHOGONAL);
+        }
+    }
+
+    /**
+     * Private body of {@code translate}, specialized by runtime matrix properties; reached only
+     * through the public {@code translate} dispatcher.
+     */
+    private Float2x3 translate_orthogonal_fma(float vX, float vY) {
+        return new Float2x3(this.m00, this.m01, java.lang.Math.fma(this.m00, vX, java.lang.Math.fma(this.m01, vY, this.m02)), this.m10, this.m11, java.lang.Math.fma(this.m10, vX, java.lang.Math.fma(this.m11, vY, this.m12)), Joml.BIT_ORTHOGONAL);
+    }
+
+    /**
+     * Private body of {@code translate}, specialized by runtime matrix properties; reached only
+     * through the public {@code translate} dispatcher.
+     */
+    private Float2x3 translate_general_fma(float vX, float vY) {
+        return new Float2x3(this.m00, this.m01, java.lang.Math.fma(this.m00, vX, java.lang.Math.fma(this.m01, vY, this.m02)), this.m10, this.m11, java.lang.Math.fma(this.m10, vX, java.lang.Math.fma(this.m11, vY, this.m12)), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Apply a translation by ({@code vX}, {@code vY}) to this matrix, returning the result as a
+     * value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code T} the translation matrix, then the new matrix
+     * will be {@code M * T}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code M * T * v}, the translation will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param vX the {@code x} component of the translation offsets {@code (vX, vY)}
+     * @param vY the {@code y} component of the translation offsets {@code (vX, vY)}
+     * @return the resulting matrix
+     */
+    public Float2x3 translate(float vX, float vY) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            int p = this.properties;
+            if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return translate_general_fma(vX, vY);
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return withTranslation_identity(vX, vY);
+            if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return new Float2x3(1.0f, 0.0f, this.m02 + vX, 0.0f, 1.0f, this.m12 + vY, Joml.BIT_TRANSLATION);
+            return translate_orthogonal_fma(vX, vY);
+        } else {
+            int p = this.properties;
+            if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return new Float2x3(this.m00, this.m01, ((this.m00) * (vX) + (((this.m01) * (vY) + (this.m02)))), this.m10, this.m11, ((this.m10) * (vX) + (((this.m11) * (vY) + (this.m12)))), Joml.BIT_AFFINE);
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return withTranslation_identity(vX, vY);
+            if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return new Float2x3(1.0f, 0.0f, this.m02 + vX, 0.0f, 1.0f, this.m12 + vY, Joml.BIT_TRANSLATION);
+            return new Float2x3(this.m00, this.m01, ((this.m00) * (vX) + (((this.m01) * (vY) + (this.m02)))), this.m10, this.m11, ((this.m10) * (vX) + (((this.m11) * (vY) + (this.m12)))), Joml.BIT_ORTHOGONAL);
+        }
+    }
+
+    /**
+     * Private body of {@code view}, specialized by runtime matrix properties; reached only through
+     * the public {@code view} dispatcher.
+     */
+    private Float2x3 view_translation_fma(float left, float right, float bottom, float top) {
+        float _t0_inv = 1.0f / (right - left);
+        float _t1_inv = 1.0f / (top - bottom);
+        return new Float2x3(_t0_inv + _t0_inv, 0.0f, java.lang.Math.fma(-(left + right), _t0_inv, this.m02), 0.0f, _t1_inv + _t1_inv, java.lang.Math.fma(-(bottom + top), _t1_inv, this.m12), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code view}, specialized by runtime matrix properties; reached only through
+     * the public {@code view} dispatcher.
+     */
+    private Float2x3 view_translation_mulAdd(float left, float right, float bottom, float top) {
+        float _t0_inv = 1.0f / (right - left);
+        float _t1_inv = 1.0f / (top - bottom);
+        return new Float2x3(_t0_inv + _t0_inv, 0.0f, ((this.m02) - (left + right) * (_t0_inv)), 0.0f, _t1_inv + _t1_inv, ((this.m12) - (bottom + top) * (_t1_inv)), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code view}, specialized by runtime matrix properties; reached only through
+     * the public {@code view} dispatcher.
+     */
+    private Float2x3 view_orthogonal_fma(float left, float right, float bottom, float top) {
+        float _t0_inv = 1.0f / (right - left);
+        float _sp0 = _t0_inv + _t0_inv;
+        float _t1_inv = 1.0f / (top - bottom);
+        float _sp1 = _t1_inv + _t1_inv;
+        float _sp2 = _t0_inv * (left + right);
+        float _sp3 = _t1_inv * (bottom + top);
+        return new Float2x3(_sp0 * this.m00, _sp1 * this.m01, java.lang.Math.fma(this.m01, -_sp3, java.lang.Math.fma(-this.m00, _sp2, this.m02)), _sp0 * this.m10, _sp1 * this.m11, java.lang.Math.fma(this.m11, -_sp3, java.lang.Math.fma(-this.m10, _sp2, this.m12)), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code view}, specialized by runtime matrix properties; reached only through
+     * the public {@code view} dispatcher.
+     */
+    private Float2x3 view_orthogonal_mulAdd(float left, float right, float bottom, float top) {
+        float _t0_inv = 1.0f / (right - left);
+        float _sp0 = _t0_inv + _t0_inv;
+        float _t1_inv = 1.0f / (top - bottom);
+        float _sp1 = _t1_inv + _t1_inv;
+        float _sp2 = _t0_inv * (left + right);
+        float _sp3 = _t1_inv * (bottom + top);
+        return new Float2x3(_sp0 * this.m00, _sp1 * this.m01, ((((this.m02) - (this.m00) * (_sp2))) - (this.m01) * (_sp3)), _sp0 * this.m10, _sp1 * this.m11, ((((this.m12) - (this.m10) * (_sp2))) - (this.m11) * (_sp3)), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code view}, specialized by runtime matrix properties; reached only through
+     * the public {@code view} dispatcher.
+     */
+    private Float2x3 view_general_fma(float left, float right, float bottom, float top) {
+        float _t0_inv = 1.0f / (right - left);
+        float _sp0 = _t0_inv + _t0_inv;
+        float _t1_inv = 1.0f / (top - bottom);
+        float _sp1 = _t1_inv + _t1_inv;
+        float _sp2 = _t0_inv * (left + right);
+        float _sp3 = _t1_inv * (bottom + top);
+        return new Float2x3(_sp0 * this.m00, _sp1 * this.m01, this.m02 + java.lang.Math.fma(this.m01, -_sp3, -(this.m00 * _sp2)), _sp0 * this.m10, _sp1 * this.m11, this.m12 + java.lang.Math.fma(this.m11, -_sp3, -(this.m10 * _sp2)), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Private body of {@code view}, specialized by runtime matrix properties; reached only through
+     * the public {@code view} dispatcher.
+     */
+    private Float2x3 view_general_mulAdd(float left, float right, float bottom, float top) {
+        float _t0_inv = 1.0f / (right - left);
+        float _sp0 = _t0_inv + _t0_inv;
+        float _t1_inv = 1.0f / (top - bottom);
+        float _sp1 = _t1_inv + _t1_inv;
+        float _sp2 = _t0_inv * (left + right);
+        float _sp3 = _t1_inv * (bottom + top);
+        return new Float2x3(_sp0 * this.m00, _sp1 * this.m01, this.m02 + ((this.m01) * (-_sp3) - (this.m00 * _sp2)), _sp0 * this.m10, _sp1 * this.m11, this.m12 + ((this.m11) * (-_sp3) - (this.m10 * _sp2)), Joml.BIT_AFFINE);
+    }
+
+    /**
+     * Apply a 2D view transformation that maps the rectangle {@code [left, right] x [bottom, top]}
+     * onto {@code [-1, +1] x [-1, +1]} to this matrix, returning the result as a value.
+     * <p>
+     * If {@code M} is {@code this} matrix and {@code V} the view matrix, then the new matrix will
+     * be {@code M * V}. So when transforming a vector {@code v} with the new matrix by using
+     * {@code M * V * v}, the view will be applied first.
+     * <p>
+     * Valid input: {@code left} and {@code right} must differ; {@code bottom} and {@code top} must
+     * differ.
+     *
+     * @param left the x coordinate of the left edge of the view rectangle
+     * @param right the x coordinate of the right edge of the view rectangle
+     * @param bottom the y coordinate of the bottom edge of the view rectangle
+     * @param top the y coordinate of the top edge of the view rectangle
+     * @return the resulting matrix
+     */
+    public Float2x3 view(float left, float right, float bottom, float top) {
+        int p = this.properties;
+        if ((p & Joml.BIT_ORTHOGONAL) != Joml.BIT_ORTHOGONAL) return (org.joml2.internal.FmaSwitch.ON ? view_general_fma(left, right, bottom, top) : view_general_mulAdd(left, right, bottom, top));
+        if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) {
+            float _t0_inv = 1.0f / (right - left);
+            float _t1_inv = 1.0f / (top - bottom);
+            return new Float2x3(_t0_inv + _t0_inv, 0.0f, -(left + right) * _t0_inv, 0.0f, _t1_inv + _t1_inv, -(bottom + top) * _t1_inv, Joml.BIT_AFFINE);
+        }
+        if ((p & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return (org.joml2.internal.FmaSwitch.ON ? view_translation_fma(left, right, bottom, top) : view_translation_mulAdd(left, right, bottom, top));
+        return (org.joml2.internal.FmaSwitch.ON ? view_orthogonal_fma(left, right, bottom, top) : view_orthogonal_mulAdd(left, right, bottom, top));
+    }
+
+    /**
+     * Multiply this matrix by the given vector, i.e. compute the matrix-vector product
+     * {@code this * v}, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param v the right operand of the product
+     * @return the resulting vector
+     */
+    public Float2 mul(Float3 v) {
+        float vX = v.x();
+        float vY = v.y();
+        float vZ = v.z();
+        if (org.joml2.internal.FmaSwitch.ON) {
+            int p = this.properties;
+            if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return mul_general_fma(vX, vY, vZ);
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2(vX, vY);
+            return new Float2(java.lang.Math.fma(this.m02, vZ, vX), java.lang.Math.fma(this.m12, vZ, vY));
+        } else {
+            int p = this.properties;
+            if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return new Float2(((this.m02) * (vZ) + (((this.m00) * (vX) + (this.m01 * vY)))), ((this.m12) * (vZ) + (((this.m10) * (vX) + (this.m11 * vY)))));
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2(vX, vY);
+            return new Float2(((this.m02) * (vZ) + (vX)), ((this.m12) * (vZ) + (vY)));
+        }
+    }
+
+    /**
+     * Private body of {@code mul}, specialized by runtime matrix properties; reached only through
+     * the public {@code mul} dispatcher.
+     */
+    private Float2 mul_general_fma(float vX, float vY, float vZ) {
+        return new Float2(java.lang.Math.fma(this.m02, vZ, java.lang.Math.fma(this.m00, vX, this.m01 * vY)), java.lang.Math.fma(this.m12, vZ, java.lang.Math.fma(this.m10, vX, this.m11 * vY)));
+    }
+
+    /**
+     * Multiply this matrix by the given vector, i.e. compute the matrix-vector product
+     * {@code this * v}, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param vX the {@code x} component of the vector {@code (vX, vY, vZ)}
+     * @param vY the {@code y} component of the vector {@code (vX, vY, vZ)}
+     * @param vZ the {@code z} component of the vector {@code (vX, vY, vZ)}
+     * @return the resulting vector
+     */
+    public Float2 mul(float vX, float vY, float vZ) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            int p = this.properties;
+            if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return mul_general_fma(vX, vY, vZ);
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2(vX, vY);
+            return new Float2(java.lang.Math.fma(this.m02, vZ, vX), java.lang.Math.fma(this.m12, vZ, vY));
+        } else {
+            int p = this.properties;
+            if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return new Float2(((this.m02) * (vZ) + (((this.m00) * (vX) + (this.m01 * vY)))), ((this.m12) * (vZ) + (((this.m10) * (vX) + (this.m11 * vY)))));
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2(vX, vY);
+            return new Float2(((this.m02) * (vZ) + (vX)), ((this.m12) * (vZ) + (vY)));
+        }
+    }
+
+    /**
+     * Transform the given direction by this matrix, ignoring any translation, returning the result
+     * as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param v the direction to transform
+     * @return the resulting vector
+     */
+    public Float2 transformDirection(Float2 v) {
+        float vX = v.x();
+        float vY = v.y();
+        if (org.joml2.internal.FmaSwitch.ON) {
+            if ((this.properties & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return new Float2(vX, vY);
+            return transformDirection_general_fma(vX, vY);
+        } else {
+            if ((this.properties & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return new Float2(vX, vY);
+            return new Float2(((this.m00) * (vX) + (this.m01 * vY)), ((this.m10) * (vX) + (this.m11 * vY)));
+        }
+    }
+
+    /**
+     * Private body of {@code transformDirection}, specialized by runtime matrix properties; reached
+     * only through the public {@code transformDirection} dispatcher.
+     */
+    private Float2 transformDirection_general_fma(float vX, float vY) {
+        return new Float2(java.lang.Math.fma(this.m00, vX, this.m01 * vY), java.lang.Math.fma(this.m10, vX, this.m11 * vY));
+    }
+
+    /**
+     * Transform the given direction by this matrix, ignoring any translation, returning the result
+     * as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param vX the {@code x} component of the vector {@code (vX, vY)}
+     * @param vY the {@code y} component of the vector {@code (vX, vY)}
+     * @return the resulting vector
+     */
+    public Float2 transformDirection(float vX, float vY) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            if ((this.properties & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return new Float2(vX, vY);
+            return transformDirection_general_fma(vX, vY);
+        } else {
+            if ((this.properties & Joml.BIT_TRANSLATION) == Joml.BIT_TRANSLATION) return new Float2(vX, vY);
+            return new Float2(((this.m00) * (vX) + (this.m01 * vY)), ((this.m10) * (vX) + (this.m11 * vY)));
+        }
+    }
+
+    /**
+     * Transform the given position by this matrix, treating it as a point with an implicit
+     * {@code w = 1}, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param v the position to transform
+     * @return the resulting vector
+     */
+    public Float2 transformPosition(Float2 v) {
+        float vX = v.x();
+        float vY = v.y();
+        if (org.joml2.internal.FmaSwitch.ON) {
+            int p = this.properties;
+            if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return transformPosition_general_fma(vX, vY);
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2(vX, vY);
+            return new Float2(this.m02 + vX, this.m12 + vY);
+        } else {
+            int p = this.properties;
+            if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return new Float2(((this.m00) * (vX) + (((this.m01) * (vY) + (this.m02)))), ((this.m10) * (vX) + (((this.m11) * (vY) + (this.m12)))));
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2(vX, vY);
+            return new Float2(this.m02 + vX, this.m12 + vY);
+        }
+    }
+
+    /**
+     * Private body of {@code transformPosition}, specialized by runtime matrix properties; reached
+     * only through the public {@code transformPosition} dispatcher.
+     */
+    private Float2 transformPosition_general_fma(float vX, float vY) {
+        return new Float2(java.lang.Math.fma(this.m00, vX, java.lang.Math.fma(this.m01, vY, this.m02)), java.lang.Math.fma(this.m10, vX, java.lang.Math.fma(this.m11, vY, this.m12)));
+    }
+
+    /**
+     * Transform the given position by this matrix, treating it as a point with an implicit
+     * {@code w = 1}, returning the result as a value.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param vX the {@code x} component of the vector {@code (vX, vY)}
+     * @param vY the {@code y} component of the vector {@code (vX, vY)}
+     * @return the resulting vector
+     */
+    public Float2 transformPosition(float vX, float vY) {
+        if (org.joml2.internal.FmaSwitch.ON) {
+            int p = this.properties;
+            if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return transformPosition_general_fma(vX, vY);
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2(vX, vY);
+            return new Float2(this.m02 + vX, this.m12 + vY);
+        } else {
+            int p = this.properties;
+            if ((p & Joml.BIT_TRANSLATION) != Joml.BIT_TRANSLATION) return new Float2(((this.m00) * (vX) + (((this.m01) * (vY) + (this.m02)))), ((this.m10) * (vX) + (((this.m11) * (vY) + (this.m12)))));
+            if ((p & Joml.BIT_IDENTITY) == Joml.BIT_IDENTITY) return new Float2(vX, vY);
+            return new Float2(this.m02 + vX, this.m12 + vY);
+        }
+    }
+
+    /**
+     * {@return a copy with the {@code m00} element replaced by {@code v}}
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param v the new value of the {@code m00} element
+     */
+    public Float2x3 withM00(float v) {
+        return new Float2x3(v, m01, m02, m10, m11, m12);
+    }
+
+    /**
+     * {@return a copy with the {@code m01} element replaced by {@code v}}
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param v the new value of the {@code m01} element
+     */
+    public Float2x3 withM01(float v) {
+        return new Float2x3(m00, v, m02, m10, m11, m12);
+    }
+
+    /**
+     * {@return a copy with the {@code m02} element replaced by {@code v}}
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param v the new value of the {@code m02} element
+     */
+    public Float2x3 withM02(float v) {
+        return new Float2x3(m00, m01, v, m10, m11, m12);
+    }
+
+    /**
+     * {@return a copy with the {@code m10} element replaced by {@code v}}
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param v the new value of the {@code m10} element
+     */
+    public Float2x3 withM10(float v) {
+        return new Float2x3(m00, m01, m02, v, m11, m12);
+    }
+
+    /**
+     * {@return a copy with the {@code m11} element replaced by {@code v}}
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param v the new value of the {@code m11} element
+     */
+    public Float2x3 withM11(float v) {
+        return new Float2x3(m00, m01, m02, m10, v, m12);
+    }
+
+    /**
+     * {@return a copy with the {@code m12} element replaced by {@code v}}
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param v the new value of the {@code m12} element
+     */
+    public Float2x3 withM12(float v) {
+        return new Float2x3(m00, m01, m02, m10, m11, v);
+    }
+
+    /**
+     * {@return a copy with the cached property bits replaced by {@code properties}}
+     * <p>
+     * The bits are trusted as-is and never validated: wrong bits produce wrong results from every
+     * dispatched operation. Prefer the {@code make*} factories, or the element constructor, which
+     * computes the bits itself. {@code withProperties(determineProperties())} recomputes them from
+     * the elements.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param properties the cached property bits, taken as given
+     */
+    public Float2x3 withProperties(int properties) {
+        return new Float2x3(m00, m01, m02, m10, m11, m12, properties);
+    }
+
+    @Override public String toString() {
+        return "Float2x3(\n    " + this.m00 + ", " + this.m01 + ", " + this.m02 + "\n    " + this.m10 + ", " + this.m11 + ", " + this.m12 + "\n)";
+    }
+
+    @Override public boolean equals(@org.jspecify.annotations.Nullable Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof Float2x3)) return false;
+        Float2x3 o = (Float2x3) obj;
+        return Float.floatToIntBits(m00) == Float.floatToIntBits(o.m00)
+            && Float.floatToIntBits(m01) == Float.floatToIntBits(o.m01)
+            && Float.floatToIntBits(m02) == Float.floatToIntBits(o.m02)
+            && Float.floatToIntBits(m10) == Float.floatToIntBits(o.m10)
+            && Float.floatToIntBits(m11) == Float.floatToIntBits(o.m11)
+            && Float.floatToIntBits(m12) == Float.floatToIntBits(o.m12);
+    }
+
+    @Override public int hashCode() {
+        int h = 1;
+        h = 31 * h + Float.floatToIntBits(m00);
+        h = 31 * h + Float.floatToIntBits(m01);
+        h = 31 * h + Float.floatToIntBits(m02);
+        h = 31 * h + Float.floatToIntBits(m10);
+        h = 31 * h + Float.floatToIntBits(m11);
+        h = 31 * h + Float.floatToIntBits(m12);
+        return h;
+    }
+
+    /** {@return whether all components of this value are finite, i.e. neither NaN nor infinite} <p>Valid input: any value, NaN and the infinities included. */
+    public boolean isFinite() {
+        return Float.isFinite(m00)
+            && Float.isFinite(m01)
+            && Float.isFinite(m02)
+            && Float.isFinite(m10)
+            && Float.isFinite(m11)
+            && Float.isFinite(m12);
+    }
+
+    /** {@return whether any component of this value is NaN} <p>Valid input: any value, NaN and the infinities included. */
+    public boolean isNaN() {
+        return Float.isNaN(m00)
+            || Float.isNaN(m01)
+            || Float.isNaN(m02)
+            || Float.isNaN(m10)
+            || Float.isNaN(m11)
+            || Float.isNaN(m12);
+    }
+
+    /**
+     * Compare this value component-wise against {@code other}, allowing a difference of at
+     * most {@code epsilon} per component.
+     * <p>
+     * {@code equalsEpsilon} compares per component with a tolerance: an infinite component never
+     * compares equal to an equal infinity (the difference {@code Inf - Inf} is NaN), and to a
+     * finite one only under an infinite {@code epsilon}; a NaN component never compares equal to
+     * anything.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param other the value to compare against
+     * @param epsilon the maximum allowed difference per component
+     * @return {@code true} if all components differ by at most {@code epsilon}, {@code false} otherwise
+     */
+    public boolean equalsEpsilon(Float2x3 other, float epsilon) {
+        return java.lang.Math.abs(m00 - other.m00) <= epsilon
+            && java.lang.Math.abs(m01 - other.m01) <= epsilon
+            && java.lang.Math.abs(m02 - other.m02) <= epsilon
+            && java.lang.Math.abs(m10 - other.m10) <= epsilon
+            && java.lang.Math.abs(m11 - other.m11) <= epsilon
+            && java.lang.Math.abs(m12 - other.m12) <= epsilon;
+    }
+
+    /** Store/load dispatch targets, picked on the first store/load (see {@code Joml.storeLoadBackend()}). */
+    private static final class StoreLoad {
+        static final Float2x3SegOps SEG_OPS = Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE
+            ? new Float2x3SegOpsUnsafe()
+            : new Float2x3SegOpsMS();
+        static final Float2x3BbOps BB_OPS = Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE
+            ? new Float2x3BbOpsUnsafe()
+            : new Float2x3BbOpsApi();
+        static final Float2x3RawOps RAW_OPS = Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE
+            ? new Float2x3RawOpsUnsafe()
+            : new Float2x3RawOpsApi();
+    }
+
+    /**
+     * Store the elements into the given array in column-major order, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    public float[] storeCM(float[] dest, int offset) {
+        dest[offset] = this.m00;
+        dest[offset + 1] = this.m10;
+        dest[offset + 2] = this.m01;
+        dest[offset + 3] = this.m11;
+        dest[offset + 4] = this.m02;
+        dest[offset + 5] = this.m12;
+        return dest;
+    }
+
+    /**
+     * Store the elements into the given array in column-major order.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    public float[] storeCM(float[] dest) { return storeCM(dest, 0); }
+
+    /**
+     * Load the elements from the given array in column-major order, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @param offset the start offset in the array, in elements
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCM(float[] src, int offset) {
+        float _c0 = src[offset];
+        float _c3 = src[offset + 1];
+        float _c1 = src[offset + 2];
+        float _c4 = src[offset + 3];
+        float _c2 = src[offset + 4];
+        float _c5 = src[offset + 5];
+        return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+    }
+
+    /**
+     * Load the elements from the given array in column-major order.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCM(float[] src) { return loadCM(src, 0); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, starting at its current
+     * position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public FloatBuffer storeCM(FloatBuffer buf) {
+        return StoreLoad.BB_OPS.storeCMAbsolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in column-major order, starting at the given
+     * absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public FloatBuffer storeCMAbsolute(int index, FloatBuffer buf) {
+        return StoreLoad.BB_OPS.storeCMAbsolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in column-major order, starting at its current
+     * position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public FloatBuffer storeCMRelative(FloatBuffer buf) {
+        if (buf.remaining() < 6) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeCMAbsolute(this, pos, buf);
+        buf.position(pos + 6);
+        return buf;
+    }
+
+    /**
+     * Load the elements from the given buffer in column-major order, starting at its current
+     * position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCM(FloatBuffer buf) {
+        return StoreLoad.BB_OPS.loadCMAbsolute(buf.position(), buf);
+    }
+
+    /**
+     * Load the elements from the given buffer in column-major order, starting at the given absolute
+     * index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the source buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCMAbsolute(int index, FloatBuffer buf) {
+        return StoreLoad.BB_OPS.loadCMAbsolute(index, buf);
+    }
+
+    /**
+     * Load the elements from the given buffer in column-major order, starting at its current
+     * position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the buffer than the position
+     *        advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadCMRelative(FloatBuffer buf) {
+        if (buf.remaining() < 6) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        Float2x3 r = StoreLoad.BB_OPS.loadCMAbsolute(pos, buf);
+        buf.position(pos + 6);
+        return r;
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, starting at its current
+     * position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeCM(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeCMAbsolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, starting at the given
+     * absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeCMAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeCMAbsolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, starting at its current
+     * position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer storeCMRelative(ByteBuffer buf) {
+        if (buf.remaining() < 24) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeCMAbsolute(this, pos, buf);
+        buf.position(pos + 24);
+        return buf;
+    }
+
+    /**
+     * Load the elements from the given byte buffer in column-major order, starting at its current
+     * position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source byte buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCM(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.loadCMAbsolute(buf.position(), buf);
+    }
+
+    /**
+     * Load the elements from the given byte buffer in column-major order, starting at the given
+     * absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the source byte buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCMAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.loadCMAbsolute(index, buf);
+    }
+
+    /**
+     * Load the elements from the given byte buffer in column-major order, starting at its current
+     * position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source byte buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the byte buffer than the
+     *        position advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadCMRelative(ByteBuffer buf) {
+        if (buf.remaining() < 24) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        Float2x3 r = StoreLoad.BB_OPS.loadCMAbsolute(pos, buf);
+        buf.position(pos + 24);
+        return r;
+    }
+
+    /**
+     * Store the elements into the given raw memory address in column-major order. No bounds or
+     * liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return this
+     */
+    public Float2x3 storeCMUnsafe(long address) {
+        return StoreLoad.RAW_OPS.storeCMUnsafe(this, address);
+    }
+
+    /**
+     * Load the elements from the given raw memory address in column-major order. No bounds or
+     * liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be readable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCMUnsafe(long address) {
+        return StoreLoad.RAW_OPS.loadCMUnsafe(address);
+    }
+
+    /**
+     * Store the elements into the given memory segment in column-major order.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeCM(MemorySegment dest) { return StoreLoad.SEG_OPS.storeCM(this, 0L, dest); }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, starting at the given
+     * offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeCM(long offset, MemorySegment dest) {
+        return StoreLoad.SEG_OPS.storeCM(this, offset, dest);
+    }
+
+    /**
+     * Load the elements from the given memory segment in column-major order.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source memory segment
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCM(MemorySegment src) { return StoreLoad.SEG_OPS.loadCM(0L, src); }
+
+    /**
+     * Load the elements from the given memory segment in column-major order, starting at the given
+     * offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param src the source memory segment
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCM(long offset, MemorySegment src) {
+        return StoreLoad.SEG_OPS.loadCM(offset, src);
+    }
+
+    /**
+     * Store the elements into the given array in column-major order, converting each element to
+     * {@code double}, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    public double[] storeCM(double[] dest, int offset) {
+        dest[offset] = this.m00;
+        dest[offset + 1] = this.m10;
+        dest[offset + 2] = this.m01;
+        dest[offset + 3] = this.m11;
+        dest[offset + 4] = this.m02;
+        dest[offset + 5] = this.m12;
+        return dest;
+    }
+
+    /**
+     * Store the elements into the given array in column-major order, converting each element to
+     * {@code double}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    public double[] storeCM(double[] dest) { return storeCM(dest, 0); }
+
+    /**
+     * Load the elements from the given array in column-major order, converting each element from
+     * {@code double}, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @param offset the start offset in the array, in elements
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCM(double[] src, int offset) {
+        float _c0 = (float) src[offset];
+        float _c3 = (float) src[offset + 1];
+        float _c1 = (float) src[offset + 2];
+        float _c4 = (float) src[offset + 3];
+        float _c2 = (float) src[offset + 4];
+        float _c5 = (float) src[offset + 5];
+        return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+    }
+
+    /**
+     * Load the elements from the given array in column-major order, converting each element from
+     * {@code double}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCM(double[] src) { return loadCM(src, 0); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, converting each element to
+     * {@code double}, starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public DoubleBuffer storeCM(DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.storeCMAbsolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in column-major order, converting each element to
+     * {@code double}, starting at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public DoubleBuffer storeCMAbsolute(int index, DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.storeCMAbsolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in column-major order, converting each element to
+     * {@code double}, starting at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public DoubleBuffer storeCMRelative(DoubleBuffer buf) {
+        if (buf.remaining() < 6) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeCMAbsolute(this, pos, buf);
+        buf.position(pos + 6);
+        return buf;
+    }
+
+    /**
+     * Load the elements from the given buffer in column-major order, converting each element from
+     * {@code double}, starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCM(DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.loadCMAbsolute(buf.position(), buf);
+    }
+
+    /**
+     * Load the elements from the given buffer in column-major order, converting each element from
+     * {@code double}, starting at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the source buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCMAbsolute(int index, DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.loadCMAbsolute(index, buf);
+    }
+
+    /**
+     * Load the elements from the given buffer in column-major order, converting each element from
+     * {@code double}, starting at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the buffer than the position
+     *        advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadCMRelative(DoubleBuffer buf) {
+        if (buf.remaining() < 6) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        Float2x3 r = StoreLoad.BB_OPS.loadCMAbsolute(pos, buf);
+        buf.position(pos + 6);
+        return r;
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, converting each element
+     * to {@code double}, starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeCMDouble(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeCMDoubleAbsolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, converting each element
+     * to {@code double}, starting at the given absolute index (the position is not used or
+     * modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeCMDoubleAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeCMDoubleAbsolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, converting each element
+     * to {@code double}, starting at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer storeCMDoubleRelative(ByteBuffer buf) {
+        if (buf.remaining() < 48) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeCMDoubleAbsolute(this, pos, buf);
+        buf.position(pos + 48);
+        return buf;
+    }
+
+    /**
+     * Load the elements from the given byte buffer in column-major order, converting each element
+     * from {@code double}, starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source byte buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCMDouble(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.loadCMDoubleAbsolute(buf.position(), buf);
+    }
+
+    /**
+     * Load the elements from the given byte buffer in column-major order, converting each element
+     * from {@code double}, starting at the given absolute index (the position is not used or
+     * modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the source byte buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCMDoubleAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.loadCMDoubleAbsolute(index, buf);
+    }
+
+    /**
+     * Load the elements from the given byte buffer in column-major order, converting each element
+     * from {@code double}, starting at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source byte buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the byte buffer than the
+     *        position advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadCMDoubleRelative(ByteBuffer buf) {
+        if (buf.remaining() < 48) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        Float2x3 r = StoreLoad.BB_OPS.loadCMDoubleAbsolute(pos, buf);
+        buf.position(pos + 48);
+        return r;
+    }
+
+    /**
+     * Store the elements into the given raw memory address in column-major order, converting each
+     * element to {@code double}. No bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return this
+     */
+    public Float2x3 storeCMDoubleUnsafe(long address) {
+        return StoreLoad.RAW_OPS.storeCMDoubleUnsafe(this, address);
+    }
+
+    /**
+     * Load the elements from the given raw memory address in column-major order, converting each
+     * element from {@code double}. No bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be readable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCMDoubleUnsafe(long address) {
+        return StoreLoad.RAW_OPS.loadCMDoubleUnsafe(address);
+    }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, converting each
+     * element to {@code double}.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeCMDouble(MemorySegment dest) { return StoreLoad.SEG_OPS.storeCMDouble(this, 0L, dest); }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, converting each
+     * element to {@code double}, starting at the given offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeCMDouble(long offset, MemorySegment dest) {
+        return StoreLoad.SEG_OPS.storeCMDouble(this, offset, dest);
+    }
+
+    /**
+     * Load the elements from the given memory segment in column-major order, converting each
+     * element from {@code double}.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source memory segment
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCMDouble(MemorySegment src) { return StoreLoad.SEG_OPS.loadCMDouble(0L, src); }
+
+    /**
+     * Load the elements from the given memory segment in column-major order, converting each
+     * element from {@code double}, starting at the given offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param src the source memory segment
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCMDouble(long offset, MemorySegment src) {
+        return StoreLoad.SEG_OPS.loadCMDouble(offset, src);
+    }
+
+    /**
+     * Store the elements into the given array in row-major order, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    public float[] storeRM(float[] dest, int offset) {
+        dest[offset] = this.m00;
+        dest[offset + 1] = this.m01;
+        dest[offset + 2] = this.m02;
+        dest[offset + 3] = this.m10;
+        dest[offset + 4] = this.m11;
+        dest[offset + 5] = this.m12;
+        return dest;
+    }
+
+    /**
+     * Store the elements into the given array in row-major order.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    public float[] storeRM(float[] dest) { return storeRM(dest, 0); }
+
+    /**
+     * Load the elements from the given array in row-major order, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @param offset the start offset in the array, in elements
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRM(float[] src, int offset) {
+        float _c0 = src[offset];
+        float _c1 = src[offset + 1];
+        float _c2 = src[offset + 2];
+        float _c3 = src[offset + 3];
+        float _c4 = src[offset + 4];
+        float _c5 = src[offset + 5];
+        return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+    }
+
+    /**
+     * Load the elements from the given array in row-major order.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRM(float[] src) { return loadRM(src, 0); }
+
+    /**
+     * Store the elements into the given buffer in row-major order, starting at its current position
+     * (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public FloatBuffer storeRM(FloatBuffer buf) {
+        return StoreLoad.BB_OPS.storeRMAbsolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in row-major order, starting at the given absolute
+     * index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public FloatBuffer storeRMAbsolute(int index, FloatBuffer buf) {
+        return StoreLoad.BB_OPS.storeRMAbsolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in row-major order, starting at its current position
+     * and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public FloatBuffer storeRMRelative(FloatBuffer buf) {
+        if (buf.remaining() < 6) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeRMAbsolute(this, pos, buf);
+        buf.position(pos + 6);
+        return buf;
+    }
+
+    /**
+     * Load the elements from the given buffer in row-major order, starting at its current position
+     * (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRM(FloatBuffer buf) {
+        return StoreLoad.BB_OPS.loadRMAbsolute(buf.position(), buf);
+    }
+
+    /**
+     * Load the elements from the given buffer in row-major order, starting at the given absolute
+     * index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the source buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRMAbsolute(int index, FloatBuffer buf) {
+        return StoreLoad.BB_OPS.loadRMAbsolute(index, buf);
+    }
+
+    /**
+     * Load the elements from the given buffer in row-major order, starting at its current position
+     * and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the buffer than the position
+     *        advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadRMRelative(FloatBuffer buf) {
+        if (buf.remaining() < 6) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        Float2x3 r = StoreLoad.BB_OPS.loadRMAbsolute(pos, buf);
+        buf.position(pos + 6);
+        return r;
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, starting at its current
+     * position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeRM(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeRMAbsolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, starting at the given
+     * absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeRMAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeRMAbsolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, starting at its current
+     * position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer storeRMRelative(ByteBuffer buf) {
+        if (buf.remaining() < 24) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeRMAbsolute(this, pos, buf);
+        buf.position(pos + 24);
+        return buf;
+    }
+
+    /**
+     * Load the elements from the given byte buffer in row-major order, starting at its current
+     * position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source byte buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRM(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.loadRMAbsolute(buf.position(), buf);
+    }
+
+    /**
+     * Load the elements from the given byte buffer in row-major order, starting at the given
+     * absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the source byte buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRMAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.loadRMAbsolute(index, buf);
+    }
+
+    /**
+     * Load the elements from the given byte buffer in row-major order, starting at its current
+     * position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source byte buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the byte buffer than the
+     *        position advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadRMRelative(ByteBuffer buf) {
+        if (buf.remaining() < 24) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        Float2x3 r = StoreLoad.BB_OPS.loadRMAbsolute(pos, buf);
+        buf.position(pos + 24);
+        return r;
+    }
+
+    /**
+     * Store the elements into the given raw memory address in row-major order. No bounds or
+     * liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return this
+     */
+    public Float2x3 storeRMUnsafe(long address) {
+        return StoreLoad.RAW_OPS.storeRMUnsafe(this, address);
+    }
+
+    /**
+     * Load the elements from the given raw memory address in row-major order. No bounds or liveness
+     * checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be readable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRMUnsafe(long address) {
+        return StoreLoad.RAW_OPS.loadRMUnsafe(address);
+    }
+
+    /**
+     * Store the elements into the given memory segment in row-major order.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeRM(MemorySegment dest) { return StoreLoad.SEG_OPS.storeRM(this, 0L, dest); }
+
+    /**
+     * Store the elements into the given memory segment in row-major order, starting at the given
+     * offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeRM(long offset, MemorySegment dest) {
+        return StoreLoad.SEG_OPS.storeRM(this, offset, dest);
+    }
+
+    /**
+     * Load the elements from the given memory segment in row-major order.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source memory segment
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRM(MemorySegment src) { return StoreLoad.SEG_OPS.loadRM(0L, src); }
+
+    /**
+     * Load the elements from the given memory segment in row-major order, starting at the given
+     * offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param src the source memory segment
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRM(long offset, MemorySegment src) {
+        return StoreLoad.SEG_OPS.loadRM(offset, src);
+    }
+
+    /**
+     * Store the elements into the given array in row-major order, converting each element to
+     * {@code double}, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    public double[] storeRM(double[] dest, int offset) {
+        dest[offset] = this.m00;
+        dest[offset + 1] = this.m01;
+        dest[offset + 2] = this.m02;
+        dest[offset + 3] = this.m10;
+        dest[offset + 4] = this.m11;
+        dest[offset + 5] = this.m12;
+        return dest;
+    }
+
+    /**
+     * Store the elements into the given array in row-major order, converting each element to
+     * {@code double}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    public double[] storeRM(double[] dest) { return storeRM(dest, 0); }
+
+    /**
+     * Load the elements from the given array in row-major order, converting each element from
+     * {@code double}, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @param offset the start offset in the array, in elements
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRM(double[] src, int offset) {
+        float _c0 = (float) src[offset];
+        float _c1 = (float) src[offset + 1];
+        float _c2 = (float) src[offset + 2];
+        float _c3 = (float) src[offset + 3];
+        float _c4 = (float) src[offset + 4];
+        float _c5 = (float) src[offset + 5];
+        return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+    }
+
+    /**
+     * Load the elements from the given array in row-major order, converting each element from
+     * {@code double}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRM(double[] src) { return loadRM(src, 0); }
+
+    /**
+     * Store the elements into the given buffer in row-major order, converting each element to
+     * {@code double}, starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public DoubleBuffer storeRM(DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.storeRMAbsolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in row-major order, converting each element to
+     * {@code double}, starting at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public DoubleBuffer storeRMAbsolute(int index, DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.storeRMAbsolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in row-major order, converting each element to
+     * {@code double}, starting at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public DoubleBuffer storeRMRelative(DoubleBuffer buf) {
+        if (buf.remaining() < 6) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeRMAbsolute(this, pos, buf);
+        buf.position(pos + 6);
+        return buf;
+    }
+
+    /**
+     * Load the elements from the given buffer in row-major order, converting each element from
+     * {@code double}, starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRM(DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.loadRMAbsolute(buf.position(), buf);
+    }
+
+    /**
+     * Load the elements from the given buffer in row-major order, converting each element from
+     * {@code double}, starting at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the source buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRMAbsolute(int index, DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.loadRMAbsolute(index, buf);
+    }
+
+    /**
+     * Load the elements from the given buffer in row-major order, converting each element from
+     * {@code double}, starting at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the buffer than the position
+     *        advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadRMRelative(DoubleBuffer buf) {
+        if (buf.remaining() < 6) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        Float2x3 r = StoreLoad.BB_OPS.loadRMAbsolute(pos, buf);
+        buf.position(pos + 6);
+        return r;
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, converting each element to
+     * {@code double}, starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeRMDouble(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeRMDoubleAbsolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, converting each element to
+     * {@code double}, starting at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeRMDoubleAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeRMDoubleAbsolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, converting each element to
+     * {@code double}, starting at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer storeRMDoubleRelative(ByteBuffer buf) {
+        if (buf.remaining() < 48) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeRMDoubleAbsolute(this, pos, buf);
+        buf.position(pos + 48);
+        return buf;
+    }
+
+    /**
+     * Load the elements from the given byte buffer in row-major order, converting each element from
+     * {@code double}, starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source byte buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRMDouble(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.loadRMDoubleAbsolute(buf.position(), buf);
+    }
+
+    /**
+     * Load the elements from the given byte buffer in row-major order, converting each element from
+     * {@code double}, starting at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the source byte buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRMDoubleAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.loadRMDoubleAbsolute(index, buf);
+    }
+
+    /**
+     * Load the elements from the given byte buffer in row-major order, converting each element from
+     * {@code double}, starting at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source byte buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the byte buffer than the
+     *        position advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadRMDoubleRelative(ByteBuffer buf) {
+        if (buf.remaining() < 48) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        Float2x3 r = StoreLoad.BB_OPS.loadRMDoubleAbsolute(pos, buf);
+        buf.position(pos + 48);
+        return r;
+    }
+
+    /**
+     * Store the elements into the given raw memory address in row-major order, converting each
+     * element to {@code double}. No bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return this
+     */
+    public Float2x3 storeRMDoubleUnsafe(long address) {
+        return StoreLoad.RAW_OPS.storeRMDoubleUnsafe(this, address);
+    }
+
+    /**
+     * Load the elements from the given raw memory address in row-major order, converting each
+     * element from {@code double}. No bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be readable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRMDoubleUnsafe(long address) {
+        return StoreLoad.RAW_OPS.loadRMDoubleUnsafe(address);
+    }
+
+    /**
+     * Store the elements into the given memory segment in row-major order, converting each element
+     * to {@code double}.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeRMDouble(MemorySegment dest) { return StoreLoad.SEG_OPS.storeRMDouble(this, 0L, dest); }
+
+    /**
+     * Store the elements into the given memory segment in row-major order, converting each element
+     * to {@code double}, starting at the given offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeRMDouble(long offset, MemorySegment dest) {
+        return StoreLoad.SEG_OPS.storeRMDouble(this, offset, dest);
+    }
+
+    /**
+     * Load the elements from the given memory segment in row-major order, converting each element
+     * from {@code double}.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source memory segment
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRMDouble(MemorySegment src) { return StoreLoad.SEG_OPS.loadRMDouble(0L, src); }
+
+    /**
+     * Load the elements from the given memory segment in row-major order, converting each element
+     * from {@code double}, starting at the given offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param src the source memory segment
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRMDouble(long offset, MemorySegment src) {
+        return StoreLoad.SEG_OPS.loadRMDouble(offset, src);
+    }
+
+    /**
+     * Store the elements into the given array in column-major order, starting at the given offset,
+     * with {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return dest
+     */
+    public float[] storeCM(float[] dest, int offset, int stride) {
+        int _p1 = offset + stride;
+        int _p2 = _p1 + stride;
+        dest[offset] = this.m00;
+        dest[offset + 1] = this.m10;
+        dest[_p1] = this.m01;
+        dest[_p1 + 1] = this.m11;
+        dest[_p2] = this.m02;
+        dest[_p2 + 1] = this.m12;
+        return dest;
+    }
+
+    /**
+     * Load the elements from the given array in column-major order, starting at the given offset,
+     * with {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @param offset the start offset in the array, in elements
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCM(float[] src, int offset, int stride) {
+        int _p1 = offset + stride;
+        int _p2 = _p1 + stride;
+        float _c0 = src[offset];
+        float _c3 = src[offset + 1];
+        float _c1 = src[_p1];
+        float _c4 = src[_p1 + 1];
+        float _c2 = src[_p2];
+        float _c5 = src[_p2 + 1];
+        return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+    }
+
+    /**
+     * Store the elements into the given buffer in column-major order, starting at its current
+     * position (the position is not modified), with {@code stride} elements between the starts of
+     * consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return buf
+     */
+    public FloatBuffer storeCM(FloatBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.storeCMAbsolute(this, buf.position(), buf, stride);
+    }
+
+    /**
+     * Store the elements into the given buffer in column-major order, starting at the given
+     * absolute index (the position is not used or modified), with {@code stride} elements between
+     * the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the destination buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return buf
+     */
+    public FloatBuffer storeCMAbsolute(int index, FloatBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.storeCMAbsolute(this, index, buf, stride);
+    }
+
+    /**
+     * Store the elements into the given buffer in column-major order, starting at its current
+     * position and advancing the position accordingly, with {@code stride} elements between the
+     * starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public FloatBuffer storeCMRelative(FloatBuffer buf, int stride) {
+        if (buf.remaining() < 3L * stride) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeCMAbsolute(this, pos, buf, stride);
+        buf.position(pos + 3 * stride);
+        return buf;
+    }
+
+    /**
+     * Load the elements from the given buffer in column-major order, starting at its current
+     * position (the position is not modified), with {@code stride} elements between the starts of
+     * consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCM(FloatBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.loadCMAbsolute(buf.position(), buf, stride);
+    }
+
+    /**
+     * Load the elements from the given buffer in column-major order, starting at the given absolute
+     * index (the position is not used or modified), with {@code stride} elements between the starts
+     * of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the source buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCMAbsolute(int index, FloatBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.loadCMAbsolute(index, buf, stride);
+    }
+
+    /**
+     * Load the elements from the given buffer in column-major order, starting at its current
+     * position and advancing the position accordingly, with {@code stride} elements between the
+     * starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the buffer than the position
+     *        advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadCMRelative(FloatBuffer buf, int stride) {
+        if (buf.remaining() < 3L * stride) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        Float2x3 r = StoreLoad.BB_OPS.loadCMAbsolute(pos, buf, stride);
+        buf.position(pos + 3 * stride);
+        return r;
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, starting at its current
+     * position (the position is not modified), with {@code stride} elements between the starts of
+     * consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return buf
+     */
+    public ByteBuffer storeCM(ByteBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.storeCMAbsolute(this, buf.position(), buf, stride);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, starting at the given
+     * absolute index (the position is not used or modified), with {@code stride} elements between
+     * the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the destination byte buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return buf
+     */
+    public ByteBuffer storeCMAbsolute(int index, ByteBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.storeCMAbsolute(this, index, buf, stride);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, starting at its current
+     * position and advancing the position accordingly, with {@code stride} elements between the
+     * starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer storeCMRelative(ByteBuffer buf, int stride) {
+        if (buf.remaining() < 3L * stride * 4) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeCMAbsolute(this, pos, buf, stride);
+        buf.position(pos + 3 * stride * 4);
+        return buf;
+    }
+
+    /**
+     * Load the elements from the given byte buffer in column-major order, starting at its current
+     * position (the position is not modified), with {@code stride} elements between the starts of
+     * consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source byte buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCM(ByteBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.loadCMAbsolute(buf.position(), buf, stride);
+    }
+
+    /**
+     * Load the elements from the given byte buffer in column-major order, starting at the given
+     * absolute index (the position is not used or modified), with {@code stride} elements between
+     * the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the source byte buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCMAbsolute(int index, ByteBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.loadCMAbsolute(index, buf, stride);
+    }
+
+    /**
+     * Load the elements from the given byte buffer in column-major order, starting at its current
+     * position and advancing the position accordingly, with {@code stride} elements between the
+     * starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source byte buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the byte buffer than the
+     *        position advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadCMRelative(ByteBuffer buf, int stride) {
+        if (buf.remaining() < 3L * stride * 4) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        Float2x3 r = StoreLoad.BB_OPS.loadCMAbsolute(pos, buf, stride);
+        buf.position(pos + 3 * stride * 4);
+        return r;
+    }
+
+    /**
+     * Store the elements into the given raw memory address in column-major order, with
+     * {@code stride} elements between the starts of consecutive columns. No bounds or liveness
+     * checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return this
+     */
+    public Float2x3 storeCMUnsafe(long address, int stride) {
+        return StoreLoad.RAW_OPS.storeCMUnsafe(this, address, stride);
+    }
+
+    /**
+     * Load the elements from the given raw memory address in column-major order, with
+     * {@code stride} elements between the starts of consecutive columns. No bounds or liveness
+     * checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be readable for all the elements.
+     *
+     * @param address the raw memory address
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCMUnsafe(long address, int stride) {
+        return StoreLoad.RAW_OPS.loadCMUnsafe(address, stride);
+    }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, with {@code stride}
+     * elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return dest
+     */
+    public MemorySegment storeCM(MemorySegment dest, int stride) { return StoreLoad.SEG_OPS.storeCM(this, 0L, dest, stride); }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, starting at the given
+     * offset, with {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return dest
+     */
+    public MemorySegment storeCM(long offset, MemorySegment dest, int stride) {
+        return StoreLoad.SEG_OPS.storeCM(this, offset, dest, stride);
+    }
+
+    /**
+     * Load the elements from the given memory segment in column-major order, with {@code stride}
+     * elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source memory segment
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCM(MemorySegment src, int stride) { return StoreLoad.SEG_OPS.loadCM(0L, src, stride); }
+
+    /**
+     * Load the elements from the given memory segment in column-major order, starting at the given
+     * offset, with {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param src the source memory segment
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCM(long offset, MemorySegment src, int stride) {
+        return StoreLoad.SEG_OPS.loadCM(offset, src, stride);
+    }
+
+    /**
+     * Store the elements into the given array in column-major order, converting each element to
+     * {@code double}, starting at the given offset, with {@code stride} elements between the starts
+     * of consecutive columns.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return dest
+     */
+    public double[] storeCM(double[] dest, int offset, int stride) {
+        int _p1 = offset + stride;
+        int _p2 = _p1 + stride;
+        dest[offset] = this.m00;
+        dest[offset + 1] = this.m10;
+        dest[_p1] = this.m01;
+        dest[_p1 + 1] = this.m11;
+        dest[_p2] = this.m02;
+        dest[_p2 + 1] = this.m12;
+        return dest;
+    }
+
+    /**
+     * Load the elements from the given array in column-major order, converting each element from
+     * {@code double}, starting at the given offset, with {@code stride} elements between the starts
+     * of consecutive columns.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @param offset the start offset in the array, in elements
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCM(double[] src, int offset, int stride) {
+        int _p1 = offset + stride;
+        int _p2 = _p1 + stride;
+        float _c0 = (float) src[offset];
+        float _c3 = (float) src[offset + 1];
+        float _c1 = (float) src[_p1];
+        float _c4 = (float) src[_p1 + 1];
+        float _c2 = (float) src[_p2];
+        float _c5 = (float) src[_p2 + 1];
+        return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+    }
+
+    /**
+     * Store the elements into the given buffer in column-major order, converting each element to
+     * {@code double}, starting at its current position (the position is not modified), with
+     * {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return buf
+     */
+    public DoubleBuffer storeCM(DoubleBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.storeCMAbsolute(this, buf.position(), buf, stride);
+    }
+
+    /**
+     * Store the elements into the given buffer in column-major order, converting each element to
+     * {@code double}, starting at the given absolute index (the position is not used or modified),
+     * with {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the destination buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return buf
+     */
+    public DoubleBuffer storeCMAbsolute(int index, DoubleBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.storeCMAbsolute(this, index, buf, stride);
+    }
+
+    /**
+     * Store the elements into the given buffer in column-major order, converting each element to
+     * {@code double}, starting at its current position and advancing the position accordingly, with
+     * {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public DoubleBuffer storeCMRelative(DoubleBuffer buf, int stride) {
+        if (buf.remaining() < 3L * stride) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeCMAbsolute(this, pos, buf, stride);
+        buf.position(pos + 3 * stride);
+        return buf;
+    }
+
+    /**
+     * Load the elements from the given buffer in column-major order, converting each element from
+     * {@code double}, starting at its current position (the position is not modified), with
+     * {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCM(DoubleBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.loadCMAbsolute(buf.position(), buf, stride);
+    }
+
+    /**
+     * Load the elements from the given buffer in column-major order, converting each element from
+     * {@code double}, starting at the given absolute index (the position is not used or modified),
+     * with {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the source buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCMAbsolute(int index, DoubleBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.loadCMAbsolute(index, buf, stride);
+    }
+
+    /**
+     * Load the elements from the given buffer in column-major order, converting each element from
+     * {@code double}, starting at its current position and advancing the position accordingly, with
+     * {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the buffer than the position
+     *        advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadCMRelative(DoubleBuffer buf, int stride) {
+        if (buf.remaining() < 3L * stride) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        Float2x3 r = StoreLoad.BB_OPS.loadCMAbsolute(pos, buf, stride);
+        buf.position(pos + 3 * stride);
+        return r;
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, converting each element
+     * to {@code double}, starting at its current position (the position is not modified), with
+     * {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return buf
+     */
+    public ByteBuffer storeCMDouble(ByteBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.storeCMDoubleAbsolute(this, buf.position(), buf, stride);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, converting each element
+     * to {@code double}, starting at the given absolute index (the position is not used or
+     * modified), with {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the destination byte buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return buf
+     */
+    public ByteBuffer storeCMDoubleAbsolute(int index, ByteBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.storeCMDoubleAbsolute(this, index, buf, stride);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, converting each element
+     * to {@code double}, starting at its current position and advancing the position accordingly,
+     * with {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer storeCMDoubleRelative(ByteBuffer buf, int stride) {
+        if (buf.remaining() < 3L * stride * 8) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeCMDoubleAbsolute(this, pos, buf, stride);
+        buf.position(pos + 3 * stride * 8);
+        return buf;
+    }
+
+    /**
+     * Load the elements from the given byte buffer in column-major order, converting each element
+     * from {@code double}, starting at its current position (the position is not modified), with
+     * {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source byte buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCMDouble(ByteBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.loadCMDoubleAbsolute(buf.position(), buf, stride);
+    }
+
+    /**
+     * Load the elements from the given byte buffer in column-major order, converting each element
+     * from {@code double}, starting at the given absolute index (the position is not used or
+     * modified), with {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the source byte buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCMDoubleAbsolute(int index, ByteBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.loadCMDoubleAbsolute(index, buf, stride);
+    }
+
+    /**
+     * Load the elements from the given byte buffer in column-major order, converting each element
+     * from {@code double}, starting at its current position and advancing the position accordingly,
+     * with {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source byte buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the byte buffer than the
+     *        position advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadCMDoubleRelative(ByteBuffer buf, int stride) {
+        if (buf.remaining() < 3L * stride * 8) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        Float2x3 r = StoreLoad.BB_OPS.loadCMDoubleAbsolute(pos, buf, stride);
+        buf.position(pos + 3 * stride * 8);
+        return r;
+    }
+
+    /**
+     * Store the elements into the given raw memory address in column-major order, converting each
+     * element to {@code double}, with {@code stride} elements between the starts of consecutive
+     * columns. No bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return this
+     */
+    public Float2x3 storeCMDoubleUnsafe(long address, int stride) {
+        return StoreLoad.RAW_OPS.storeCMDoubleUnsafe(this, address, stride);
+    }
+
+    /**
+     * Load the elements from the given raw memory address in column-major order, converting each
+     * element from {@code double}, with {@code stride} elements between the starts of consecutive
+     * columns. No bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be readable for all the elements.
+     *
+     * @param address the raw memory address
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCMDoubleUnsafe(long address, int stride) {
+        return StoreLoad.RAW_OPS.loadCMDoubleUnsafe(address, stride);
+    }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, converting each
+     * element to {@code double}, with {@code stride} elements between the starts of consecutive
+     * columns.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return dest
+     */
+    public MemorySegment storeCMDouble(MemorySegment dest, int stride) { return StoreLoad.SEG_OPS.storeCMDouble(this, 0L, dest, stride); }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, converting each
+     * element to {@code double}, starting at the given offset, with {@code stride} elements between
+     * the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return dest
+     */
+    public MemorySegment storeCMDouble(long offset, MemorySegment dest, int stride) {
+        return StoreLoad.SEG_OPS.storeCMDouble(this, offset, dest, stride);
+    }
+
+    /**
+     * Load the elements from the given memory segment in column-major order, converting each
+     * element from {@code double}, with {@code stride} elements between the starts of consecutive
+     * columns.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source memory segment
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCMDouble(MemorySegment src, int stride) { return StoreLoad.SEG_OPS.loadCMDouble(0L, src, stride); }
+
+    /**
+     * Load the elements from the given memory segment in column-major order, converting each
+     * element from {@code double}, starting at the given offset, with {@code stride} elements
+     * between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param src the source memory segment
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadCMDouble(long offset, MemorySegment src, int stride) {
+        return StoreLoad.SEG_OPS.loadCMDouble(offset, src, stride);
+    }
+
+    /**
+     * Store the elements into the given array in row-major order, starting at the given offset,
+     * with {@code stride} elements between the starts of consecutive rows.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return dest
+     */
+    public float[] storeRM(float[] dest, int offset, int stride) {
+        int _p1 = offset + stride;
+        dest[offset] = this.m00;
+        dest[offset + 1] = this.m01;
+        dest[offset + 2] = this.m02;
+        dest[_p1] = this.m10;
+        dest[_p1 + 1] = this.m11;
+        dest[_p1 + 2] = this.m12;
+        return dest;
+    }
+
+    /**
+     * Load the elements from the given array in row-major order, starting at the given offset, with
+     * {@code stride} elements between the starts of consecutive rows.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @param offset the start offset in the array, in elements
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRM(float[] src, int offset, int stride) {
+        int _p1 = offset + stride;
+        float _c0 = src[offset];
+        float _c1 = src[offset + 1];
+        float _c2 = src[offset + 2];
+        float _c3 = src[_p1];
+        float _c4 = src[_p1 + 1];
+        float _c5 = src[_p1 + 2];
+        return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+    }
+
+    /**
+     * Store the elements into the given buffer in row-major order, starting at its current position
+     * (the position is not modified), with {@code stride} elements between the starts of
+     * consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return buf
+     */
+    public FloatBuffer storeRM(FloatBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.storeRMAbsolute(this, buf.position(), buf, stride);
+    }
+
+    /**
+     * Store the elements into the given buffer in row-major order, starting at the given absolute
+     * index (the position is not used or modified), with {@code stride} elements between the starts
+     * of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the destination buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return buf
+     */
+    public FloatBuffer storeRMAbsolute(int index, FloatBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.storeRMAbsolute(this, index, buf, stride);
+    }
+
+    /**
+     * Store the elements into the given buffer in row-major order, starting at its current position
+     * and advancing the position accordingly, with {@code stride} elements between the starts of
+     * consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public FloatBuffer storeRMRelative(FloatBuffer buf, int stride) {
+        if (buf.remaining() < 2L * stride) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeRMAbsolute(this, pos, buf, stride);
+        buf.position(pos + 2 * stride);
+        return buf;
+    }
+
+    /**
+     * Load the elements from the given buffer in row-major order, starting at its current position
+     * (the position is not modified), with {@code stride} elements between the starts of
+     * consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRM(FloatBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.loadRMAbsolute(buf.position(), buf, stride);
+    }
+
+    /**
+     * Load the elements from the given buffer in row-major order, starting at the given absolute
+     * index (the position is not used or modified), with {@code stride} elements between the starts
+     * of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the source buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRMAbsolute(int index, FloatBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.loadRMAbsolute(index, buf, stride);
+    }
+
+    /**
+     * Load the elements from the given buffer in row-major order, starting at its current position
+     * and advancing the position accordingly, with {@code stride} elements between the starts of
+     * consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the buffer than the position
+     *        advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadRMRelative(FloatBuffer buf, int stride) {
+        if (buf.remaining() < 2L * stride) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        Float2x3 r = StoreLoad.BB_OPS.loadRMAbsolute(pos, buf, stride);
+        buf.position(pos + 2 * stride);
+        return r;
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, starting at its current
+     * position (the position is not modified), with {@code stride} elements between the starts of
+     * consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return buf
+     */
+    public ByteBuffer storeRM(ByteBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.storeRMAbsolute(this, buf.position(), buf, stride);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, starting at the given
+     * absolute index (the position is not used or modified), with {@code stride} elements between
+     * the starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the destination byte buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return buf
+     */
+    public ByteBuffer storeRMAbsolute(int index, ByteBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.storeRMAbsolute(this, index, buf, stride);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, starting at its current
+     * position and advancing the position accordingly, with {@code stride} elements between the
+     * starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer storeRMRelative(ByteBuffer buf, int stride) {
+        if (buf.remaining() < 2L * stride * 4) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeRMAbsolute(this, pos, buf, stride);
+        buf.position(pos + 2 * stride * 4);
+        return buf;
+    }
+
+    /**
+     * Load the elements from the given byte buffer in row-major order, starting at its current
+     * position (the position is not modified), with {@code stride} elements between the starts of
+     * consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source byte buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRM(ByteBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.loadRMAbsolute(buf.position(), buf, stride);
+    }
+
+    /**
+     * Load the elements from the given byte buffer in row-major order, starting at the given
+     * absolute index (the position is not used or modified), with {@code stride} elements between
+     * the starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the source byte buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRMAbsolute(int index, ByteBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.loadRMAbsolute(index, buf, stride);
+    }
+
+    /**
+     * Load the elements from the given byte buffer in row-major order, starting at its current
+     * position and advancing the position accordingly, with {@code stride} elements between the
+     * starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source byte buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the byte buffer than the
+     *        position advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadRMRelative(ByteBuffer buf, int stride) {
+        if (buf.remaining() < 2L * stride * 4) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        Float2x3 r = StoreLoad.BB_OPS.loadRMAbsolute(pos, buf, stride);
+        buf.position(pos + 2 * stride * 4);
+        return r;
+    }
+
+    /**
+     * Store the elements into the given raw memory address in row-major order, with {@code stride}
+     * elements between the starts of consecutive rows. No bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return this
+     */
+    public Float2x3 storeRMUnsafe(long address, int stride) {
+        return StoreLoad.RAW_OPS.storeRMUnsafe(this, address, stride);
+    }
+
+    /**
+     * Load the elements from the given raw memory address in row-major order, with {@code stride}
+     * elements between the starts of consecutive rows. No bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be readable for all the elements.
+     *
+     * @param address the raw memory address
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRMUnsafe(long address, int stride) {
+        return StoreLoad.RAW_OPS.loadRMUnsafe(address, stride);
+    }
+
+    /**
+     * Store the elements into the given memory segment in row-major order, with {@code stride}
+     * elements between the starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return dest
+     */
+    public MemorySegment storeRM(MemorySegment dest, int stride) { return StoreLoad.SEG_OPS.storeRM(this, 0L, dest, stride); }
+
+    /**
+     * Store the elements into the given memory segment in row-major order, starting at the given
+     * offset, with {@code stride} elements between the starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return dest
+     */
+    public MemorySegment storeRM(long offset, MemorySegment dest, int stride) {
+        return StoreLoad.SEG_OPS.storeRM(this, offset, dest, stride);
+    }
+
+    /**
+     * Load the elements from the given memory segment in row-major order, with {@code stride}
+     * elements between the starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source memory segment
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRM(MemorySegment src, int stride) { return StoreLoad.SEG_OPS.loadRM(0L, src, stride); }
+
+    /**
+     * Load the elements from the given memory segment in row-major order, starting at the given
+     * offset, with {@code stride} elements between the starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param src the source memory segment
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRM(long offset, MemorySegment src, int stride) {
+        return StoreLoad.SEG_OPS.loadRM(offset, src, stride);
+    }
+
+    /**
+     * Store the elements into the given array in row-major order, converting each element to
+     * {@code double}, starting at the given offset, with {@code stride} elements between the starts
+     * of consecutive rows.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return dest
+     */
+    public double[] storeRM(double[] dest, int offset, int stride) {
+        int _p1 = offset + stride;
+        dest[offset] = this.m00;
+        dest[offset + 1] = this.m01;
+        dest[offset + 2] = this.m02;
+        dest[_p1] = this.m10;
+        dest[_p1 + 1] = this.m11;
+        dest[_p1 + 2] = this.m12;
+        return dest;
+    }
+
+    /**
+     * Load the elements from the given array in row-major order, converting each element from
+     * {@code double}, starting at the given offset, with {@code stride} elements between the starts
+     * of consecutive rows.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @param offset the start offset in the array, in elements
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRM(double[] src, int offset, int stride) {
+        int _p1 = offset + stride;
+        float _c0 = (float) src[offset];
+        float _c1 = (float) src[offset + 1];
+        float _c2 = (float) src[offset + 2];
+        float _c3 = (float) src[_p1];
+        float _c4 = (float) src[_p1 + 1];
+        float _c5 = (float) src[_p1 + 2];
+        return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+    }
+
+    /**
+     * Store the elements into the given buffer in row-major order, converting each element to
+     * {@code double}, starting at its current position (the position is not modified), with
+     * {@code stride} elements between the starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return buf
+     */
+    public DoubleBuffer storeRM(DoubleBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.storeRMAbsolute(this, buf.position(), buf, stride);
+    }
+
+    /**
+     * Store the elements into the given buffer in row-major order, converting each element to
+     * {@code double}, starting at the given absolute index (the position is not used or modified),
+     * with {@code stride} elements between the starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the destination buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return buf
+     */
+    public DoubleBuffer storeRMAbsolute(int index, DoubleBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.storeRMAbsolute(this, index, buf, stride);
+    }
+
+    /**
+     * Store the elements into the given buffer in row-major order, converting each element to
+     * {@code double}, starting at its current position and advancing the position accordingly, with
+     * {@code stride} elements between the starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public DoubleBuffer storeRMRelative(DoubleBuffer buf, int stride) {
+        if (buf.remaining() < 2L * stride) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeRMAbsolute(this, pos, buf, stride);
+        buf.position(pos + 2 * stride);
+        return buf;
+    }
+
+    /**
+     * Load the elements from the given buffer in row-major order, converting each element from
+     * {@code double}, starting at its current position (the position is not modified), with
+     * {@code stride} elements between the starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRM(DoubleBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.loadRMAbsolute(buf.position(), buf, stride);
+    }
+
+    /**
+     * Load the elements from the given buffer in row-major order, converting each element from
+     * {@code double}, starting at the given absolute index (the position is not used or modified),
+     * with {@code stride} elements between the starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the source buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRMAbsolute(int index, DoubleBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.loadRMAbsolute(index, buf, stride);
+    }
+
+    /**
+     * Load the elements from the given buffer in row-major order, converting each element from
+     * {@code double}, starting at its current position and advancing the position accordingly, with
+     * {@code stride} elements between the starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the buffer than the position
+     *        advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadRMRelative(DoubleBuffer buf, int stride) {
+        if (buf.remaining() < 2L * stride) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        Float2x3 r = StoreLoad.BB_OPS.loadRMAbsolute(pos, buf, stride);
+        buf.position(pos + 2 * stride);
+        return r;
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, converting each element to
+     * {@code double}, starting at its current position (the position is not modified), with
+     * {@code stride} elements between the starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return buf
+     */
+    public ByteBuffer storeRMDouble(ByteBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.storeRMDoubleAbsolute(this, buf.position(), buf, stride);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, converting each element to
+     * {@code double}, starting at the given absolute index (the position is not used or modified),
+     * with {@code stride} elements between the starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the destination byte buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return buf
+     */
+    public ByteBuffer storeRMDoubleAbsolute(int index, ByteBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.storeRMDoubleAbsolute(this, index, buf, stride);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, converting each element to
+     * {@code double}, starting at its current position and advancing the position accordingly, with
+     * {@code stride} elements between the starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer storeRMDoubleRelative(ByteBuffer buf, int stride) {
+        if (buf.remaining() < 2L * stride * 8) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeRMDoubleAbsolute(this, pos, buf, stride);
+        buf.position(pos + 2 * stride * 8);
+        return buf;
+    }
+
+    /**
+     * Load the elements from the given byte buffer in row-major order, converting each element from
+     * {@code double}, starting at its current position (the position is not modified), with
+     * {@code stride} elements between the starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source byte buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRMDouble(ByteBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.loadRMDoubleAbsolute(buf.position(), buf, stride);
+    }
+
+    /**
+     * Load the elements from the given byte buffer in row-major order, converting each element from
+     * {@code double}, starting at the given absolute index (the position is not used or modified),
+     * with {@code stride} elements between the starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the source byte buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRMDoubleAbsolute(int index, ByteBuffer buf, int stride) {
+        return StoreLoad.BB_OPS.loadRMDoubleAbsolute(index, buf, stride);
+    }
+
+    /**
+     * Load the elements from the given byte buffer in row-major order, converting each element from
+     * {@code double}, starting at its current position and advancing the position accordingly, with
+     * {@code stride} elements between the starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code buf}.
+     *
+     * @param buf the source byte buffer
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the byte buffer than the
+     *        position advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadRMDoubleRelative(ByteBuffer buf, int stride) {
+        if (buf.remaining() < 2L * stride * 8) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        Float2x3 r = StoreLoad.BB_OPS.loadRMDoubleAbsolute(pos, buf, stride);
+        buf.position(pos + 2 * stride * 8);
+        return r;
+    }
+
+    /**
+     * Store the elements into the given raw memory address in row-major order, converting each
+     * element to {@code double}, with {@code stride} elements between the starts of consecutive
+     * rows. No bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return this
+     */
+    public Float2x3 storeRMDoubleUnsafe(long address, int stride) {
+        return StoreLoad.RAW_OPS.storeRMDoubleUnsafe(this, address, stride);
+    }
+
+    /**
+     * Load the elements from the given raw memory address in row-major order, converting each
+     * element from {@code double}, with {@code stride} elements between the starts of consecutive
+     * rows. No bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be readable for all the elements.
+     *
+     * @param address the raw memory address
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRMDoubleUnsafe(long address, int stride) {
+        return StoreLoad.RAW_OPS.loadRMDoubleUnsafe(address, stride);
+    }
+
+    /**
+     * Store the elements into the given memory segment in row-major order, converting each element
+     * to {@code double}, with {@code stride} elements between the starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return dest
+     */
+    public MemorySegment storeRMDouble(MemorySegment dest, int stride) { return StoreLoad.SEG_OPS.storeRMDouble(this, 0L, dest, stride); }
+
+    /**
+     * Store the elements into the given memory segment in row-major order, converting each element
+     * to {@code double}, starting at the given offset, with {@code stride} elements between the
+     * starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return dest
+     */
+    public MemorySegment storeRMDouble(long offset, MemorySegment dest, int stride) {
+        return StoreLoad.SEG_OPS.storeRMDouble(this, offset, dest, stride);
+    }
+
+    /**
+     * Load the elements from the given memory segment in row-major order, converting each element
+     * from {@code double}, with {@code stride} elements between the starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source memory segment
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRMDouble(MemorySegment src, int stride) { return StoreLoad.SEG_OPS.loadRMDouble(0L, src, stride); }
+
+    /**
+     * Load the elements from the given memory segment in row-major order, converting each element
+     * from {@code double}, starting at the given offset, with {@code stride} elements between the
+     * starts of consecutive rows.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param src the source memory segment
+     * @param stride the number of elements between the starts of consecutive rows
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadRMDouble(long offset, MemorySegment src, int stride) {
+        return StoreLoad.SEG_OPS.loadRMDouble(offset, src, stride);
+    }
+
+    /**
+     * Store the elements into the given array in column-major order, identity-extended to a 3x3
+     * matrix, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    public float[] storeCM3x3(float[] dest, int offset) {
+        dest[offset] = this.m00;
+        dest[offset + 1] = this.m10;
+        dest[offset + 2] = 0.0f;
+        dest[offset + 3] = this.m01;
+        dest[offset + 4] = this.m11;
+        dest[offset + 5] = 0.0f;
+        dest[offset + 6] = this.m02;
+        dest[offset + 7] = this.m12;
+        dest[offset + 8] = 1.0f;
+        return dest;
+    }
+
+    /**
+     * Store the elements into the given array in column-major order, identity-extended to a 3x3
+     * matrix.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    public float[] storeCM3x3(float[] dest) { return storeCM3x3(dest, 0); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, identity-extended to a 3x3
+     * matrix, starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public FloatBuffer storeCM3x3(FloatBuffer buf) {
+        return StoreLoad.BB_OPS.storeCM3x3Absolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in column-major order, identity-extended to a 3x3
+     * matrix, starting at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public FloatBuffer storeCM3x3Absolute(int index, FloatBuffer buf) {
+        return StoreLoad.BB_OPS.storeCM3x3Absolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in column-major order, identity-extended to a 3x3
+     * matrix, starting at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public FloatBuffer storeCM3x3Relative(FloatBuffer buf) {
+        if (buf.remaining() < 9) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeCM3x3Absolute(this, pos, buf);
+        buf.position(pos + 9);
+        return buf;
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, identity-extended to a
+     * 3x3 matrix, starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeCM3x3(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeCM3x3Absolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, identity-extended to a
+     * 3x3 matrix, starting at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeCM3x3Absolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeCM3x3Absolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, identity-extended to a
+     * 3x3 matrix, starting at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer storeCM3x3Relative(ByteBuffer buf) {
+        if (buf.remaining() < 36) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeCM3x3Absolute(this, pos, buf);
+        buf.position(pos + 36);
+        return buf;
+    }
+
+    /**
+     * Store the elements into the given raw memory address in column-major order, identity-extended
+     * to a 3x3 matrix. No bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return this
+     */
+    public Float2x3 storeCM3x3Unsafe(long address) {
+        return StoreLoad.RAW_OPS.storeCM3x3Unsafe(this, address);
+    }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, identity-extended to
+     * a 3x3 matrix.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeCM3x3(MemorySegment dest) { return StoreLoad.SEG_OPS.storeCM3x3(this, 0L, dest); }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, identity-extended to
+     * a 3x3 matrix, starting at the given offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeCM3x3(long offset, MemorySegment dest) {
+        return StoreLoad.SEG_OPS.storeCM3x3(this, offset, dest);
+    }
+
+    /**
+     * Store the elements into the given array in column-major order, identity-extended to a 3x3
+     * matrix, converting each element to {@code double}, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    public double[] storeCM3x3(double[] dest, int offset) {
+        dest[offset] = this.m00;
+        dest[offset + 1] = this.m10;
+        dest[offset + 2] = 0.0;
+        dest[offset + 3] = this.m01;
+        dest[offset + 4] = this.m11;
+        dest[offset + 5] = 0.0;
+        dest[offset + 6] = this.m02;
+        dest[offset + 7] = this.m12;
+        dest[offset + 8] = 1.0;
+        return dest;
+    }
+
+    /**
+     * Store the elements into the given array in column-major order, identity-extended to a 3x3
+     * matrix, converting each element to {@code double}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    public double[] storeCM3x3(double[] dest) { return storeCM3x3(dest, 0); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, identity-extended to a 3x3
+     * matrix, converting each element to {@code double}, starting at its current position (the
+     * position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public DoubleBuffer storeCM3x3(DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.storeCM3x3Absolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in column-major order, identity-extended to a 3x3
+     * matrix, converting each element to {@code double}, starting at the given absolute index (the
+     * position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public DoubleBuffer storeCM3x3Absolute(int index, DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.storeCM3x3Absolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in column-major order, identity-extended to a 3x3
+     * matrix, converting each element to {@code double}, starting at its current position and
+     * advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public DoubleBuffer storeCM3x3Relative(DoubleBuffer buf) {
+        if (buf.remaining() < 9) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeCM3x3Absolute(this, pos, buf);
+        buf.position(pos + 9);
+        return buf;
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, identity-extended to a
+     * 3x3 matrix, converting each element to {@code double}, starting at its current position (the
+     * position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeCM3x3Double(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeCM3x3DoubleAbsolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, identity-extended to a
+     * 3x3 matrix, converting each element to {@code double}, starting at the given absolute index
+     * (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeCM3x3DoubleAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeCM3x3DoubleAbsolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, identity-extended to a
+     * 3x3 matrix, converting each element to {@code double}, starting at its current position and
+     * advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer storeCM3x3DoubleRelative(ByteBuffer buf) {
+        if (buf.remaining() < 72) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeCM3x3DoubleAbsolute(this, pos, buf);
+        buf.position(pos + 72);
+        return buf;
+    }
+
+    /**
+     * Store the elements into the given raw memory address in column-major order, identity-extended
+     * to a 3x3 matrix, converting each element to {@code double}. No bounds or liveness checks are
+     * performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return this
+     */
+    public Float2x3 storeCM3x3DoubleUnsafe(long address) {
+        return StoreLoad.RAW_OPS.storeCM3x3DoubleUnsafe(this, address);
+    }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, identity-extended to
+     * a 3x3 matrix, converting each element to {@code double}.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeCM3x3Double(MemorySegment dest) { return StoreLoad.SEG_OPS.storeCM3x3Double(this, 0L, dest); }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, identity-extended to
+     * a 3x3 matrix, converting each element to {@code double}, starting at the given offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeCM3x3Double(long offset, MemorySegment dest) {
+        return StoreLoad.SEG_OPS.storeCM3x3Double(this, offset, dest);
+    }
+
+    /**
+     * Store the elements into the given array in row-major order, identity-extended to a 3x3
+     * matrix, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    public float[] storeRM3x3(float[] dest, int offset) {
+        dest[offset] = this.m00;
+        dest[offset + 1] = this.m01;
+        dest[offset + 2] = this.m02;
+        dest[offset + 3] = this.m10;
+        dest[offset + 4] = this.m11;
+        dest[offset + 5] = this.m12;
+        dest[offset + 6] = 0.0f;
+        dest[offset + 7] = 0.0f;
+        dest[offset + 8] = 1.0f;
+        return dest;
+    }
+
+    /**
+     * Store the elements into the given array in row-major order, identity-extended to a 3x3
+     * matrix.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    public float[] storeRM3x3(float[] dest) { return storeRM3x3(dest, 0); }
+
+    /**
+     * Store the elements into the given buffer in row-major order, identity-extended to a 3x3
+     * matrix, starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public FloatBuffer storeRM3x3(FloatBuffer buf) {
+        return StoreLoad.BB_OPS.storeRM3x3Absolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in row-major order, identity-extended to a 3x3
+     * matrix, starting at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public FloatBuffer storeRM3x3Absolute(int index, FloatBuffer buf) {
+        return StoreLoad.BB_OPS.storeRM3x3Absolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in row-major order, identity-extended to a 3x3
+     * matrix, starting at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public FloatBuffer storeRM3x3Relative(FloatBuffer buf) {
+        if (buf.remaining() < 9) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeRM3x3Absolute(this, pos, buf);
+        buf.position(pos + 9);
+        return buf;
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, identity-extended to a 3x3
+     * matrix, starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeRM3x3(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeRM3x3Absolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, identity-extended to a 3x3
+     * matrix, starting at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeRM3x3Absolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeRM3x3Absolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, identity-extended to a 3x3
+     * matrix, starting at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer storeRM3x3Relative(ByteBuffer buf) {
+        if (buf.remaining() < 36) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeRM3x3Absolute(this, pos, buf);
+        buf.position(pos + 36);
+        return buf;
+    }
+
+    /**
+     * Store the elements into the given raw memory address in row-major order, identity-extended to
+     * a 3x3 matrix. No bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return this
+     */
+    public Float2x3 storeRM3x3Unsafe(long address) {
+        return StoreLoad.RAW_OPS.storeRM3x3Unsafe(this, address);
+    }
+
+    /**
+     * Store the elements into the given memory segment in row-major order, identity-extended to a
+     * 3x3 matrix.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeRM3x3(MemorySegment dest) { return StoreLoad.SEG_OPS.storeRM3x3(this, 0L, dest); }
+
+    /**
+     * Store the elements into the given memory segment in row-major order, identity-extended to a
+     * 3x3 matrix, starting at the given offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeRM3x3(long offset, MemorySegment dest) {
+        return StoreLoad.SEG_OPS.storeRM3x3(this, offset, dest);
+    }
+
+    /**
+     * Store the elements into the given array in row-major order, identity-extended to a 3x3
+     * matrix, converting each element to {@code double}, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    public double[] storeRM3x3(double[] dest, int offset) {
+        dest[offset] = this.m00;
+        dest[offset + 1] = this.m01;
+        dest[offset + 2] = this.m02;
+        dest[offset + 3] = this.m10;
+        dest[offset + 4] = this.m11;
+        dest[offset + 5] = this.m12;
+        dest[offset + 6] = 0.0;
+        dest[offset + 7] = 0.0;
+        dest[offset + 8] = 1.0;
+        return dest;
+    }
+
+    /**
+     * Store the elements into the given array in row-major order, identity-extended to a 3x3
+     * matrix, converting each element to {@code double}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    public double[] storeRM3x3(double[] dest) { return storeRM3x3(dest, 0); }
+
+    /**
+     * Store the elements into the given buffer in row-major order, identity-extended to a 3x3
+     * matrix, converting each element to {@code double}, starting at its current position (the
+     * position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public DoubleBuffer storeRM3x3(DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.storeRM3x3Absolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in row-major order, identity-extended to a 3x3
+     * matrix, converting each element to {@code double}, starting at the given absolute index (the
+     * position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public DoubleBuffer storeRM3x3Absolute(int index, DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.storeRM3x3Absolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in row-major order, identity-extended to a 3x3
+     * matrix, converting each element to {@code double}, starting at its current position and
+     * advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public DoubleBuffer storeRM3x3Relative(DoubleBuffer buf) {
+        if (buf.remaining() < 9) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeRM3x3Absolute(this, pos, buf);
+        buf.position(pos + 9);
+        return buf;
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, identity-extended to a 3x3
+     * matrix, converting each element to {@code double}, starting at its current position (the
+     * position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeRM3x3Double(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeRM3x3DoubleAbsolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, identity-extended to a 3x3
+     * matrix, converting each element to {@code double}, starting at the given absolute index (the
+     * position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeRM3x3DoubleAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeRM3x3DoubleAbsolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, identity-extended to a 3x3
+     * matrix, converting each element to {@code double}, starting at its current position and
+     * advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer storeRM3x3DoubleRelative(ByteBuffer buf) {
+        if (buf.remaining() < 72) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeRM3x3DoubleAbsolute(this, pos, buf);
+        buf.position(pos + 72);
+        return buf;
+    }
+
+    /**
+     * Store the elements into the given raw memory address in row-major order, identity-extended to
+     * a 3x3 matrix, converting each element to {@code double}. No bounds or liveness checks are
+     * performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return this
+     */
+    public Float2x3 storeRM3x3DoubleUnsafe(long address) {
+        return StoreLoad.RAW_OPS.storeRM3x3DoubleUnsafe(this, address);
+    }
+
+    /**
+     * Store the elements into the given memory segment in row-major order, identity-extended to a
+     * 3x3 matrix, converting each element to {@code double}.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeRM3x3Double(MemorySegment dest) { return StoreLoad.SEG_OPS.storeRM3x3Double(this, 0L, dest); }
+
+    /**
+     * Store the elements into the given memory segment in row-major order, identity-extended to a
+     * 3x3 matrix, converting each element to {@code double}, starting at the given offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeRM3x3Double(long offset, MemorySegment dest) {
+        return StoreLoad.SEG_OPS.storeRM3x3Double(this, offset, dest);
+    }
+
+    /**
+     * Store the elements into the given array in column-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, starting at the
+     * given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    public float[] storeCM4x4(float[] dest, int offset) {
+        dest[offset] = this.m00;
+        dest[offset + 1] = this.m10;
+        dest[offset + 2] = 0.0f;
+        dest[offset + 3] = 0.0f;
+        dest[offset + 4] = this.m01;
+        dest[offset + 5] = this.m11;
+        dest[offset + 6] = 0.0f;
+        dest[offset + 7] = 0.0f;
+        dest[offset + 8] = 0.0f;
+        dest[offset + 9] = 0.0f;
+        dest[offset + 10] = 1.0f;
+        dest[offset + 11] = 0.0f;
+        dest[offset + 12] = this.m02;
+        dest[offset + 13] = this.m12;
+        dest[offset + 14] = 0.0f;
+        dest[offset + 15] = 1.0f;
+        return dest;
+    }
+
+    /**
+     * Store the elements into the given array in column-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    public float[] storeCM4x4(float[] dest) { return storeCM4x4(dest, 0); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, starting at its
+     * current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public FloatBuffer storeCM4x4(FloatBuffer buf) {
+        return StoreLoad.BB_OPS.storeCM4x4Absolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in column-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, starting at the
+     * given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public FloatBuffer storeCM4x4Absolute(int index, FloatBuffer buf) {
+        return StoreLoad.BB_OPS.storeCM4x4Absolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in column-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, starting at its
+     * current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public FloatBuffer storeCM4x4Relative(FloatBuffer buf) {
+        if (buf.remaining() < 16) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeCM4x4Absolute(this, pos, buf);
+        buf.position(pos + 16);
+        return buf;
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, extended to a 4x4 matrix
+     * with the translation column moved to its last column and identity filling the gap, starting
+     * at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeCM4x4(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeCM4x4Absolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, extended to a 4x4 matrix
+     * with the translation column moved to its last column and identity filling the gap, starting
+     * at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeCM4x4Absolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeCM4x4Absolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, extended to a 4x4 matrix
+     * with the translation column moved to its last column and identity filling the gap, starting
+     * at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer storeCM4x4Relative(ByteBuffer buf) {
+        if (buf.remaining() < 64) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeCM4x4Absolute(this, pos, buf);
+        buf.position(pos + 64);
+        return buf;
+    }
+
+    /**
+     * Store the elements into the given raw memory address in column-major order, extended to a 4x4
+     * matrix with the translation column moved to its last column and identity filling the gap. No
+     * bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return this
+     */
+    public Float2x3 storeCM4x4Unsafe(long address) {
+        return StoreLoad.RAW_OPS.storeCM4x4Unsafe(this, address);
+    }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, extended to a 4x4
+     * matrix with the translation column moved to its last column and identity filling the gap.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeCM4x4(MemorySegment dest) { return StoreLoad.SEG_OPS.storeCM4x4(this, 0L, dest); }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, extended to a 4x4
+     * matrix with the translation column moved to its last column and identity filling the gap,
+     * starting at the given offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeCM4x4(long offset, MemorySegment dest) {
+        return StoreLoad.SEG_OPS.storeCM4x4(this, offset, dest);
+    }
+
+    /**
+     * Store the elements into the given array in column-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, converting each
+     * element to {@code double}, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    public double[] storeCM4x4(double[] dest, int offset) {
+        dest[offset] = this.m00;
+        dest[offset + 1] = this.m10;
+        dest[offset + 2] = 0.0;
+        dest[offset + 3] = 0.0;
+        dest[offset + 4] = this.m01;
+        dest[offset + 5] = this.m11;
+        dest[offset + 6] = 0.0;
+        dest[offset + 7] = 0.0;
+        dest[offset + 8] = 0.0;
+        dest[offset + 9] = 0.0;
+        dest[offset + 10] = 1.0;
+        dest[offset + 11] = 0.0;
+        dest[offset + 12] = this.m02;
+        dest[offset + 13] = this.m12;
+        dest[offset + 14] = 0.0;
+        dest[offset + 15] = 1.0;
+        return dest;
+    }
+
+    /**
+     * Store the elements into the given array in column-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, converting each
+     * element to {@code double}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    public double[] storeCM4x4(double[] dest) { return storeCM4x4(dest, 0); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, converting each
+     * element to {@code double}, starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public DoubleBuffer storeCM4x4(DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.storeCM4x4Absolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in column-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, converting each
+     * element to {@code double}, starting at the given absolute index (the position is not used or
+     * modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public DoubleBuffer storeCM4x4Absolute(int index, DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.storeCM4x4Absolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in column-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, converting each
+     * element to {@code double}, starting at its current position and advancing the position
+     * accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public DoubleBuffer storeCM4x4Relative(DoubleBuffer buf) {
+        if (buf.remaining() < 16) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeCM4x4Absolute(this, pos, buf);
+        buf.position(pos + 16);
+        return buf;
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, extended to a 4x4 matrix
+     * with the translation column moved to its last column and identity filling the gap, converting
+     * each element to {@code double}, starting at its current position (the position is not
+     * modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeCM4x4Double(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeCM4x4DoubleAbsolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, extended to a 4x4 matrix
+     * with the translation column moved to its last column and identity filling the gap, converting
+     * each element to {@code double}, starting at the given absolute index (the position is not
+     * used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeCM4x4DoubleAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeCM4x4DoubleAbsolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, extended to a 4x4 matrix
+     * with the translation column moved to its last column and identity filling the gap, converting
+     * each element to {@code double}, starting at its current position and advancing the position
+     * accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer storeCM4x4DoubleRelative(ByteBuffer buf) {
+        if (buf.remaining() < 128) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeCM4x4DoubleAbsolute(this, pos, buf);
+        buf.position(pos + 128);
+        return buf;
+    }
+
+    /**
+     * Store the elements into the given raw memory address in column-major order, extended to a 4x4
+     * matrix with the translation column moved to its last column and identity filling the gap,
+     * converting each element to {@code double}. No bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return this
+     */
+    public Float2x3 storeCM4x4DoubleUnsafe(long address) {
+        return StoreLoad.RAW_OPS.storeCM4x4DoubleUnsafe(this, address);
+    }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, extended to a 4x4
+     * matrix with the translation column moved to its last column and identity filling the gap,
+     * converting each element to {@code double}.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeCM4x4Double(MemorySegment dest) { return StoreLoad.SEG_OPS.storeCM4x4Double(this, 0L, dest); }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, extended to a 4x4
+     * matrix with the translation column moved to its last column and identity filling the gap,
+     * converting each element to {@code double}, starting at the given offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeCM4x4Double(long offset, MemorySegment dest) {
+        return StoreLoad.SEG_OPS.storeCM4x4Double(this, offset, dest);
+    }
+
+    /**
+     * Store the elements into the given array in row-major order, extended to a 4x4 matrix with the
+     * translation column moved to its last column and identity filling the gap, starting at the
+     * given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    public float[] storeRM4x4(float[] dest, int offset) {
+        dest[offset] = this.m00;
+        dest[offset + 1] = this.m01;
+        dest[offset + 2] = 0.0f;
+        dest[offset + 3] = this.m02;
+        dest[offset + 4] = this.m10;
+        dest[offset + 5] = this.m11;
+        dest[offset + 6] = 0.0f;
+        dest[offset + 7] = this.m12;
+        dest[offset + 8] = 0.0f;
+        dest[offset + 9] = 0.0f;
+        dest[offset + 10] = 1.0f;
+        dest[offset + 11] = 0.0f;
+        dest[offset + 12] = 0.0f;
+        dest[offset + 13] = 0.0f;
+        dest[offset + 14] = 0.0f;
+        dest[offset + 15] = 1.0f;
+        return dest;
+    }
+
+    /**
+     * Store the elements into the given array in row-major order, extended to a 4x4 matrix with the
+     * translation column moved to its last column and identity filling the gap.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    public float[] storeRM4x4(float[] dest) { return storeRM4x4(dest, 0); }
+
+    /**
+     * Store the elements into the given buffer in row-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, starting at its
+     * current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public FloatBuffer storeRM4x4(FloatBuffer buf) {
+        return StoreLoad.BB_OPS.storeRM4x4Absolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in row-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, starting at the
+     * given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public FloatBuffer storeRM4x4Absolute(int index, FloatBuffer buf) {
+        return StoreLoad.BB_OPS.storeRM4x4Absolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in row-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, starting at its
+     * current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public FloatBuffer storeRM4x4Relative(FloatBuffer buf) {
+        if (buf.remaining() < 16) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeRM4x4Absolute(this, pos, buf);
+        buf.position(pos + 16);
+        return buf;
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, extended to a 4x4 matrix
+     * with the translation column moved to its last column and identity filling the gap, starting
+     * at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeRM4x4(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeRM4x4Absolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, extended to a 4x4 matrix
+     * with the translation column moved to its last column and identity filling the gap, starting
+     * at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeRM4x4Absolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeRM4x4Absolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, extended to a 4x4 matrix
+     * with the translation column moved to its last column and identity filling the gap, starting
+     * at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer storeRM4x4Relative(ByteBuffer buf) {
+        if (buf.remaining() < 64) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeRM4x4Absolute(this, pos, buf);
+        buf.position(pos + 64);
+        return buf;
+    }
+
+    /**
+     * Store the elements into the given raw memory address in row-major order, extended to a 4x4
+     * matrix with the translation column moved to its last column and identity filling the gap. No
+     * bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return this
+     */
+    public Float2x3 storeRM4x4Unsafe(long address) {
+        return StoreLoad.RAW_OPS.storeRM4x4Unsafe(this, address);
+    }
+
+    /**
+     * Store the elements into the given memory segment in row-major order, extended to a 4x4 matrix
+     * with the translation column moved to its last column and identity filling the gap.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeRM4x4(MemorySegment dest) { return StoreLoad.SEG_OPS.storeRM4x4(this, 0L, dest); }
+
+    /**
+     * Store the elements into the given memory segment in row-major order, extended to a 4x4 matrix
+     * with the translation column moved to its last column and identity filling the gap, starting
+     * at the given offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeRM4x4(long offset, MemorySegment dest) {
+        return StoreLoad.SEG_OPS.storeRM4x4(this, offset, dest);
+    }
+
+    /**
+     * Store the elements into the given array in row-major order, extended to a 4x4 matrix with the
+     * translation column moved to its last column and identity filling the gap, converting each
+     * element to {@code double}, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    public double[] storeRM4x4(double[] dest, int offset) {
+        dest[offset] = this.m00;
+        dest[offset + 1] = this.m01;
+        dest[offset + 2] = 0.0;
+        dest[offset + 3] = this.m02;
+        dest[offset + 4] = this.m10;
+        dest[offset + 5] = this.m11;
+        dest[offset + 6] = 0.0;
+        dest[offset + 7] = this.m12;
+        dest[offset + 8] = 0.0;
+        dest[offset + 9] = 0.0;
+        dest[offset + 10] = 1.0;
+        dest[offset + 11] = 0.0;
+        dest[offset + 12] = 0.0;
+        dest[offset + 13] = 0.0;
+        dest[offset + 14] = 0.0;
+        dest[offset + 15] = 1.0;
+        return dest;
+    }
+
+    /**
+     * Store the elements into the given array in row-major order, extended to a 4x4 matrix with the
+     * translation column moved to its last column and identity filling the gap, converting each
+     * element to {@code double}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    public double[] storeRM4x4(double[] dest) { return storeRM4x4(dest, 0); }
+
+    /**
+     * Store the elements into the given buffer in row-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, converting each
+     * element to {@code double}, starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public DoubleBuffer storeRM4x4(DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.storeRM4x4Absolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in row-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, converting each
+     * element to {@code double}, starting at the given absolute index (the position is not used or
+     * modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param buf the destination buffer
+     * @return buf
+     */
+    public DoubleBuffer storeRM4x4Absolute(int index, DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.storeRM4x4Absolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given buffer in row-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, converting each
+     * element to {@code double}, starting at its current position and advancing the position
+     * accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public DoubleBuffer storeRM4x4Relative(DoubleBuffer buf) {
+        if (buf.remaining() < 16) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeRM4x4Absolute(this, pos, buf);
+        buf.position(pos + 16);
+        return buf;
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, extended to a 4x4 matrix
+     * with the translation column moved to its last column and identity filling the gap, converting
+     * each element to {@code double}, starting at its current position (the position is not
+     * modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeRM4x4Double(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeRM4x4DoubleAbsolute(this, buf.position(), buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, extended to a 4x4 matrix
+     * with the translation column moved to its last column and identity filling the gap, converting
+     * each element to {@code double}, starting at the given absolute index (the position is not
+     * used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param buf the destination byte buffer
+     * @return buf
+     */
+    public ByteBuffer storeRM4x4DoubleAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeRM4x4DoubleAbsolute(this, index, buf);
+    }
+
+    /**
+     * Store the elements into the given byte buffer in row-major order, extended to a 4x4 matrix
+     * with the translation column moved to its last column and identity filling the gap, converting
+     * each element to {@code double}, starting at its current position and advancing the position
+     * accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code buf}.
+     *
+     * @param buf the destination byte buffer
+     * @return buf
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer storeRM4x4DoubleRelative(ByteBuffer buf) {
+        if (buf.remaining() < 128) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeRM4x4DoubleAbsolute(this, pos, buf);
+        buf.position(pos + 128);
+        return buf;
+    }
+
+    /**
+     * Store the elements into the given raw memory address in row-major order, extended to a 4x4
+     * matrix with the translation column moved to its last column and identity filling the gap,
+     * converting each element to {@code double}. No bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return this
+     */
+    public Float2x3 storeRM4x4DoubleUnsafe(long address) {
+        return StoreLoad.RAW_OPS.storeRM4x4DoubleUnsafe(this, address);
+    }
+
+    /**
+     * Store the elements into the given memory segment in row-major order, extended to a 4x4 matrix
+     * with the translation column moved to its last column and identity filling the gap, converting
+     * each element to {@code double}.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeRM4x4Double(MemorySegment dest) { return StoreLoad.SEG_OPS.storeRM4x4Double(this, 0L, dest); }
+
+    /**
+     * Store the elements into the given memory segment in row-major order, extended to a 4x4 matrix
+     * with the translation column moved to its last column and identity filling the gap, converting
+     * each element to {@code double}, starting at the given offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment storeRM4x4Double(long offset, MemorySegment dest) {
+        return StoreLoad.SEG_OPS.storeRM4x4Double(this, offset, dest);
+    }
+
+    /**
+     * Store the elements into the given array in column-major order.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    public float[] store(float[] dest) { return storeCM(dest, 0); }
+
+    /**
+     * Store the elements into the given array in column-major order, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    public float[] store(float[] dest, int offset) { return storeCM(dest, offset); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, starting at its current
+     * position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination buffer
+     * @return dest
+     */
+    public FloatBuffer store(FloatBuffer dest) { return StoreLoad.BB_OPS.storeCMAbsolute(this, dest.position(), dest); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, starting at the given
+     * absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param dest the destination buffer
+     * @return dest
+     */
+    public FloatBuffer store(int index, FloatBuffer dest) { return StoreLoad.BB_OPS.storeCMAbsolute(this, index, dest); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, starting at its current
+     * position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination buffer
+     * @return dest
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public FloatBuffer storeRelative(FloatBuffer dest) { return storeCMRelative(dest); }
+
+    /**
+     * Store the elements into the given array in column-major order, converting each element to
+     * {@code double}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    public double[] store(double[] dest) { return storeCM(dest, 0); }
+
+    /**
+     * Store the elements into the given array in column-major order, converting each element to
+     * {@code double}, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    public double[] store(double[] dest, int offset) { return storeCM(dest, offset); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, converting each element to
+     * {@code double}, starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination buffer
+     * @return dest
+     */
+    public DoubleBuffer store(DoubleBuffer dest) { return StoreLoad.BB_OPS.storeCMAbsolute(this, dest.position(), dest); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, converting each element to
+     * {@code double}, starting at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param dest the destination buffer
+     * @return dest
+     */
+    public DoubleBuffer store(int index, DoubleBuffer dest) { return StoreLoad.BB_OPS.storeCMAbsolute(this, index, dest); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, converting each element to
+     * {@code double}, starting at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination buffer
+     * @return dest
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public DoubleBuffer storeRelative(DoubleBuffer dest) { return storeCMRelative(dest); }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, starting at its current
+     * position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination byte buffer
+     * @return dest
+     */
+    public ByteBuffer store(ByteBuffer dest) { return StoreLoad.BB_OPS.storeCMAbsolute(this, dest.position(), dest); }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, starting at the given
+     * absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param dest the destination byte buffer
+     * @return dest
+     */
+    public ByteBuffer store(int index, ByteBuffer dest) { return StoreLoad.BB_OPS.storeCMAbsolute(this, index, dest); }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, starting at its current
+     * position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination byte buffer
+     * @return dest
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer storeRelative(ByteBuffer dest) { return storeCMRelative(dest); }
+
+    /**
+     * Store the elements into the given memory segment in column-major order.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment store(MemorySegment dest) { return StoreLoad.SEG_OPS.storeCM(this, 0L, dest); }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, starting at the given
+     * offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment store(long offset, MemorySegment dest) { return StoreLoad.SEG_OPS.storeCM(this, offset, dest); }
+
+    /**
+     * Store the elements into the given raw memory address in column-major order. No bounds or
+     * liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return this
+     */
+    public Float2x3 storeUnsafe(long address) { return StoreLoad.RAW_OPS.storeCMUnsafe(this, address); }
+
+    /**
+     * Store the elements into the given array in column-major order, starting at the given offset,
+     * with {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return dest
+     */
+    public float[] store(float[] dest, int offset, int stride) { return storeCM(dest, offset, stride); }
+
+    /**
+     * Store the elements into the given array in column-major order, converting each element to
+     * {@code double}, starting at the given offset, with {@code stride} elements between the starts
+     * of consecutive columns.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return dest
+     */
+    public double[] store(double[] dest, int offset, int stride) { return storeCM(dest, offset, stride); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, starting at the given
+     * absolute index (the position is not used or modified), with {@code stride} elements between
+     * the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param dest the destination buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return dest
+     */
+    public FloatBuffer store(int index, FloatBuffer dest, int stride) { return StoreLoad.BB_OPS.storeCMAbsolute(this, index, dest, stride); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, starting at its current
+     * position and advancing the position accordingly, with {@code stride} elements between the
+     * starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return dest
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public FloatBuffer storeRelative(FloatBuffer dest, int stride) { return storeCMRelative(dest, stride); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, converting each element to
+     * {@code double}, starting at the given absolute index (the position is not used or modified),
+     * with {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param dest the destination buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return dest
+     */
+    public DoubleBuffer store(int index, DoubleBuffer dest, int stride) { return StoreLoad.BB_OPS.storeCMAbsolute(this, index, dest, stride); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, converting each element to
+     * {@code double}, starting at its current position and advancing the position accordingly, with
+     * {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return dest
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public DoubleBuffer storeRelative(DoubleBuffer dest, int stride) { return storeCMRelative(dest, stride); }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, starting at the given
+     * absolute index (the position is not used or modified), with {@code stride} elements between
+     * the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param dest the destination byte buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return dest
+     */
+    public ByteBuffer store(int index, ByteBuffer dest, int stride) { return StoreLoad.BB_OPS.storeCMAbsolute(this, index, dest, stride); }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, starting at its current
+     * position and advancing the position accordingly, with {@code stride} elements between the
+     * starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination byte buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return dest
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer storeRelative(ByteBuffer dest, int stride) { return storeCMRelative(dest, stride); }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, starting at the given
+     * offset, with {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return dest
+     */
+    public MemorySegment store(long offset, MemorySegment dest, int stride) { return StoreLoad.SEG_OPS.storeCM(this, offset, dest, stride); }
+
+    /**
+     * Store the elements into the given raw memory address in column-major order, with
+     * {@code stride} elements between the starts of consecutive columns. No bounds or liveness
+     * checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return this
+     */
+    public Float2x3 storeUnsafe(long address, int stride) { return StoreLoad.RAW_OPS.storeCMUnsafe(this, address, stride); }
+
+    /**
+     * Load the elements from the given array in column-major order.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 load(float[] src) { return loadCM(src, 0); }
+
+    /**
+     * Load the elements from the given array in column-major order, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @param offset the start offset in the array, in elements
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 load(float[] src, int offset) { return loadCM(src, offset); }
+
+    /**
+     * Load the elements from the given buffer in column-major order, starting at its current
+     * position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 load(FloatBuffer src) { return StoreLoad.BB_OPS.loadCMAbsolute(src.position(), src); }
+
+    /**
+     * Load the elements from the given buffer in column-major order, starting at the given absolute
+     * index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param src the source buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 load(int index, FloatBuffer src) { return StoreLoad.BB_OPS.loadCMAbsolute(index, src); }
+
+    /**
+     * Load the elements from the given buffer in column-major order, starting at its current
+     * position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the buffer than the position
+     *        advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadRelative(FloatBuffer src) { return loadCMRelative(src); }
+
+    /**
+     * Load the elements from the given array in column-major order, converting each element from
+     * {@code double}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 load(double[] src) { return loadCM(src, 0); }
+
+    /**
+     * Load the elements from the given array in column-major order, converting each element from
+     * {@code double}, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @param offset the start offset in the array, in elements
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 load(double[] src, int offset) { return loadCM(src, offset); }
+
+    /**
+     * Load the elements from the given buffer in column-major order, converting each element from
+     * {@code double}, starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 load(DoubleBuffer src) { return StoreLoad.BB_OPS.loadCMAbsolute(src.position(), src); }
+
+    /**
+     * Load the elements from the given buffer in column-major order, converting each element from
+     * {@code double}, starting at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param src the source buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 load(int index, DoubleBuffer src) { return StoreLoad.BB_OPS.loadCMAbsolute(index, src); }
+
+    /**
+     * Load the elements from the given buffer in column-major order, converting each element from
+     * {@code double}, starting at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the buffer than the position
+     *        advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadRelative(DoubleBuffer src) { return loadCMRelative(src); }
+
+    /**
+     * Load the elements from the given byte buffer in column-major order, starting at its current
+     * position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source byte buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 load(ByteBuffer src) { return StoreLoad.BB_OPS.loadCMAbsolute(src.position(), src); }
+
+    /**
+     * Load the elements from the given byte buffer in column-major order, starting at the given
+     * absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param src the source byte buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 load(int index, ByteBuffer src) { return StoreLoad.BB_OPS.loadCMAbsolute(index, src); }
+
+    /**
+     * Load the elements from the given byte buffer in column-major order, starting at its current
+     * position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source byte buffer
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the byte buffer than the
+     *        position advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadRelative(ByteBuffer src) { return loadCMRelative(src); }
+
+    /**
+     * Load the elements from the given memory segment in column-major order.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source memory segment
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 load(MemorySegment src) { return StoreLoad.SEG_OPS.loadCM(0L, src); }
+
+    /**
+     * Load the elements from the given memory segment in column-major order, starting at the given
+     * offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param src the source memory segment
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 load(long offset, MemorySegment src) { return StoreLoad.SEG_OPS.loadCM(offset, src); }
+
+    /**
+     * Load the elements from the given raw memory address in column-major order. No bounds or
+     * liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be readable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadUnsafe(long address) { return StoreLoad.RAW_OPS.loadCMUnsafe(address); }
+
+    /**
+     * Load the elements from the given array in column-major order, starting at the given offset,
+     * with {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @param offset the start offset in the array, in elements
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 load(float[] src, int offset, int stride) { return loadCM(src, offset, stride); }
+
+    /**
+     * Load the elements from the given array in column-major order, converting each element from
+     * {@code double}, starting at the given offset, with {@code stride} elements between the starts
+     * of consecutive columns.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source array
+     * @param offset the start offset in the array, in elements
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 load(double[] src, int offset, int stride) { return loadCM(src, offset, stride); }
+
+    /**
+     * Load the elements from the given buffer in column-major order, starting at the given absolute
+     * index (the position is not used or modified), with {@code stride} elements between the starts
+     * of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param src the source buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 load(int index, FloatBuffer src, int stride) { return StoreLoad.BB_OPS.loadCMAbsolute(index, src, stride); }
+
+    /**
+     * Load the elements from the given buffer in column-major order, starting at its current
+     * position and advancing the position accordingly, with {@code stride} elements between the
+     * starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the buffer than the position
+     *        advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadRelative(FloatBuffer src, int stride) { return loadCMRelative(src, stride); }
+
+    /**
+     * Load the elements from the given buffer in column-major order, converting each element from
+     * {@code double}, starting at the given absolute index (the position is not used or modified),
+     * with {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param src the source buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 load(int index, DoubleBuffer src, int stride) { return StoreLoad.BB_OPS.loadCMAbsolute(index, src, stride); }
+
+    /**
+     * Load the elements from the given buffer in column-major order, converting each element from
+     * {@code double}, starting at its current position and advancing the position accordingly, with
+     * {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the buffer than the position
+     *        advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadRelative(DoubleBuffer src, int stride) { return loadCMRelative(src, stride); }
+
+    /**
+     * Load the elements from the given byte buffer in column-major order, starting at the given
+     * absolute index (the position is not used or modified), with {@code stride} elements between
+     * the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param src the source byte buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 load(int index, ByteBuffer src, int stride) { return StoreLoad.BB_OPS.loadCMAbsolute(index, src, stride); }
+
+    /**
+     * Load the elements from the given byte buffer in column-major order, starting at its current
+     * position and advancing the position accordingly, with {@code stride} elements between the
+     * starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param src the source byte buffer
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     * @throws java.nio.BufferUnderflowException if less remains in the byte buffer than the
+     *        position advances over; nothing is loaded and the position is unchanged
+     */
+    public static Float2x3 loadRelative(ByteBuffer src, int stride) { return loadCMRelative(src, stride); }
+
+    /**
+     * Load the elements from the given memory segment in column-major order, starting at the given
+     * offset, with {@code stride} elements between the starts of consecutive columns.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements read must lie within
+     * {@code src}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param src the source memory segment
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 load(long offset, MemorySegment src, int stride) { return StoreLoad.SEG_OPS.loadCM(offset, src, stride); }
+
+    /**
+     * Load the elements from the given raw memory address in column-major order, with
+     * {@code stride} elements between the starts of consecutive columns. No bounds or liveness
+     * checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be readable for all the elements.
+     *
+     * @param address the raw memory address
+     * @param stride the number of elements between the starts of consecutive columns
+     * @return a new {@code Float2x3} holding the loaded elements
+     */
+    public static Float2x3 loadUnsafe(long address, int stride) { return StoreLoad.RAW_OPS.loadCMUnsafe(address, stride); }
+
+    /**
+     * Store the elements into the given array in column-major order, identity-extended to a 3x3
+     * matrix.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    public float[] store3x3(float[] dest) { return storeCM3x3(dest, 0); }
+
+    /**
+     * Store the elements into the given array in column-major order, identity-extended to a 3x3
+     * matrix, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    public float[] store3x3(float[] dest, int offset) { return storeCM3x3(dest, offset); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, identity-extended to a 3x3
+     * matrix, starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination buffer
+     * @return dest
+     */
+    public FloatBuffer store3x3(FloatBuffer dest) { return StoreLoad.BB_OPS.storeCM3x3Absolute(this, dest.position(), dest); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, identity-extended to a 3x3
+     * matrix, starting at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param dest the destination buffer
+     * @return dest
+     */
+    public FloatBuffer store3x3(int index, FloatBuffer dest) { return StoreLoad.BB_OPS.storeCM3x3Absolute(this, index, dest); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, identity-extended to a 3x3
+     * matrix, starting at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination buffer
+     * @return dest
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public FloatBuffer store3x3Relative(FloatBuffer dest) { return storeCM3x3Relative(dest); }
+
+    /**
+     * Store the elements into the given array in column-major order, identity-extended to a 3x3
+     * matrix, converting each element to {@code double}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    public double[] store3x3(double[] dest) { return storeCM3x3(dest, 0); }
+
+    /**
+     * Store the elements into the given array in column-major order, identity-extended to a 3x3
+     * matrix, converting each element to {@code double}, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    public double[] store3x3(double[] dest, int offset) { return storeCM3x3(dest, offset); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, identity-extended to a 3x3
+     * matrix, converting each element to {@code double}, starting at its current position (the
+     * position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination buffer
+     * @return dest
+     */
+    public DoubleBuffer store3x3(DoubleBuffer dest) { return StoreLoad.BB_OPS.storeCM3x3Absolute(this, dest.position(), dest); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, identity-extended to a 3x3
+     * matrix, converting each element to {@code double}, starting at the given absolute index (the
+     * position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param dest the destination buffer
+     * @return dest
+     */
+    public DoubleBuffer store3x3(int index, DoubleBuffer dest) { return StoreLoad.BB_OPS.storeCM3x3Absolute(this, index, dest); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, identity-extended to a 3x3
+     * matrix, converting each element to {@code double}, starting at its current position and
+     * advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination buffer
+     * @return dest
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public DoubleBuffer store3x3Relative(DoubleBuffer dest) { return storeCM3x3Relative(dest); }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, identity-extended to a
+     * 3x3 matrix, starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination byte buffer
+     * @return dest
+     */
+    public ByteBuffer store3x3(ByteBuffer dest) { return StoreLoad.BB_OPS.storeCM3x3Absolute(this, dest.position(), dest); }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, identity-extended to a
+     * 3x3 matrix, starting at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param dest the destination byte buffer
+     * @return dest
+     */
+    public ByteBuffer store3x3(int index, ByteBuffer dest) { return StoreLoad.BB_OPS.storeCM3x3Absolute(this, index, dest); }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, identity-extended to a
+     * 3x3 matrix, starting at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination byte buffer
+     * @return dest
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer store3x3Relative(ByteBuffer dest) { return storeCM3x3Relative(dest); }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, identity-extended to
+     * a 3x3 matrix.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment store3x3(MemorySegment dest) { return StoreLoad.SEG_OPS.storeCM3x3(this, 0L, dest); }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, identity-extended to
+     * a 3x3 matrix, starting at the given offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment store3x3(long offset, MemorySegment dest) { return StoreLoad.SEG_OPS.storeCM3x3(this, offset, dest); }
+
+    /**
+     * Store the elements into the given raw memory address in column-major order, identity-extended
+     * to a 3x3 matrix. No bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return this
+     */
+    public Float2x3 store3x3Unsafe(long address) { return StoreLoad.RAW_OPS.storeCM3x3Unsafe(this, address); }
+
+    /**
+     * Store the elements into the given array in column-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    public float[] store4x4(float[] dest) { return storeCM4x4(dest, 0); }
+
+    /**
+     * Store the elements into the given array in column-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, starting at the
+     * given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    public float[] store4x4(float[] dest, int offset) { return storeCM4x4(dest, offset); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, starting at its
+     * current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination buffer
+     * @return dest
+     */
+    public FloatBuffer store4x4(FloatBuffer dest) { return StoreLoad.BB_OPS.storeCM4x4Absolute(this, dest.position(), dest); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, starting at the
+     * given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param dest the destination buffer
+     * @return dest
+     */
+    public FloatBuffer store4x4(int index, FloatBuffer dest) { return StoreLoad.BB_OPS.storeCM4x4Absolute(this, index, dest); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, starting at its
+     * current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination buffer
+     * @return dest
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public FloatBuffer store4x4Relative(FloatBuffer dest) { return storeCM4x4Relative(dest); }
+
+    /**
+     * Store the elements into the given array in column-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, converting each
+     * element to {@code double}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    public double[] store4x4(double[] dest) { return storeCM4x4(dest, 0); }
+
+    /**
+     * Store the elements into the given array in column-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, converting each
+     * element to {@code double}, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    public double[] store4x4(double[] dest, int offset) { return storeCM4x4(dest, offset); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, converting each
+     * element to {@code double}, starting at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination buffer
+     * @return dest
+     */
+    public DoubleBuffer store4x4(DoubleBuffer dest) { return StoreLoad.BB_OPS.storeCM4x4Absolute(this, dest.position(), dest); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, converting each
+     * element to {@code double}, starting at the given absolute index (the position is not used or
+     * modified).
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param index the absolute element index in the buffer
+     * @param dest the destination buffer
+     * @return dest
+     */
+    public DoubleBuffer store4x4(int index, DoubleBuffer dest) { return StoreLoad.BB_OPS.storeCM4x4Absolute(this, index, dest); }
+
+    /**
+     * Store the elements into the given buffer in column-major order, extended to a 4x4 matrix with
+     * the translation column moved to its last column and identity filling the gap, converting each
+     * element to {@code double}, starting at its current position and advancing the position
+     * accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct buffer in native byte order takes the fast path; any other
+     * byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination buffer
+     * @return dest
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public DoubleBuffer store4x4Relative(DoubleBuffer dest) { return storeCM4x4Relative(dest); }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, extended to a 4x4 matrix
+     * with the translation column moved to its last column and identity filling the gap, starting
+     * at its current position (the position is not modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination byte buffer
+     * @return dest
+     */
+    public ByteBuffer store4x4(ByteBuffer dest) { return StoreLoad.BB_OPS.storeCM4x4Absolute(this, dest.position(), dest); }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, extended to a 4x4 matrix
+     * with the translation column moved to its last column and identity filling the gap, starting
+     * at the given absolute index (the position is not used or modified).
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param dest the destination byte buffer
+     * @return dest
+     */
+    public ByteBuffer store4x4(int index, ByteBuffer dest) { return StoreLoad.BB_OPS.storeCM4x4Absolute(this, index, dest); }
+
+    /**
+     * Store the elements into the given byte buffer in column-major order, extended to a 4x4 matrix
+     * with the translation column moved to its last column and identity filling the gap, starting
+     * at its current position and advancing the position accordingly.
+     * <p>
+     * With the UNSAFE backend, a direct or heap buffer in native byte order takes the fast path;
+     * any other byte order is honoured through the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination byte buffer
+     * @return dest
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    public ByteBuffer store4x4Relative(ByteBuffer dest) { return storeCM4x4Relative(dest); }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, extended to a 4x4
+     * matrix with the translation column moved to its last column and identity filling the gap.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment store4x4(MemorySegment dest) { return StoreLoad.SEG_OPS.storeCM4x4(this, 0L, dest); }
+
+    /**
+     * Store the elements into the given memory segment in column-major order, extended to a 4x4
+     * matrix with the translation column moved to its last column and identity filling the gap,
+     * starting at the given offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers, native-order heap {@code ByteBuffer}s,
+     * native segments and {@code byte[]}-backed heap segments are not bounds-checked and segment
+     * liveness / thread confinement is not verified; the API backend performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the elements written must lie within
+     * {@code dest}.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    public MemorySegment store4x4(long offset, MemorySegment dest) { return StoreLoad.SEG_OPS.storeCM4x4(this, offset, dest); }
+
+    /**
+     * Store the elements into the given raw memory address in column-major order, extended to a 4x4
+     * matrix with the translation column moved to its last column and identity filling the gap. No
+     * bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included; the memory at {@code address} must
+     * be writable for all the elements.
+     *
+     * @param address the raw memory address
+     * @return this
+     */
+    public Float2x3 store4x4Unsafe(long address) { return StoreLoad.RAW_OPS.storeCM4x4Unsafe(this, address); }
+
+    /**
+     * The power of two that brings max(|a|, |b|, |c|) into [1, 2), from the largest exponent
+     * field: multiplying by it is exact. Clamped to [2^-126, 2^126], so zero and subnormal
+     * values scale up without overflow and the largest floats land in [2, 4).
+     */
+    private static float unitScale(float a, float b, float c) {
+        int e = java.lang.Math.max(java.lang.Math.max(Float.floatToRawIntBits(a) & 0x7F800000,
+                Float.floatToRawIntBits(b) & 0x7F800000), Float.floatToRawIntBits(c) & 0x7F800000);
+        return Float.intBitsToFloat(0x7F000000 - java.lang.Math.min(java.lang.Math.max(e, 0x00800000), 0x7E800000));
+    }
+
+    /**
+     * The power of two that brings max(|a|, |b|, |c|) into [1, 2), from the largest exponent
+     * field: multiplying by it is exact. Clamped to [2^-1022, 2^1022], so zero and subnormal
+     * values scale up without overflow and the largest doubles land in [2, 4).
+     */
+    private static double unitScale(double a, double b, double c) {
+        long e = java.lang.Math.max(java.lang.Math.max(Double.doubleToRawLongBits(a) & 0x7FF0000000000000L,
+                Double.doubleToRawLongBits(b) & 0x7FF0000000000000L), Double.doubleToRawLongBits(c) & 0x7FF0000000000000L);
+        return Double.longBitsToDouble(0x7FE0000000000000L
+                - java.lang.Math.min(java.lang.Math.max(e, 0x0010000000000000L), 0x7FD0000000000000L));
+    }
+
+    private abstract static class Float2x3SegOps {
+        public abstract MemorySegment storeCM(Float2x3 self, long offset, MemorySegment dest);
+        public abstract Float2x3 loadCM(long offset, MemorySegment src);
+        public abstract MemorySegment storeCMDouble(Float2x3 self, long offset, MemorySegment dest);
+        public abstract Float2x3 loadCMDouble(long offset, MemorySegment src);
+        public abstract MemorySegment storeRM(Float2x3 self, long offset, MemorySegment dest);
+        public abstract Float2x3 loadRM(long offset, MemorySegment src);
+        public abstract MemorySegment storeRMDouble(Float2x3 self, long offset, MemorySegment dest);
+        public abstract Float2x3 loadRMDouble(long offset, MemorySegment src);
+        public abstract MemorySegment storeCM(Float2x3 self, long offset, MemorySegment dest, int stride);
+        public abstract Float2x3 loadCM(long offset, MemorySegment src, int stride);
+        public abstract MemorySegment storeCMDouble(Float2x3 self, long offset, MemorySegment dest, int stride);
+        public abstract Float2x3 loadCMDouble(long offset, MemorySegment src, int stride);
+        public abstract MemorySegment storeRM(Float2x3 self, long offset, MemorySegment dest, int stride);
+        public abstract Float2x3 loadRM(long offset, MemorySegment src, int stride);
+        public abstract MemorySegment storeRMDouble(Float2x3 self, long offset, MemorySegment dest, int stride);
+        public abstract Float2x3 loadRMDouble(long offset, MemorySegment src, int stride);
+        public abstract MemorySegment storeCM3x3(Float2x3 self, long offset, MemorySegment dest);
+        public abstract MemorySegment storeCM3x3Double(Float2x3 self, long offset, MemorySegment dest);
+        public abstract MemorySegment storeRM3x3(Float2x3 self, long offset, MemorySegment dest);
+        public abstract MemorySegment storeRM3x3Double(Float2x3 self, long offset, MemorySegment dest);
+        public abstract MemorySegment storeCM4x4(Float2x3 self, long offset, MemorySegment dest);
+        public abstract MemorySegment storeCM4x4Double(Float2x3 self, long offset, MemorySegment dest);
+        public abstract MemorySegment storeRM4x4(Float2x3 self, long offset, MemorySegment dest);
+        public abstract MemorySegment storeRM4x4Double(Float2x3 self, long offset, MemorySegment dest);
+    }
+
+    private static final class Float2x3SegOpsMS extends Float2x3SegOps {
+        public MemorySegment storeCM(Float2x3 self, long offset, MemorySegment dest) {
+            java.lang.foreign.ValueLayout.OfFloat _JAVA_FLOAT_UNALIGNED = ValueLayout.JAVA_FLOAT_UNALIGNED;
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset, self.m00);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 4L, self.m10);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 8L, self.m01);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 12L, self.m11);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 16L, self.m02);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 20L, self.m12);
+            return dest;
+        }
+
+        public Float2x3 loadCM(long offset, MemorySegment src) {
+            java.lang.foreign.ValueLayout.OfFloat _JAVA_FLOAT_UNALIGNED = ValueLayout.JAVA_FLOAT_UNALIGNED;
+            float _c0 = src.get(_JAVA_FLOAT_UNALIGNED, offset);
+            float _c3 = src.get(_JAVA_FLOAT_UNALIGNED, offset + 4L);
+            float _c1 = src.get(_JAVA_FLOAT_UNALIGNED, offset + 8L);
+            float _c4 = src.get(_JAVA_FLOAT_UNALIGNED, offset + 12L);
+            float _c2 = src.get(_JAVA_FLOAT_UNALIGNED, offset + 16L);
+            float _c5 = src.get(_JAVA_FLOAT_UNALIGNED, offset + 20L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public MemorySegment storeCMDouble(Float2x3 self, long offset, MemorySegment dest) {
+            java.lang.foreign.ValueLayout.OfDouble _JAVA_DOUBLE_UNALIGNED = ValueLayout.JAVA_DOUBLE_UNALIGNED;
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset, self.m00);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 8L, self.m10);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 16L, self.m01);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 24L, self.m11);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 32L, self.m02);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 40L, self.m12);
+            return dest;
+        }
+
+        public Float2x3 loadCMDouble(long offset, MemorySegment src) {
+            java.lang.foreign.ValueLayout.OfDouble _JAVA_DOUBLE_UNALIGNED = ValueLayout.JAVA_DOUBLE_UNALIGNED;
+            float _c0 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, offset);
+            float _c3 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, offset + 8L);
+            float _c1 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, offset + 16L);
+            float _c4 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, offset + 24L);
+            float _c2 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, offset + 32L);
+            float _c5 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, offset + 40L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public MemorySegment storeRM(Float2x3 self, long offset, MemorySegment dest) {
+            java.lang.foreign.ValueLayout.OfFloat _JAVA_FLOAT_UNALIGNED = ValueLayout.JAVA_FLOAT_UNALIGNED;
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset, self.m00);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 4L, self.m01);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 8L, self.m02);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 12L, self.m10);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 16L, self.m11);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 20L, self.m12);
+            return dest;
+        }
+
+        public Float2x3 loadRM(long offset, MemorySegment src) {
+            java.lang.foreign.ValueLayout.OfFloat _JAVA_FLOAT_UNALIGNED = ValueLayout.JAVA_FLOAT_UNALIGNED;
+            float _c0 = src.get(_JAVA_FLOAT_UNALIGNED, offset);
+            float _c1 = src.get(_JAVA_FLOAT_UNALIGNED, offset + 4L);
+            float _c2 = src.get(_JAVA_FLOAT_UNALIGNED, offset + 8L);
+            float _c3 = src.get(_JAVA_FLOAT_UNALIGNED, offset + 12L);
+            float _c4 = src.get(_JAVA_FLOAT_UNALIGNED, offset + 16L);
+            float _c5 = src.get(_JAVA_FLOAT_UNALIGNED, offset + 20L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public MemorySegment storeRMDouble(Float2x3 self, long offset, MemorySegment dest) {
+            java.lang.foreign.ValueLayout.OfDouble _JAVA_DOUBLE_UNALIGNED = ValueLayout.JAVA_DOUBLE_UNALIGNED;
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset, self.m00);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 8L, self.m01);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 16L, self.m02);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 24L, self.m10);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 32L, self.m11);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 40L, self.m12);
+            return dest;
+        }
+
+        public Float2x3 loadRMDouble(long offset, MemorySegment src) {
+            java.lang.foreign.ValueLayout.OfDouble _JAVA_DOUBLE_UNALIGNED = ValueLayout.JAVA_DOUBLE_UNALIGNED;
+            float _c0 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, offset);
+            float _c1 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, offset + 8L);
+            float _c2 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, offset + 16L);
+            float _c3 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, offset + 24L);
+            float _c4 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, offset + 32L);
+            float _c5 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, offset + 40L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public MemorySegment storeCM(Float2x3 self, long offset, MemorySegment dest, int stride) {
+            long _ps = stride * 4L;
+            long _p1 = offset + _ps;
+            long _p2 = _p1 + _ps;
+            java.lang.foreign.ValueLayout.OfFloat _JAVA_FLOAT_UNALIGNED = ValueLayout.JAVA_FLOAT_UNALIGNED;
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset, self.m00);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 4, self.m10);
+            dest.set(_JAVA_FLOAT_UNALIGNED, _p1, self.m01);
+            dest.set(_JAVA_FLOAT_UNALIGNED, _p1 + 4, self.m11);
+            dest.set(_JAVA_FLOAT_UNALIGNED, _p2, self.m02);
+            dest.set(_JAVA_FLOAT_UNALIGNED, _p2 + 4, self.m12);
+            return dest;
+        }
+
+        public Float2x3 loadCM(long offset, MemorySegment src, int stride) {
+            long _ps = stride * 4L;
+            long _p1 = offset + _ps;
+            long _p2 = _p1 + _ps;
+            java.lang.foreign.ValueLayout.OfFloat _JAVA_FLOAT_UNALIGNED = ValueLayout.JAVA_FLOAT_UNALIGNED;
+            float _c0 = src.get(_JAVA_FLOAT_UNALIGNED, offset);
+            float _c3 = src.get(_JAVA_FLOAT_UNALIGNED, offset + 4);
+            float _c1 = src.get(_JAVA_FLOAT_UNALIGNED, _p1);
+            float _c4 = src.get(_JAVA_FLOAT_UNALIGNED, _p1 + 4);
+            float _c2 = src.get(_JAVA_FLOAT_UNALIGNED, _p2);
+            float _c5 = src.get(_JAVA_FLOAT_UNALIGNED, _p2 + 4);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public MemorySegment storeCMDouble(Float2x3 self, long offset, MemorySegment dest, int stride) {
+            long _ps = stride * 8L;
+            long _p1 = offset + _ps;
+            long _p2 = _p1 + _ps;
+            java.lang.foreign.ValueLayout.OfDouble _JAVA_DOUBLE_UNALIGNED = ValueLayout.JAVA_DOUBLE_UNALIGNED;
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset, self.m00);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 8, self.m10);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, _p1, self.m01);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, _p1 + 8, self.m11);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, _p2, self.m02);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, _p2 + 8, self.m12);
+            return dest;
+        }
+
+        public Float2x3 loadCMDouble(long offset, MemorySegment src, int stride) {
+            long _ps = stride * 8L;
+            long _p1 = offset + _ps;
+            long _p2 = _p1 + _ps;
+            java.lang.foreign.ValueLayout.OfDouble _JAVA_DOUBLE_UNALIGNED = ValueLayout.JAVA_DOUBLE_UNALIGNED;
+            float _c0 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, offset);
+            float _c3 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, offset + 8);
+            float _c1 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, _p1);
+            float _c4 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, _p1 + 8);
+            float _c2 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, _p2);
+            float _c5 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, _p2 + 8);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public MemorySegment storeRM(Float2x3 self, long offset, MemorySegment dest, int stride) {
+            long _ps = stride * 4L;
+            long _p1 = offset + _ps;
+            java.lang.foreign.ValueLayout.OfFloat _JAVA_FLOAT_UNALIGNED = ValueLayout.JAVA_FLOAT_UNALIGNED;
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset, self.m00);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 4, self.m01);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 8, self.m02);
+            dest.set(_JAVA_FLOAT_UNALIGNED, _p1, self.m10);
+            dest.set(_JAVA_FLOAT_UNALIGNED, _p1 + 4, self.m11);
+            dest.set(_JAVA_FLOAT_UNALIGNED, _p1 + 8, self.m12);
+            return dest;
+        }
+
+        public Float2x3 loadRM(long offset, MemorySegment src, int stride) {
+            long _ps = stride * 4L;
+            long _p1 = offset + _ps;
+            java.lang.foreign.ValueLayout.OfFloat _JAVA_FLOAT_UNALIGNED = ValueLayout.JAVA_FLOAT_UNALIGNED;
+            float _c0 = src.get(_JAVA_FLOAT_UNALIGNED, offset);
+            float _c1 = src.get(_JAVA_FLOAT_UNALIGNED, offset + 4);
+            float _c2 = src.get(_JAVA_FLOAT_UNALIGNED, offset + 8);
+            float _c3 = src.get(_JAVA_FLOAT_UNALIGNED, _p1);
+            float _c4 = src.get(_JAVA_FLOAT_UNALIGNED, _p1 + 4);
+            float _c5 = src.get(_JAVA_FLOAT_UNALIGNED, _p1 + 8);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public MemorySegment storeRMDouble(Float2x3 self, long offset, MemorySegment dest, int stride) {
+            long _ps = stride * 8L;
+            long _p1 = offset + _ps;
+            java.lang.foreign.ValueLayout.OfDouble _JAVA_DOUBLE_UNALIGNED = ValueLayout.JAVA_DOUBLE_UNALIGNED;
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset, self.m00);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 8, self.m01);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 16, self.m02);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, _p1, self.m10);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, _p1 + 8, self.m11);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, _p1 + 16, self.m12);
+            return dest;
+        }
+
+        public Float2x3 loadRMDouble(long offset, MemorySegment src, int stride) {
+            long _ps = stride * 8L;
+            long _p1 = offset + _ps;
+            java.lang.foreign.ValueLayout.OfDouble _JAVA_DOUBLE_UNALIGNED = ValueLayout.JAVA_DOUBLE_UNALIGNED;
+            float _c0 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, offset);
+            float _c1 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, offset + 8);
+            float _c2 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, offset + 16);
+            float _c3 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, _p1);
+            float _c4 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, _p1 + 8);
+            float _c5 = (float) src.get(_JAVA_DOUBLE_UNALIGNED, _p1 + 16);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public MemorySegment storeCM3x3(Float2x3 self, long offset, MemorySegment dest) {
+            java.lang.foreign.ValueLayout.OfFloat _JAVA_FLOAT_UNALIGNED = ValueLayout.JAVA_FLOAT_UNALIGNED;
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset, self.m00);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 4L, self.m10);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 8L, 0.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 12L, self.m01);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 16L, self.m11);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 20L, 0.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 24L, self.m02);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 28L, self.m12);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 32L, 1.0f);
+            return dest;
+        }
+
+        public MemorySegment storeCM3x3Double(Float2x3 self, long offset, MemorySegment dest) {
+            java.lang.foreign.ValueLayout.OfDouble _JAVA_DOUBLE_UNALIGNED = ValueLayout.JAVA_DOUBLE_UNALIGNED;
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset, self.m00);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 8L, self.m10);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 16L, 0.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 24L, self.m01);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 32L, self.m11);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 40L, 0.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 48L, self.m02);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 56L, self.m12);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 64L, 1.0);
+            return dest;
+        }
+
+        public MemorySegment storeRM3x3(Float2x3 self, long offset, MemorySegment dest) {
+            java.lang.foreign.ValueLayout.OfFloat _JAVA_FLOAT_UNALIGNED = ValueLayout.JAVA_FLOAT_UNALIGNED;
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset, self.m00);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 4L, self.m01);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 8L, self.m02);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 12L, self.m10);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 16L, self.m11);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 20L, self.m12);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 24L, 0.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 28L, 0.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 32L, 1.0f);
+            return dest;
+        }
+
+        public MemorySegment storeRM3x3Double(Float2x3 self, long offset, MemorySegment dest) {
+            java.lang.foreign.ValueLayout.OfDouble _JAVA_DOUBLE_UNALIGNED = ValueLayout.JAVA_DOUBLE_UNALIGNED;
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset, self.m00);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 8L, self.m01);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 16L, self.m02);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 24L, self.m10);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 32L, self.m11);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 40L, self.m12);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 48L, 0.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 56L, 0.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 64L, 1.0);
+            return dest;
+        }
+
+        public MemorySegment storeCM4x4(Float2x3 self, long offset, MemorySegment dest) {
+            java.lang.foreign.ValueLayout.OfFloat _JAVA_FLOAT_UNALIGNED = ValueLayout.JAVA_FLOAT_UNALIGNED;
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset, self.m00);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 4L, self.m10);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 8L, 0.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 12L, 0.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 16L, self.m01);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 20L, self.m11);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 24L, 0.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 28L, 0.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 32L, 0.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 36L, 0.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 40L, 1.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 44L, 0.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 48L, self.m02);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 52L, self.m12);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 56L, 0.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 60L, 1.0f);
+            return dest;
+        }
+
+        public MemorySegment storeCM4x4Double(Float2x3 self, long offset, MemorySegment dest) {
+            java.lang.foreign.ValueLayout.OfDouble _JAVA_DOUBLE_UNALIGNED = ValueLayout.JAVA_DOUBLE_UNALIGNED;
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset, self.m00);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 8L, self.m10);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 16L, 0.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 24L, 0.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 32L, self.m01);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 40L, self.m11);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 48L, 0.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 56L, 0.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 64L, 0.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 72L, 0.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 80L, 1.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 88L, 0.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 96L, self.m02);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 104L, self.m12);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 112L, 0.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 120L, 1.0);
+            return dest;
+        }
+
+        public MemorySegment storeRM4x4(Float2x3 self, long offset, MemorySegment dest) {
+            java.lang.foreign.ValueLayout.OfFloat _JAVA_FLOAT_UNALIGNED = ValueLayout.JAVA_FLOAT_UNALIGNED;
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset, self.m00);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 4L, self.m01);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 8L, 0.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 12L, self.m02);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 16L, self.m10);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 20L, self.m11);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 24L, 0.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 28L, self.m12);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 32L, 0.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 36L, 0.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 40L, 1.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 44L, 0.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 48L, 0.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 52L, 0.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 56L, 0.0f);
+            dest.set(_JAVA_FLOAT_UNALIGNED, offset + 60L, 1.0f);
+            return dest;
+        }
+
+        public MemorySegment storeRM4x4Double(Float2x3 self, long offset, MemorySegment dest) {
+            java.lang.foreign.ValueLayout.OfDouble _JAVA_DOUBLE_UNALIGNED = ValueLayout.JAVA_DOUBLE_UNALIGNED;
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset, self.m00);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 8L, self.m01);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 16L, 0.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 24L, self.m02);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 32L, self.m10);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 40L, self.m11);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 48L, 0.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 56L, self.m12);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 64L, 0.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 72L, 0.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 80L, 1.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 88L, 0.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 96L, 0.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 104L, 0.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 112L, 0.0);
+            dest.set(_JAVA_DOUBLE_UNALIGNED, offset + 120L, 1.0);
+            return dest;
+        }
+    }
+
+    private static final class Float2x3SegOpsUnsafe extends Float2x3SegOps {
+        private static final Float2x3SegOpsMS MS = new Float2x3SegOpsMS();
+
+        public MemorySegment storeCM(Float2x3 self, long offset, MemorySegment dest) {
+            if (dest.isReadOnly()) return MS.storeCM(self, offset, dest);
+            if (!dest.isNative()) return storeCMOnHeap(self, offset, dest);
+            long address = dest.address() + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m10);
+            _U.putFloat(address + 8L, self.m01);
+            _U.putFloat(address + 12L, self.m11);
+            _U.putFloat(address + 16L, self.m02);
+            _U.putFloat(address + 20L, self.m12);
+            return dest;
+        }
+
+        private static MemorySegment storeCMOnHeap(Float2x3 self, long offset, MemorySegment dest) {
+            byte[] bytes = HeapSegments.bytes(dest);
+            if (bytes == null) return MS.storeCM(self, offset, dest);
+            long address = HeapSegments.offset(dest) + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4L, self.m10);
+            _U.putFloat(bytes, address + 8L, self.m01);
+            _U.putFloat(bytes, address + 12L, self.m11);
+            _U.putFloat(bytes, address + 16L, self.m02);
+            _U.putFloat(bytes, address + 20L, self.m12);
+            return dest;
+        }
+
+        public Float2x3 loadCM(long offset, MemorySegment src) {
+            if (!src.isNative()) return loadCMOnHeap(offset, src);
+            long address = src.address() + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = _U.getFloat(address);
+            float _c3 = _U.getFloat(address + 4L);
+            float _c1 = _U.getFloat(address + 8L);
+            float _c4 = _U.getFloat(address + 12L);
+            float _c2 = _U.getFloat(address + 16L);
+            float _c5 = _U.getFloat(address + 20L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        private static Float2x3 loadCMOnHeap(long offset, MemorySegment src) {
+            byte[] bytes = HeapSegments.bytes(src);
+            if (bytes == null) return MS.loadCM(offset, src);
+            long address = HeapSegments.offset(src) + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = _U.getFloat(bytes, address);
+            float _c3 = _U.getFloat(bytes, address + 4L);
+            float _c1 = _U.getFloat(bytes, address + 8L);
+            float _c4 = _U.getFloat(bytes, address + 12L);
+            float _c2 = _U.getFloat(bytes, address + 16L);
+            float _c5 = _U.getFloat(bytes, address + 20L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public MemorySegment storeCMDouble(Float2x3 self, long offset, MemorySegment dest) {
+            if (dest.isReadOnly()) return MS.storeCMDouble(self, offset, dest);
+            if (!dest.isNative()) return storeCMDoubleOnHeap(self, offset, dest);
+            long address = dest.address() + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m10);
+            _U.putDouble(address + 16L, self.m01);
+            _U.putDouble(address + 24L, self.m11);
+            _U.putDouble(address + 32L, self.m02);
+            _U.putDouble(address + 40L, self.m12);
+            return dest;
+        }
+
+        private static MemorySegment storeCMDoubleOnHeap(Float2x3 self, long offset, MemorySegment dest) {
+            byte[] bytes = HeapSegments.bytes(dest);
+            if (bytes == null) return MS.storeCMDouble(self, offset, dest);
+            long address = HeapSegments.offset(dest) + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8L, self.m10);
+            _U.putDouble(bytes, address + 16L, self.m01);
+            _U.putDouble(bytes, address + 24L, self.m11);
+            _U.putDouble(bytes, address + 32L, self.m02);
+            _U.putDouble(bytes, address + 40L, self.m12);
+            return dest;
+        }
+
+        public Float2x3 loadCMDouble(long offset, MemorySegment src) {
+            if (!src.isNative()) return loadCMDoubleOnHeap(offset, src);
+            long address = src.address() + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = (float) _U.getDouble(address);
+            float _c3 = (float) _U.getDouble(address + 8L);
+            float _c1 = (float) _U.getDouble(address + 16L);
+            float _c4 = (float) _U.getDouble(address + 24L);
+            float _c2 = (float) _U.getDouble(address + 32L);
+            float _c5 = (float) _U.getDouble(address + 40L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        private static Float2x3 loadCMDoubleOnHeap(long offset, MemorySegment src) {
+            byte[] bytes = HeapSegments.bytes(src);
+            if (bytes == null) return MS.loadCMDouble(offset, src);
+            long address = HeapSegments.offset(src) + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = (float) _U.getDouble(bytes, address);
+            float _c3 = (float) _U.getDouble(bytes, address + 8L);
+            float _c1 = (float) _U.getDouble(bytes, address + 16L);
+            float _c4 = (float) _U.getDouble(bytes, address + 24L);
+            float _c2 = (float) _U.getDouble(bytes, address + 32L);
+            float _c5 = (float) _U.getDouble(bytes, address + 40L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public MemorySegment storeRM(Float2x3 self, long offset, MemorySegment dest) {
+            if (dest.isReadOnly()) return MS.storeRM(self, offset, dest);
+            if (!dest.isNative()) return storeRMOnHeap(self, offset, dest);
+            long address = dest.address() + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m01);
+            _U.putFloat(address + 8L, self.m02);
+            _U.putFloat(address + 12L, self.m10);
+            _U.putFloat(address + 16L, self.m11);
+            _U.putFloat(address + 20L, self.m12);
+            return dest;
+        }
+
+        private static MemorySegment storeRMOnHeap(Float2x3 self, long offset, MemorySegment dest) {
+            byte[] bytes = HeapSegments.bytes(dest);
+            if (bytes == null) return MS.storeRM(self, offset, dest);
+            long address = HeapSegments.offset(dest) + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4L, self.m01);
+            _U.putFloat(bytes, address + 8L, self.m02);
+            _U.putFloat(bytes, address + 12L, self.m10);
+            _U.putFloat(bytes, address + 16L, self.m11);
+            _U.putFloat(bytes, address + 20L, self.m12);
+            return dest;
+        }
+
+        public Float2x3 loadRM(long offset, MemorySegment src) {
+            if (!src.isNative()) return loadRMOnHeap(offset, src);
+            long address = src.address() + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = _U.getFloat(address);
+            float _c1 = _U.getFloat(address + 4L);
+            float _c2 = _U.getFloat(address + 8L);
+            float _c3 = _U.getFloat(address + 12L);
+            float _c4 = _U.getFloat(address + 16L);
+            float _c5 = _U.getFloat(address + 20L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        private static Float2x3 loadRMOnHeap(long offset, MemorySegment src) {
+            byte[] bytes = HeapSegments.bytes(src);
+            if (bytes == null) return MS.loadRM(offset, src);
+            long address = HeapSegments.offset(src) + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = _U.getFloat(bytes, address);
+            float _c1 = _U.getFloat(bytes, address + 4L);
+            float _c2 = _U.getFloat(bytes, address + 8L);
+            float _c3 = _U.getFloat(bytes, address + 12L);
+            float _c4 = _U.getFloat(bytes, address + 16L);
+            float _c5 = _U.getFloat(bytes, address + 20L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public MemorySegment storeRMDouble(Float2x3 self, long offset, MemorySegment dest) {
+            if (dest.isReadOnly()) return MS.storeRMDouble(self, offset, dest);
+            if (!dest.isNative()) return storeRMDoubleOnHeap(self, offset, dest);
+            long address = dest.address() + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m01);
+            _U.putDouble(address + 16L, self.m02);
+            _U.putDouble(address + 24L, self.m10);
+            _U.putDouble(address + 32L, self.m11);
+            _U.putDouble(address + 40L, self.m12);
+            return dest;
+        }
+
+        private static MemorySegment storeRMDoubleOnHeap(Float2x3 self, long offset, MemorySegment dest) {
+            byte[] bytes = HeapSegments.bytes(dest);
+            if (bytes == null) return MS.storeRMDouble(self, offset, dest);
+            long address = HeapSegments.offset(dest) + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8L, self.m01);
+            _U.putDouble(bytes, address + 16L, self.m02);
+            _U.putDouble(bytes, address + 24L, self.m10);
+            _U.putDouble(bytes, address + 32L, self.m11);
+            _U.putDouble(bytes, address + 40L, self.m12);
+            return dest;
+        }
+
+        public Float2x3 loadRMDouble(long offset, MemorySegment src) {
+            if (!src.isNative()) return loadRMDoubleOnHeap(offset, src);
+            long address = src.address() + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = (float) _U.getDouble(address);
+            float _c1 = (float) _U.getDouble(address + 8L);
+            float _c2 = (float) _U.getDouble(address + 16L);
+            float _c3 = (float) _U.getDouble(address + 24L);
+            float _c4 = (float) _U.getDouble(address + 32L);
+            float _c5 = (float) _U.getDouble(address + 40L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        private static Float2x3 loadRMDoubleOnHeap(long offset, MemorySegment src) {
+            byte[] bytes = HeapSegments.bytes(src);
+            if (bytes == null) return MS.loadRMDouble(offset, src);
+            long address = HeapSegments.offset(src) + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = (float) _U.getDouble(bytes, address);
+            float _c1 = (float) _U.getDouble(bytes, address + 8L);
+            float _c2 = (float) _U.getDouble(bytes, address + 16L);
+            float _c3 = (float) _U.getDouble(bytes, address + 24L);
+            float _c4 = (float) _U.getDouble(bytes, address + 32L);
+            float _c5 = (float) _U.getDouble(bytes, address + 40L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public MemorySegment storeCM(Float2x3 self, long offset, MemorySegment dest, int stride) {
+            if (dest.isReadOnly()) return MS.storeCM(self, offset, dest, stride);
+            if (!dest.isNative()) return storeCMOnHeap(self, offset, dest, stride);
+            long address = dest.address() + offset;
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4, self.m10);
+            _U.putFloat(_p1, self.m01);
+            _U.putFloat(_p1 + 4, self.m11);
+            _U.putFloat(_p2, self.m02);
+            _U.putFloat(_p2 + 4, self.m12);
+            return dest;
+        }
+
+        private static MemorySegment storeCMOnHeap(Float2x3 self, long offset, MemorySegment dest, int stride) {
+            byte[] bytes = HeapSegments.bytes(dest);
+            if (bytes == null) return MS.storeCM(self, offset, dest, stride);
+            long address = HeapSegments.offset(dest) + offset;
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4, self.m10);
+            _U.putFloat(bytes, _p1, self.m01);
+            _U.putFloat(bytes, _p1 + 4, self.m11);
+            _U.putFloat(bytes, _p2, self.m02);
+            _U.putFloat(bytes, _p2 + 4, self.m12);
+            return dest;
+        }
+
+        public Float2x3 loadCM(long offset, MemorySegment src, int stride) {
+            if (!src.isNative()) return loadCMOnHeap(offset, src, stride);
+            long address = src.address() + offset;
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = _U.getFloat(address);
+            float _c3 = _U.getFloat(address + 4);
+            float _c1 = _U.getFloat(_p1);
+            float _c4 = _U.getFloat(_p1 + 4);
+            float _c2 = _U.getFloat(_p2);
+            float _c5 = _U.getFloat(_p2 + 4);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        private static Float2x3 loadCMOnHeap(long offset, MemorySegment src, int stride) {
+            byte[] bytes = HeapSegments.bytes(src);
+            if (bytes == null) return MS.loadCM(offset, src, stride);
+            long address = HeapSegments.offset(src) + offset;
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = _U.getFloat(bytes, address);
+            float _c3 = _U.getFloat(bytes, address + 4);
+            float _c1 = _U.getFloat(bytes, _p1);
+            float _c4 = _U.getFloat(bytes, _p1 + 4);
+            float _c2 = _U.getFloat(bytes, _p2);
+            float _c5 = _U.getFloat(bytes, _p2 + 4);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public MemorySegment storeCMDouble(Float2x3 self, long offset, MemorySegment dest, int stride) {
+            if (dest.isReadOnly()) return MS.storeCMDouble(self, offset, dest, stride);
+            if (!dest.isNative()) return storeCMDoubleOnHeap(self, offset, dest, stride);
+            long address = dest.address() + offset;
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8, self.m10);
+            _U.putDouble(_p1, self.m01);
+            _U.putDouble(_p1 + 8, self.m11);
+            _U.putDouble(_p2, self.m02);
+            _U.putDouble(_p2 + 8, self.m12);
+            return dest;
+        }
+
+        private static MemorySegment storeCMDoubleOnHeap(Float2x3 self, long offset, MemorySegment dest, int stride) {
+            byte[] bytes = HeapSegments.bytes(dest);
+            if (bytes == null) return MS.storeCMDouble(self, offset, dest, stride);
+            long address = HeapSegments.offset(dest) + offset;
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8, self.m10);
+            _U.putDouble(bytes, _p1, self.m01);
+            _U.putDouble(bytes, _p1 + 8, self.m11);
+            _U.putDouble(bytes, _p2, self.m02);
+            _U.putDouble(bytes, _p2 + 8, self.m12);
+            return dest;
+        }
+
+        public Float2x3 loadCMDouble(long offset, MemorySegment src, int stride) {
+            if (!src.isNative()) return loadCMDoubleOnHeap(offset, src, stride);
+            long address = src.address() + offset;
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = (float) _U.getDouble(address);
+            float _c3 = (float) _U.getDouble(address + 8);
+            float _c1 = (float) _U.getDouble(_p1);
+            float _c4 = (float) _U.getDouble(_p1 + 8);
+            float _c2 = (float) _U.getDouble(_p2);
+            float _c5 = (float) _U.getDouble(_p2 + 8);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        private static Float2x3 loadCMDoubleOnHeap(long offset, MemorySegment src, int stride) {
+            byte[] bytes = HeapSegments.bytes(src);
+            if (bytes == null) return MS.loadCMDouble(offset, src, stride);
+            long address = HeapSegments.offset(src) + offset;
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = (float) _U.getDouble(bytes, address);
+            float _c3 = (float) _U.getDouble(bytes, address + 8);
+            float _c1 = (float) _U.getDouble(bytes, _p1);
+            float _c4 = (float) _U.getDouble(bytes, _p1 + 8);
+            float _c2 = (float) _U.getDouble(bytes, _p2);
+            float _c5 = (float) _U.getDouble(bytes, _p2 + 8);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public MemorySegment storeRM(Float2x3 self, long offset, MemorySegment dest, int stride) {
+            if (dest.isReadOnly()) return MS.storeRM(self, offset, dest, stride);
+            if (!dest.isNative()) return storeRMOnHeap(self, offset, dest, stride);
+            long address = dest.address() + offset;
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4, self.m01);
+            _U.putFloat(address + 8, self.m02);
+            _U.putFloat(_p1, self.m10);
+            _U.putFloat(_p1 + 4, self.m11);
+            _U.putFloat(_p1 + 8, self.m12);
+            return dest;
+        }
+
+        private static MemorySegment storeRMOnHeap(Float2x3 self, long offset, MemorySegment dest, int stride) {
+            byte[] bytes = HeapSegments.bytes(dest);
+            if (bytes == null) return MS.storeRM(self, offset, dest, stride);
+            long address = HeapSegments.offset(dest) + offset;
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4, self.m01);
+            _U.putFloat(bytes, address + 8, self.m02);
+            _U.putFloat(bytes, _p1, self.m10);
+            _U.putFloat(bytes, _p1 + 4, self.m11);
+            _U.putFloat(bytes, _p1 + 8, self.m12);
+            return dest;
+        }
+
+        public Float2x3 loadRM(long offset, MemorySegment src, int stride) {
+            if (!src.isNative()) return loadRMOnHeap(offset, src, stride);
+            long address = src.address() + offset;
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = _U.getFloat(address);
+            float _c1 = _U.getFloat(address + 4);
+            float _c2 = _U.getFloat(address + 8);
+            float _c3 = _U.getFloat(_p1);
+            float _c4 = _U.getFloat(_p1 + 4);
+            float _c5 = _U.getFloat(_p1 + 8);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        private static Float2x3 loadRMOnHeap(long offset, MemorySegment src, int stride) {
+            byte[] bytes = HeapSegments.bytes(src);
+            if (bytes == null) return MS.loadRM(offset, src, stride);
+            long address = HeapSegments.offset(src) + offset;
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = _U.getFloat(bytes, address);
+            float _c1 = _U.getFloat(bytes, address + 4);
+            float _c2 = _U.getFloat(bytes, address + 8);
+            float _c3 = _U.getFloat(bytes, _p1);
+            float _c4 = _U.getFloat(bytes, _p1 + 4);
+            float _c5 = _U.getFloat(bytes, _p1 + 8);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public MemorySegment storeRMDouble(Float2x3 self, long offset, MemorySegment dest, int stride) {
+            if (dest.isReadOnly()) return MS.storeRMDouble(self, offset, dest, stride);
+            if (!dest.isNative()) return storeRMDoubleOnHeap(self, offset, dest, stride);
+            long address = dest.address() + offset;
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8, self.m01);
+            _U.putDouble(address + 16, self.m02);
+            _U.putDouble(_p1, self.m10);
+            _U.putDouble(_p1 + 8, self.m11);
+            _U.putDouble(_p1 + 16, self.m12);
+            return dest;
+        }
+
+        private static MemorySegment storeRMDoubleOnHeap(Float2x3 self, long offset, MemorySegment dest, int stride) {
+            byte[] bytes = HeapSegments.bytes(dest);
+            if (bytes == null) return MS.storeRMDouble(self, offset, dest, stride);
+            long address = HeapSegments.offset(dest) + offset;
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8, self.m01);
+            _U.putDouble(bytes, address + 16, self.m02);
+            _U.putDouble(bytes, _p1, self.m10);
+            _U.putDouble(bytes, _p1 + 8, self.m11);
+            _U.putDouble(bytes, _p1 + 16, self.m12);
+            return dest;
+        }
+
+        public Float2x3 loadRMDouble(long offset, MemorySegment src, int stride) {
+            if (!src.isNative()) return loadRMDoubleOnHeap(offset, src, stride);
+            long address = src.address() + offset;
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = (float) _U.getDouble(address);
+            float _c1 = (float) _U.getDouble(address + 8);
+            float _c2 = (float) _U.getDouble(address + 16);
+            float _c3 = (float) _U.getDouble(_p1);
+            float _c4 = (float) _U.getDouble(_p1 + 8);
+            float _c5 = (float) _U.getDouble(_p1 + 16);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        private static Float2x3 loadRMDoubleOnHeap(long offset, MemorySegment src, int stride) {
+            byte[] bytes = HeapSegments.bytes(src);
+            if (bytes == null) return MS.loadRMDouble(offset, src, stride);
+            long address = HeapSegments.offset(src) + offset;
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = (float) _U.getDouble(bytes, address);
+            float _c1 = (float) _U.getDouble(bytes, address + 8);
+            float _c2 = (float) _U.getDouble(bytes, address + 16);
+            float _c3 = (float) _U.getDouble(bytes, _p1);
+            float _c4 = (float) _U.getDouble(bytes, _p1 + 8);
+            float _c5 = (float) _U.getDouble(bytes, _p1 + 16);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public MemorySegment storeCM3x3(Float2x3 self, long offset, MemorySegment dest) {
+            if (dest.isReadOnly()) return MS.storeCM3x3(self, offset, dest);
+            if (!dest.isNative()) return storeCM3x3OnHeap(self, offset, dest);
+            long address = dest.address() + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m10);
+            _U.putFloat(address + 8L, 0.0f);
+            _U.putFloat(address + 12L, self.m01);
+            _U.putFloat(address + 16L, self.m11);
+            _U.putFloat(address + 20L, 0.0f);
+            _U.putFloat(address + 24L, self.m02);
+            _U.putFloat(address + 28L, self.m12);
+            _U.putFloat(address + 32L, 1.0f);
+            return dest;
+        }
+
+        private static MemorySegment storeCM3x3OnHeap(Float2x3 self, long offset, MemorySegment dest) {
+            byte[] bytes = HeapSegments.bytes(dest);
+            if (bytes == null) return MS.storeCM3x3(self, offset, dest);
+            long address = HeapSegments.offset(dest) + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4L, self.m10);
+            _U.putFloat(bytes, address + 8L, 0.0f);
+            _U.putFloat(bytes, address + 12L, self.m01);
+            _U.putFloat(bytes, address + 16L, self.m11);
+            _U.putFloat(bytes, address + 20L, 0.0f);
+            _U.putFloat(bytes, address + 24L, self.m02);
+            _U.putFloat(bytes, address + 28L, self.m12);
+            _U.putFloat(bytes, address + 32L, 1.0f);
+            return dest;
+        }
+
+        public MemorySegment storeCM3x3Double(Float2x3 self, long offset, MemorySegment dest) {
+            if (dest.isReadOnly()) return MS.storeCM3x3Double(self, offset, dest);
+            if (!dest.isNative()) return storeCM3x3DoubleOnHeap(self, offset, dest);
+            long address = dest.address() + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m10);
+            _U.putDouble(address + 16L, 0.0);
+            _U.putDouble(address + 24L, self.m01);
+            _U.putDouble(address + 32L, self.m11);
+            _U.putDouble(address + 40L, 0.0);
+            _U.putDouble(address + 48L, self.m02);
+            _U.putDouble(address + 56L, self.m12);
+            _U.putDouble(address + 64L, 1.0);
+            return dest;
+        }
+
+        private static MemorySegment storeCM3x3DoubleOnHeap(Float2x3 self, long offset, MemorySegment dest) {
+            byte[] bytes = HeapSegments.bytes(dest);
+            if (bytes == null) return MS.storeCM3x3Double(self, offset, dest);
+            long address = HeapSegments.offset(dest) + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8L, self.m10);
+            _U.putDouble(bytes, address + 16L, 0.0);
+            _U.putDouble(bytes, address + 24L, self.m01);
+            _U.putDouble(bytes, address + 32L, self.m11);
+            _U.putDouble(bytes, address + 40L, 0.0);
+            _U.putDouble(bytes, address + 48L, self.m02);
+            _U.putDouble(bytes, address + 56L, self.m12);
+            _U.putDouble(bytes, address + 64L, 1.0);
+            return dest;
+        }
+
+        public MemorySegment storeRM3x3(Float2x3 self, long offset, MemorySegment dest) {
+            if (dest.isReadOnly()) return MS.storeRM3x3(self, offset, dest);
+            if (!dest.isNative()) return storeRM3x3OnHeap(self, offset, dest);
+            long address = dest.address() + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m01);
+            _U.putFloat(address + 8L, self.m02);
+            _U.putFloat(address + 12L, self.m10);
+            _U.putFloat(address + 16L, self.m11);
+            _U.putFloat(address + 20L, self.m12);
+            _U.putFloat(address + 24L, 0.0f);
+            _U.putFloat(address + 28L, 0.0f);
+            _U.putFloat(address + 32L, 1.0f);
+            return dest;
+        }
+
+        private static MemorySegment storeRM3x3OnHeap(Float2x3 self, long offset, MemorySegment dest) {
+            byte[] bytes = HeapSegments.bytes(dest);
+            if (bytes == null) return MS.storeRM3x3(self, offset, dest);
+            long address = HeapSegments.offset(dest) + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4L, self.m01);
+            _U.putFloat(bytes, address + 8L, self.m02);
+            _U.putFloat(bytes, address + 12L, self.m10);
+            _U.putFloat(bytes, address + 16L, self.m11);
+            _U.putFloat(bytes, address + 20L, self.m12);
+            _U.putFloat(bytes, address + 24L, 0.0f);
+            _U.putFloat(bytes, address + 28L, 0.0f);
+            _U.putFloat(bytes, address + 32L, 1.0f);
+            return dest;
+        }
+
+        public MemorySegment storeRM3x3Double(Float2x3 self, long offset, MemorySegment dest) {
+            if (dest.isReadOnly()) return MS.storeRM3x3Double(self, offset, dest);
+            if (!dest.isNative()) return storeRM3x3DoubleOnHeap(self, offset, dest);
+            long address = dest.address() + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m01);
+            _U.putDouble(address + 16L, self.m02);
+            _U.putDouble(address + 24L, self.m10);
+            _U.putDouble(address + 32L, self.m11);
+            _U.putDouble(address + 40L, self.m12);
+            _U.putDouble(address + 48L, 0.0);
+            _U.putDouble(address + 56L, 0.0);
+            _U.putDouble(address + 64L, 1.0);
+            return dest;
+        }
+
+        private static MemorySegment storeRM3x3DoubleOnHeap(Float2x3 self, long offset, MemorySegment dest) {
+            byte[] bytes = HeapSegments.bytes(dest);
+            if (bytes == null) return MS.storeRM3x3Double(self, offset, dest);
+            long address = HeapSegments.offset(dest) + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8L, self.m01);
+            _U.putDouble(bytes, address + 16L, self.m02);
+            _U.putDouble(bytes, address + 24L, self.m10);
+            _U.putDouble(bytes, address + 32L, self.m11);
+            _U.putDouble(bytes, address + 40L, self.m12);
+            _U.putDouble(bytes, address + 48L, 0.0);
+            _U.putDouble(bytes, address + 56L, 0.0);
+            _U.putDouble(bytes, address + 64L, 1.0);
+            return dest;
+        }
+
+        public MemorySegment storeCM4x4(Float2x3 self, long offset, MemorySegment dest) {
+            if (dest.isReadOnly()) return MS.storeCM4x4(self, offset, dest);
+            if (!dest.isNative()) return storeCM4x4OnHeap(self, offset, dest);
+            long address = dest.address() + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m10);
+            _U.putFloat(address + 8L, 0.0f);
+            _U.putFloat(address + 12L, 0.0f);
+            _U.putFloat(address + 16L, self.m01);
+            _U.putFloat(address + 20L, self.m11);
+            _U.putFloat(address + 24L, 0.0f);
+            _U.putFloat(address + 28L, 0.0f);
+            _U.putFloat(address + 32L, 0.0f);
+            _U.putFloat(address + 36L, 0.0f);
+            _U.putFloat(address + 40L, 1.0f);
+            _U.putFloat(address + 44L, 0.0f);
+            _U.putFloat(address + 48L, self.m02);
+            _U.putFloat(address + 52L, self.m12);
+            _U.putFloat(address + 56L, 0.0f);
+            _U.putFloat(address + 60L, 1.0f);
+            return dest;
+        }
+
+        private static MemorySegment storeCM4x4OnHeap(Float2x3 self, long offset, MemorySegment dest) {
+            byte[] bytes = HeapSegments.bytes(dest);
+            if (bytes == null) return MS.storeCM4x4(self, offset, dest);
+            long address = HeapSegments.offset(dest) + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4L, self.m10);
+            _U.putFloat(bytes, address + 8L, 0.0f);
+            _U.putFloat(bytes, address + 12L, 0.0f);
+            _U.putFloat(bytes, address + 16L, self.m01);
+            _U.putFloat(bytes, address + 20L, self.m11);
+            _U.putFloat(bytes, address + 24L, 0.0f);
+            _U.putFloat(bytes, address + 28L, 0.0f);
+            _U.putFloat(bytes, address + 32L, 0.0f);
+            _U.putFloat(bytes, address + 36L, 0.0f);
+            _U.putFloat(bytes, address + 40L, 1.0f);
+            _U.putFloat(bytes, address + 44L, 0.0f);
+            _U.putFloat(bytes, address + 48L, self.m02);
+            _U.putFloat(bytes, address + 52L, self.m12);
+            _U.putFloat(bytes, address + 56L, 0.0f);
+            _U.putFloat(bytes, address + 60L, 1.0f);
+            return dest;
+        }
+
+        public MemorySegment storeCM4x4Double(Float2x3 self, long offset, MemorySegment dest) {
+            if (dest.isReadOnly()) return MS.storeCM4x4Double(self, offset, dest);
+            if (!dest.isNative()) return storeCM4x4DoubleOnHeap(self, offset, dest);
+            long address = dest.address() + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m10);
+            _U.putDouble(address + 16L, 0.0);
+            _U.putDouble(address + 24L, 0.0);
+            _U.putDouble(address + 32L, self.m01);
+            _U.putDouble(address + 40L, self.m11);
+            _U.putDouble(address + 48L, 0.0);
+            _U.putDouble(address + 56L, 0.0);
+            _U.putDouble(address + 64L, 0.0);
+            _U.putDouble(address + 72L, 0.0);
+            _U.putDouble(address + 80L, 1.0);
+            _U.putDouble(address + 88L, 0.0);
+            _U.putDouble(address + 96L, self.m02);
+            _U.putDouble(address + 104L, self.m12);
+            _U.putDouble(address + 112L, 0.0);
+            _U.putDouble(address + 120L, 1.0);
+            return dest;
+        }
+
+        private static MemorySegment storeCM4x4DoubleOnHeap(Float2x3 self, long offset, MemorySegment dest) {
+            byte[] bytes = HeapSegments.bytes(dest);
+            if (bytes == null) return MS.storeCM4x4Double(self, offset, dest);
+            long address = HeapSegments.offset(dest) + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8L, self.m10);
+            _U.putDouble(bytes, address + 16L, 0.0);
+            _U.putDouble(bytes, address + 24L, 0.0);
+            _U.putDouble(bytes, address + 32L, self.m01);
+            _U.putDouble(bytes, address + 40L, self.m11);
+            _U.putDouble(bytes, address + 48L, 0.0);
+            _U.putDouble(bytes, address + 56L, 0.0);
+            _U.putDouble(bytes, address + 64L, 0.0);
+            _U.putDouble(bytes, address + 72L, 0.0);
+            _U.putDouble(bytes, address + 80L, 1.0);
+            _U.putDouble(bytes, address + 88L, 0.0);
+            _U.putDouble(bytes, address + 96L, self.m02);
+            _U.putDouble(bytes, address + 104L, self.m12);
+            _U.putDouble(bytes, address + 112L, 0.0);
+            _U.putDouble(bytes, address + 120L, 1.0);
+            return dest;
+        }
+
+        public MemorySegment storeRM4x4(Float2x3 self, long offset, MemorySegment dest) {
+            if (dest.isReadOnly()) return MS.storeRM4x4(self, offset, dest);
+            if (!dest.isNative()) return storeRM4x4OnHeap(self, offset, dest);
+            long address = dest.address() + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m01);
+            _U.putFloat(address + 8L, 0.0f);
+            _U.putFloat(address + 12L, self.m02);
+            _U.putFloat(address + 16L, self.m10);
+            _U.putFloat(address + 20L, self.m11);
+            _U.putFloat(address + 24L, 0.0f);
+            _U.putFloat(address + 28L, self.m12);
+            _U.putFloat(address + 32L, 0.0f);
+            _U.putFloat(address + 36L, 0.0f);
+            _U.putFloat(address + 40L, 1.0f);
+            _U.putFloat(address + 44L, 0.0f);
+            _U.putFloat(address + 48L, 0.0f);
+            _U.putFloat(address + 52L, 0.0f);
+            _U.putFloat(address + 56L, 0.0f);
+            _U.putFloat(address + 60L, 1.0f);
+            return dest;
+        }
+
+        private static MemorySegment storeRM4x4OnHeap(Float2x3 self, long offset, MemorySegment dest) {
+            byte[] bytes = HeapSegments.bytes(dest);
+            if (bytes == null) return MS.storeRM4x4(self, offset, dest);
+            long address = HeapSegments.offset(dest) + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4L, self.m01);
+            _U.putFloat(bytes, address + 8L, 0.0f);
+            _U.putFloat(bytes, address + 12L, self.m02);
+            _U.putFloat(bytes, address + 16L, self.m10);
+            _U.putFloat(bytes, address + 20L, self.m11);
+            _U.putFloat(bytes, address + 24L, 0.0f);
+            _U.putFloat(bytes, address + 28L, self.m12);
+            _U.putFloat(bytes, address + 32L, 0.0f);
+            _U.putFloat(bytes, address + 36L, 0.0f);
+            _U.putFloat(bytes, address + 40L, 1.0f);
+            _U.putFloat(bytes, address + 44L, 0.0f);
+            _U.putFloat(bytes, address + 48L, 0.0f);
+            _U.putFloat(bytes, address + 52L, 0.0f);
+            _U.putFloat(bytes, address + 56L, 0.0f);
+            _U.putFloat(bytes, address + 60L, 1.0f);
+            return dest;
+        }
+
+        public MemorySegment storeRM4x4Double(Float2x3 self, long offset, MemorySegment dest) {
+            if (dest.isReadOnly()) return MS.storeRM4x4Double(self, offset, dest);
+            if (!dest.isNative()) return storeRM4x4DoubleOnHeap(self, offset, dest);
+            long address = dest.address() + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m01);
+            _U.putDouble(address + 16L, 0.0);
+            _U.putDouble(address + 24L, self.m02);
+            _U.putDouble(address + 32L, self.m10);
+            _U.putDouble(address + 40L, self.m11);
+            _U.putDouble(address + 48L, 0.0);
+            _U.putDouble(address + 56L, self.m12);
+            _U.putDouble(address + 64L, 0.0);
+            _U.putDouble(address + 72L, 0.0);
+            _U.putDouble(address + 80L, 1.0);
+            _U.putDouble(address + 88L, 0.0);
+            _U.putDouble(address + 96L, 0.0);
+            _U.putDouble(address + 104L, 0.0);
+            _U.putDouble(address + 112L, 0.0);
+            _U.putDouble(address + 120L, 1.0);
+            return dest;
+        }
+
+        private static MemorySegment storeRM4x4DoubleOnHeap(Float2x3 self, long offset, MemorySegment dest) {
+            byte[] bytes = HeapSegments.bytes(dest);
+            if (bytes == null) return MS.storeRM4x4Double(self, offset, dest);
+            long address = HeapSegments.offset(dest) + offset;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8L, self.m01);
+            _U.putDouble(bytes, address + 16L, 0.0);
+            _U.putDouble(bytes, address + 24L, self.m02);
+            _U.putDouble(bytes, address + 32L, self.m10);
+            _U.putDouble(bytes, address + 40L, self.m11);
+            _U.putDouble(bytes, address + 48L, 0.0);
+            _U.putDouble(bytes, address + 56L, self.m12);
+            _U.putDouble(bytes, address + 64L, 0.0);
+            _U.putDouble(bytes, address + 72L, 0.0);
+            _U.putDouble(bytes, address + 80L, 1.0);
+            _U.putDouble(bytes, address + 88L, 0.0);
+            _U.putDouble(bytes, address + 96L, 0.0);
+            _U.putDouble(bytes, address + 104L, 0.0);
+            _U.putDouble(bytes, address + 112L, 0.0);
+            _U.putDouble(bytes, address + 120L, 1.0);
+            return dest;
+        }
+    }
+
+    private abstract static class Float2x3BbOps {
+        public abstract FloatBuffer storeCMAbsolute(Float2x3 self, int index, FloatBuffer buf);
+        public abstract Float2x3 loadCMAbsolute(int index, FloatBuffer buf);
+        public abstract ByteBuffer storeCMAbsolute(Float2x3 self, int index, ByteBuffer buf);
+        public abstract Float2x3 loadCMAbsolute(int index, ByteBuffer buf);
+        public abstract DoubleBuffer storeCMAbsolute(Float2x3 self, int index, DoubleBuffer buf);
+        public abstract Float2x3 loadCMAbsolute(int index, DoubleBuffer buf);
+        public abstract ByteBuffer storeCMDoubleAbsolute(Float2x3 self, int index, ByteBuffer buf);
+        public abstract Float2x3 loadCMDoubleAbsolute(int index, ByteBuffer buf);
+        public abstract FloatBuffer storeRMAbsolute(Float2x3 self, int index, FloatBuffer buf);
+        public abstract Float2x3 loadRMAbsolute(int index, FloatBuffer buf);
+        public abstract ByteBuffer storeRMAbsolute(Float2x3 self, int index, ByteBuffer buf);
+        public abstract Float2x3 loadRMAbsolute(int index, ByteBuffer buf);
+        public abstract DoubleBuffer storeRMAbsolute(Float2x3 self, int index, DoubleBuffer buf);
+        public abstract Float2x3 loadRMAbsolute(int index, DoubleBuffer buf);
+        public abstract ByteBuffer storeRMDoubleAbsolute(Float2x3 self, int index, ByteBuffer buf);
+        public abstract Float2x3 loadRMDoubleAbsolute(int index, ByteBuffer buf);
+        public abstract FloatBuffer storeCMAbsolute(Float2x3 self, int index, FloatBuffer buf, int stride);
+        public abstract Float2x3 loadCMAbsolute(int index, FloatBuffer buf, int stride);
+        public abstract ByteBuffer storeCMAbsolute(Float2x3 self, int index, ByteBuffer buf, int stride);
+        public abstract Float2x3 loadCMAbsolute(int index, ByteBuffer buf, int stride);
+        public abstract DoubleBuffer storeCMAbsolute(Float2x3 self, int index, DoubleBuffer buf, int stride);
+        public abstract Float2x3 loadCMAbsolute(int index, DoubleBuffer buf, int stride);
+        public abstract ByteBuffer storeCMDoubleAbsolute(Float2x3 self, int index, ByteBuffer buf, int stride);
+        public abstract Float2x3 loadCMDoubleAbsolute(int index, ByteBuffer buf, int stride);
+        public abstract FloatBuffer storeRMAbsolute(Float2x3 self, int index, FloatBuffer buf, int stride);
+        public abstract Float2x3 loadRMAbsolute(int index, FloatBuffer buf, int stride);
+        public abstract ByteBuffer storeRMAbsolute(Float2x3 self, int index, ByteBuffer buf, int stride);
+        public abstract Float2x3 loadRMAbsolute(int index, ByteBuffer buf, int stride);
+        public abstract DoubleBuffer storeRMAbsolute(Float2x3 self, int index, DoubleBuffer buf, int stride);
+        public abstract Float2x3 loadRMAbsolute(int index, DoubleBuffer buf, int stride);
+        public abstract ByteBuffer storeRMDoubleAbsolute(Float2x3 self, int index, ByteBuffer buf, int stride);
+        public abstract Float2x3 loadRMDoubleAbsolute(int index, ByteBuffer buf, int stride);
+        public abstract FloatBuffer storeCM3x3Absolute(Float2x3 self, int index, FloatBuffer buf);
+        public abstract ByteBuffer storeCM3x3Absolute(Float2x3 self, int index, ByteBuffer buf);
+        public abstract DoubleBuffer storeCM3x3Absolute(Float2x3 self, int index, DoubleBuffer buf);
+        public abstract ByteBuffer storeCM3x3DoubleAbsolute(Float2x3 self, int index, ByteBuffer buf);
+        public abstract FloatBuffer storeRM3x3Absolute(Float2x3 self, int index, FloatBuffer buf);
+        public abstract ByteBuffer storeRM3x3Absolute(Float2x3 self, int index, ByteBuffer buf);
+        public abstract DoubleBuffer storeRM3x3Absolute(Float2x3 self, int index, DoubleBuffer buf);
+        public abstract ByteBuffer storeRM3x3DoubleAbsolute(Float2x3 self, int index, ByteBuffer buf);
+        public abstract FloatBuffer storeCM4x4Absolute(Float2x3 self, int index, FloatBuffer buf);
+        public abstract ByteBuffer storeCM4x4Absolute(Float2x3 self, int index, ByteBuffer buf);
+        public abstract DoubleBuffer storeCM4x4Absolute(Float2x3 self, int index, DoubleBuffer buf);
+        public abstract ByteBuffer storeCM4x4DoubleAbsolute(Float2x3 self, int index, ByteBuffer buf);
+        public abstract FloatBuffer storeRM4x4Absolute(Float2x3 self, int index, FloatBuffer buf);
+        public abstract ByteBuffer storeRM4x4Absolute(Float2x3 self, int index, ByteBuffer buf);
+        public abstract DoubleBuffer storeRM4x4Absolute(Float2x3 self, int index, DoubleBuffer buf);
+        public abstract ByteBuffer storeRM4x4DoubleAbsolute(Float2x3 self, int index, ByteBuffer buf);
+    }
+
+    private static final class Float2x3BbOpsApi extends Float2x3BbOps {
+        public FloatBuffer storeCMAbsolute(Float2x3 self, int index, FloatBuffer buf) {
+            buf.put(index, self.m00);
+            buf.put(index + 1, self.m10);
+            buf.put(index + 2, self.m01);
+            buf.put(index + 3, self.m11);
+            buf.put(index + 4, self.m02);
+            buf.put(index + 5, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadCMAbsolute(int index, FloatBuffer buf) {
+            float _c0 = buf.get(index);
+            float _c3 = buf.get(index + 1);
+            float _c1 = buf.get(index + 2);
+            float _c4 = buf.get(index + 3);
+            float _c2 = buf.get(index + 4);
+            float _c5 = buf.get(index + 5);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public ByteBuffer storeCMAbsolute(Float2x3 self, int index, ByteBuffer buf) {
+            buf.putFloat(index, self.m00);
+            buf.putFloat(index + 4, self.m10);
+            buf.putFloat(index + 8, self.m01);
+            buf.putFloat(index + 12, self.m11);
+            buf.putFloat(index + 16, self.m02);
+            buf.putFloat(index + 20, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadCMAbsolute(int index, ByteBuffer buf) {
+            float _c0 = buf.getFloat(index);
+            float _c3 = buf.getFloat(index + 4);
+            float _c1 = buf.getFloat(index + 8);
+            float _c4 = buf.getFloat(index + 12);
+            float _c2 = buf.getFloat(index + 16);
+            float _c5 = buf.getFloat(index + 20);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public DoubleBuffer storeCMAbsolute(Float2x3 self, int index, DoubleBuffer buf) {
+            buf.put(index, self.m00);
+            buf.put(index + 1, self.m10);
+            buf.put(index + 2, self.m01);
+            buf.put(index + 3, self.m11);
+            buf.put(index + 4, self.m02);
+            buf.put(index + 5, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadCMAbsolute(int index, DoubleBuffer buf) {
+            float _c0 = (float) buf.get(index);
+            float _c3 = (float) buf.get(index + 1);
+            float _c1 = (float) buf.get(index + 2);
+            float _c4 = (float) buf.get(index + 3);
+            float _c2 = (float) buf.get(index + 4);
+            float _c5 = (float) buf.get(index + 5);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public ByteBuffer storeCMDoubleAbsolute(Float2x3 self, int index, ByteBuffer buf) {
+            buf.putDouble(index, self.m00);
+            buf.putDouble(index + 8, self.m10);
+            buf.putDouble(index + 16, self.m01);
+            buf.putDouble(index + 24, self.m11);
+            buf.putDouble(index + 32, self.m02);
+            buf.putDouble(index + 40, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadCMDoubleAbsolute(int index, ByteBuffer buf) {
+            float _c0 = (float) buf.getDouble(index);
+            float _c3 = (float) buf.getDouble(index + 8);
+            float _c1 = (float) buf.getDouble(index + 16);
+            float _c4 = (float) buf.getDouble(index + 24);
+            float _c2 = (float) buf.getDouble(index + 32);
+            float _c5 = (float) buf.getDouble(index + 40);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public FloatBuffer storeRMAbsolute(Float2x3 self, int index, FloatBuffer buf) {
+            buf.put(index, self.m00);
+            buf.put(index + 1, self.m01);
+            buf.put(index + 2, self.m02);
+            buf.put(index + 3, self.m10);
+            buf.put(index + 4, self.m11);
+            buf.put(index + 5, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadRMAbsolute(int index, FloatBuffer buf) {
+            float _c0 = buf.get(index);
+            float _c1 = buf.get(index + 1);
+            float _c2 = buf.get(index + 2);
+            float _c3 = buf.get(index + 3);
+            float _c4 = buf.get(index + 4);
+            float _c5 = buf.get(index + 5);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public ByteBuffer storeRMAbsolute(Float2x3 self, int index, ByteBuffer buf) {
+            buf.putFloat(index, self.m00);
+            buf.putFloat(index + 4, self.m01);
+            buf.putFloat(index + 8, self.m02);
+            buf.putFloat(index + 12, self.m10);
+            buf.putFloat(index + 16, self.m11);
+            buf.putFloat(index + 20, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadRMAbsolute(int index, ByteBuffer buf) {
+            float _c0 = buf.getFloat(index);
+            float _c1 = buf.getFloat(index + 4);
+            float _c2 = buf.getFloat(index + 8);
+            float _c3 = buf.getFloat(index + 12);
+            float _c4 = buf.getFloat(index + 16);
+            float _c5 = buf.getFloat(index + 20);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public DoubleBuffer storeRMAbsolute(Float2x3 self, int index, DoubleBuffer buf) {
+            buf.put(index, self.m00);
+            buf.put(index + 1, self.m01);
+            buf.put(index + 2, self.m02);
+            buf.put(index + 3, self.m10);
+            buf.put(index + 4, self.m11);
+            buf.put(index + 5, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadRMAbsolute(int index, DoubleBuffer buf) {
+            float _c0 = (float) buf.get(index);
+            float _c1 = (float) buf.get(index + 1);
+            float _c2 = (float) buf.get(index + 2);
+            float _c3 = (float) buf.get(index + 3);
+            float _c4 = (float) buf.get(index + 4);
+            float _c5 = (float) buf.get(index + 5);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public ByteBuffer storeRMDoubleAbsolute(Float2x3 self, int index, ByteBuffer buf) {
+            buf.putDouble(index, self.m00);
+            buf.putDouble(index + 8, self.m01);
+            buf.putDouble(index + 16, self.m02);
+            buf.putDouble(index + 24, self.m10);
+            buf.putDouble(index + 32, self.m11);
+            buf.putDouble(index + 40, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadRMDoubleAbsolute(int index, ByteBuffer buf) {
+            float _c0 = (float) buf.getDouble(index);
+            float _c1 = (float) buf.getDouble(index + 8);
+            float _c2 = (float) buf.getDouble(index + 16);
+            float _c3 = (float) buf.getDouble(index + 24);
+            float _c4 = (float) buf.getDouble(index + 32);
+            float _c5 = (float) buf.getDouble(index + 40);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public FloatBuffer storeCMAbsolute(Float2x3 self, int index, FloatBuffer buf, int stride) {
+            int _p1 = index + stride;
+            int _p2 = _p1 + stride;
+            buf.put(index, self.m00);
+            buf.put(index + 1, self.m10);
+            buf.put(_p1, self.m01);
+            buf.put(_p1 + 1, self.m11);
+            buf.put(_p2, self.m02);
+            buf.put(_p2 + 1, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadCMAbsolute(int index, FloatBuffer buf, int stride) {
+            int _p1 = index + stride;
+            int _p2 = _p1 + stride;
+            float _c0 = buf.get(index);
+            float _c3 = buf.get(index + 1);
+            float _c1 = buf.get(_p1);
+            float _c4 = buf.get(_p1 + 1);
+            float _c2 = buf.get(_p2);
+            float _c5 = buf.get(_p2 + 1);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public ByteBuffer storeCMAbsolute(Float2x3 self, int index, ByteBuffer buf, int stride) {
+            int _ps = stride * 4;
+            int _p1 = index + _ps;
+            int _p2 = _p1 + _ps;
+            buf.putFloat(index, self.m00);
+            buf.putFloat(index + 4, self.m10);
+            buf.putFloat(_p1, self.m01);
+            buf.putFloat(_p1 + 4, self.m11);
+            buf.putFloat(_p2, self.m02);
+            buf.putFloat(_p2 + 4, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadCMAbsolute(int index, ByteBuffer buf, int stride) {
+            int _ps = stride * 4;
+            int _p1 = index + _ps;
+            int _p2 = _p1 + _ps;
+            float _c0 = buf.getFloat(index);
+            float _c3 = buf.getFloat(index + 4);
+            float _c1 = buf.getFloat(_p1);
+            float _c4 = buf.getFloat(_p1 + 4);
+            float _c2 = buf.getFloat(_p2);
+            float _c5 = buf.getFloat(_p2 + 4);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public DoubleBuffer storeCMAbsolute(Float2x3 self, int index, DoubleBuffer buf, int stride) {
+            int _p1 = index + stride;
+            int _p2 = _p1 + stride;
+            buf.put(index, self.m00);
+            buf.put(index + 1, self.m10);
+            buf.put(_p1, self.m01);
+            buf.put(_p1 + 1, self.m11);
+            buf.put(_p2, self.m02);
+            buf.put(_p2 + 1, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadCMAbsolute(int index, DoubleBuffer buf, int stride) {
+            int _p1 = index + stride;
+            int _p2 = _p1 + stride;
+            float _c0 = (float) buf.get(index);
+            float _c3 = (float) buf.get(index + 1);
+            float _c1 = (float) buf.get(_p1);
+            float _c4 = (float) buf.get(_p1 + 1);
+            float _c2 = (float) buf.get(_p2);
+            float _c5 = (float) buf.get(_p2 + 1);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public ByteBuffer storeCMDoubleAbsolute(Float2x3 self, int index, ByteBuffer buf, int stride) {
+            int _ps = stride * 8;
+            int _p1 = index + _ps;
+            int _p2 = _p1 + _ps;
+            buf.putDouble(index, self.m00);
+            buf.putDouble(index + 8, self.m10);
+            buf.putDouble(_p1, self.m01);
+            buf.putDouble(_p1 + 8, self.m11);
+            buf.putDouble(_p2, self.m02);
+            buf.putDouble(_p2 + 8, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadCMDoubleAbsolute(int index, ByteBuffer buf, int stride) {
+            int _ps = stride * 8;
+            int _p1 = index + _ps;
+            int _p2 = _p1 + _ps;
+            float _c0 = (float) buf.getDouble(index);
+            float _c3 = (float) buf.getDouble(index + 8);
+            float _c1 = (float) buf.getDouble(_p1);
+            float _c4 = (float) buf.getDouble(_p1 + 8);
+            float _c2 = (float) buf.getDouble(_p2);
+            float _c5 = (float) buf.getDouble(_p2 + 8);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public FloatBuffer storeRMAbsolute(Float2x3 self, int index, FloatBuffer buf, int stride) {
+            int _p1 = index + stride;
+            buf.put(index, self.m00);
+            buf.put(index + 1, self.m01);
+            buf.put(index + 2, self.m02);
+            buf.put(_p1, self.m10);
+            buf.put(_p1 + 1, self.m11);
+            buf.put(_p1 + 2, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadRMAbsolute(int index, FloatBuffer buf, int stride) {
+            int _p1 = index + stride;
+            float _c0 = buf.get(index);
+            float _c1 = buf.get(index + 1);
+            float _c2 = buf.get(index + 2);
+            float _c3 = buf.get(_p1);
+            float _c4 = buf.get(_p1 + 1);
+            float _c5 = buf.get(_p1 + 2);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public ByteBuffer storeRMAbsolute(Float2x3 self, int index, ByteBuffer buf, int stride) {
+            int _ps = stride * 4;
+            int _p1 = index + _ps;
+            buf.putFloat(index, self.m00);
+            buf.putFloat(index + 4, self.m01);
+            buf.putFloat(index + 8, self.m02);
+            buf.putFloat(_p1, self.m10);
+            buf.putFloat(_p1 + 4, self.m11);
+            buf.putFloat(_p1 + 8, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadRMAbsolute(int index, ByteBuffer buf, int stride) {
+            int _ps = stride * 4;
+            int _p1 = index + _ps;
+            float _c0 = buf.getFloat(index);
+            float _c1 = buf.getFloat(index + 4);
+            float _c2 = buf.getFloat(index + 8);
+            float _c3 = buf.getFloat(_p1);
+            float _c4 = buf.getFloat(_p1 + 4);
+            float _c5 = buf.getFloat(_p1 + 8);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public DoubleBuffer storeRMAbsolute(Float2x3 self, int index, DoubleBuffer buf, int stride) {
+            int _p1 = index + stride;
+            buf.put(index, self.m00);
+            buf.put(index + 1, self.m01);
+            buf.put(index + 2, self.m02);
+            buf.put(_p1, self.m10);
+            buf.put(_p1 + 1, self.m11);
+            buf.put(_p1 + 2, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadRMAbsolute(int index, DoubleBuffer buf, int stride) {
+            int _p1 = index + stride;
+            float _c0 = (float) buf.get(index);
+            float _c1 = (float) buf.get(index + 1);
+            float _c2 = (float) buf.get(index + 2);
+            float _c3 = (float) buf.get(_p1);
+            float _c4 = (float) buf.get(_p1 + 1);
+            float _c5 = (float) buf.get(_p1 + 2);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public ByteBuffer storeRMDoubleAbsolute(Float2x3 self, int index, ByteBuffer buf, int stride) {
+            int _ps = stride * 8;
+            int _p1 = index + _ps;
+            buf.putDouble(index, self.m00);
+            buf.putDouble(index + 8, self.m01);
+            buf.putDouble(index + 16, self.m02);
+            buf.putDouble(_p1, self.m10);
+            buf.putDouble(_p1 + 8, self.m11);
+            buf.putDouble(_p1 + 16, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadRMDoubleAbsolute(int index, ByteBuffer buf, int stride) {
+            int _ps = stride * 8;
+            int _p1 = index + _ps;
+            float _c0 = (float) buf.getDouble(index);
+            float _c1 = (float) buf.getDouble(index + 8);
+            float _c2 = (float) buf.getDouble(index + 16);
+            float _c3 = (float) buf.getDouble(_p1);
+            float _c4 = (float) buf.getDouble(_p1 + 8);
+            float _c5 = (float) buf.getDouble(_p1 + 16);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public FloatBuffer storeCM3x3Absolute(Float2x3 self, int index, FloatBuffer buf) {
+            buf.put(index, self.m00);
+            buf.put(index + 1, self.m10);
+            buf.put(index + 2, 0.0f);
+            buf.put(index + 3, self.m01);
+            buf.put(index + 4, self.m11);
+            buf.put(index + 5, 0.0f);
+            buf.put(index + 6, self.m02);
+            buf.put(index + 7, self.m12);
+            buf.put(index + 8, 1.0f);
+            return buf;
+        }
+
+        public ByteBuffer storeCM3x3Absolute(Float2x3 self, int index, ByteBuffer buf) {
+            buf.putFloat(index, self.m00);
+            buf.putFloat(index + 4, self.m10);
+            buf.putFloat(index + 8, 0.0f);
+            buf.putFloat(index + 12, self.m01);
+            buf.putFloat(index + 16, self.m11);
+            buf.putFloat(index + 20, 0.0f);
+            buf.putFloat(index + 24, self.m02);
+            buf.putFloat(index + 28, self.m12);
+            buf.putFloat(index + 32, 1.0f);
+            return buf;
+        }
+
+        public DoubleBuffer storeCM3x3Absolute(Float2x3 self, int index, DoubleBuffer buf) {
+            buf.put(index, self.m00);
+            buf.put(index + 1, self.m10);
+            buf.put(index + 2, 0.0);
+            buf.put(index + 3, self.m01);
+            buf.put(index + 4, self.m11);
+            buf.put(index + 5, 0.0);
+            buf.put(index + 6, self.m02);
+            buf.put(index + 7, self.m12);
+            buf.put(index + 8, 1.0);
+            return buf;
+        }
+
+        public ByteBuffer storeCM3x3DoubleAbsolute(Float2x3 self, int index, ByteBuffer buf) {
+            buf.putDouble(index, self.m00);
+            buf.putDouble(index + 8, self.m10);
+            buf.putDouble(index + 16, 0.0);
+            buf.putDouble(index + 24, self.m01);
+            buf.putDouble(index + 32, self.m11);
+            buf.putDouble(index + 40, 0.0);
+            buf.putDouble(index + 48, self.m02);
+            buf.putDouble(index + 56, self.m12);
+            buf.putDouble(index + 64, 1.0);
+            return buf;
+        }
+
+        public FloatBuffer storeRM3x3Absolute(Float2x3 self, int index, FloatBuffer buf) {
+            buf.put(index, self.m00);
+            buf.put(index + 1, self.m01);
+            buf.put(index + 2, self.m02);
+            buf.put(index + 3, self.m10);
+            buf.put(index + 4, self.m11);
+            buf.put(index + 5, self.m12);
+            buf.put(index + 6, 0.0f);
+            buf.put(index + 7, 0.0f);
+            buf.put(index + 8, 1.0f);
+            return buf;
+        }
+
+        public ByteBuffer storeRM3x3Absolute(Float2x3 self, int index, ByteBuffer buf) {
+            buf.putFloat(index, self.m00);
+            buf.putFloat(index + 4, self.m01);
+            buf.putFloat(index + 8, self.m02);
+            buf.putFloat(index + 12, self.m10);
+            buf.putFloat(index + 16, self.m11);
+            buf.putFloat(index + 20, self.m12);
+            buf.putFloat(index + 24, 0.0f);
+            buf.putFloat(index + 28, 0.0f);
+            buf.putFloat(index + 32, 1.0f);
+            return buf;
+        }
+
+        public DoubleBuffer storeRM3x3Absolute(Float2x3 self, int index, DoubleBuffer buf) {
+            buf.put(index, self.m00);
+            buf.put(index + 1, self.m01);
+            buf.put(index + 2, self.m02);
+            buf.put(index + 3, self.m10);
+            buf.put(index + 4, self.m11);
+            buf.put(index + 5, self.m12);
+            buf.put(index + 6, 0.0);
+            buf.put(index + 7, 0.0);
+            buf.put(index + 8, 1.0);
+            return buf;
+        }
+
+        public ByteBuffer storeRM3x3DoubleAbsolute(Float2x3 self, int index, ByteBuffer buf) {
+            buf.putDouble(index, self.m00);
+            buf.putDouble(index + 8, self.m01);
+            buf.putDouble(index + 16, self.m02);
+            buf.putDouble(index + 24, self.m10);
+            buf.putDouble(index + 32, self.m11);
+            buf.putDouble(index + 40, self.m12);
+            buf.putDouble(index + 48, 0.0);
+            buf.putDouble(index + 56, 0.0);
+            buf.putDouble(index + 64, 1.0);
+            return buf;
+        }
+
+        public FloatBuffer storeCM4x4Absolute(Float2x3 self, int index, FloatBuffer buf) {
+            buf.put(index, self.m00);
+            buf.put(index + 1, self.m10);
+            buf.put(index + 2, 0.0f);
+            buf.put(index + 3, 0.0f);
+            buf.put(index + 4, self.m01);
+            buf.put(index + 5, self.m11);
+            buf.put(index + 6, 0.0f);
+            buf.put(index + 7, 0.0f);
+            buf.put(index + 8, 0.0f);
+            buf.put(index + 9, 0.0f);
+            buf.put(index + 10, 1.0f);
+            buf.put(index + 11, 0.0f);
+            buf.put(index + 12, self.m02);
+            buf.put(index + 13, self.m12);
+            buf.put(index + 14, 0.0f);
+            buf.put(index + 15, 1.0f);
+            return buf;
+        }
+
+        public ByteBuffer storeCM4x4Absolute(Float2x3 self, int index, ByteBuffer buf) {
+            buf.putFloat(index, self.m00);
+            buf.putFloat(index + 4, self.m10);
+            buf.putFloat(index + 8, 0.0f);
+            buf.putFloat(index + 12, 0.0f);
+            buf.putFloat(index + 16, self.m01);
+            buf.putFloat(index + 20, self.m11);
+            buf.putFloat(index + 24, 0.0f);
+            buf.putFloat(index + 28, 0.0f);
+            buf.putFloat(index + 32, 0.0f);
+            buf.putFloat(index + 36, 0.0f);
+            buf.putFloat(index + 40, 1.0f);
+            buf.putFloat(index + 44, 0.0f);
+            buf.putFloat(index + 48, self.m02);
+            buf.putFloat(index + 52, self.m12);
+            buf.putFloat(index + 56, 0.0f);
+            buf.putFloat(index + 60, 1.0f);
+            return buf;
+        }
+
+        public DoubleBuffer storeCM4x4Absolute(Float2x3 self, int index, DoubleBuffer buf) {
+            buf.put(index, self.m00);
+            buf.put(index + 1, self.m10);
+            buf.put(index + 2, 0.0);
+            buf.put(index + 3, 0.0);
+            buf.put(index + 4, self.m01);
+            buf.put(index + 5, self.m11);
+            buf.put(index + 6, 0.0);
+            buf.put(index + 7, 0.0);
+            buf.put(index + 8, 0.0);
+            buf.put(index + 9, 0.0);
+            buf.put(index + 10, 1.0);
+            buf.put(index + 11, 0.0);
+            buf.put(index + 12, self.m02);
+            buf.put(index + 13, self.m12);
+            buf.put(index + 14, 0.0);
+            buf.put(index + 15, 1.0);
+            return buf;
+        }
+
+        public ByteBuffer storeCM4x4DoubleAbsolute(Float2x3 self, int index, ByteBuffer buf) {
+            buf.putDouble(index, self.m00);
+            buf.putDouble(index + 8, self.m10);
+            buf.putDouble(index + 16, 0.0);
+            buf.putDouble(index + 24, 0.0);
+            buf.putDouble(index + 32, self.m01);
+            buf.putDouble(index + 40, self.m11);
+            buf.putDouble(index + 48, 0.0);
+            buf.putDouble(index + 56, 0.0);
+            buf.putDouble(index + 64, 0.0);
+            buf.putDouble(index + 72, 0.0);
+            buf.putDouble(index + 80, 1.0);
+            buf.putDouble(index + 88, 0.0);
+            buf.putDouble(index + 96, self.m02);
+            buf.putDouble(index + 104, self.m12);
+            buf.putDouble(index + 112, 0.0);
+            buf.putDouble(index + 120, 1.0);
+            return buf;
+        }
+
+        public FloatBuffer storeRM4x4Absolute(Float2x3 self, int index, FloatBuffer buf) {
+            buf.put(index, self.m00);
+            buf.put(index + 1, self.m01);
+            buf.put(index + 2, 0.0f);
+            buf.put(index + 3, self.m02);
+            buf.put(index + 4, self.m10);
+            buf.put(index + 5, self.m11);
+            buf.put(index + 6, 0.0f);
+            buf.put(index + 7, self.m12);
+            buf.put(index + 8, 0.0f);
+            buf.put(index + 9, 0.0f);
+            buf.put(index + 10, 1.0f);
+            buf.put(index + 11, 0.0f);
+            buf.put(index + 12, 0.0f);
+            buf.put(index + 13, 0.0f);
+            buf.put(index + 14, 0.0f);
+            buf.put(index + 15, 1.0f);
+            return buf;
+        }
+
+        public ByteBuffer storeRM4x4Absolute(Float2x3 self, int index, ByteBuffer buf) {
+            buf.putFloat(index, self.m00);
+            buf.putFloat(index + 4, self.m01);
+            buf.putFloat(index + 8, 0.0f);
+            buf.putFloat(index + 12, self.m02);
+            buf.putFloat(index + 16, self.m10);
+            buf.putFloat(index + 20, self.m11);
+            buf.putFloat(index + 24, 0.0f);
+            buf.putFloat(index + 28, self.m12);
+            buf.putFloat(index + 32, 0.0f);
+            buf.putFloat(index + 36, 0.0f);
+            buf.putFloat(index + 40, 1.0f);
+            buf.putFloat(index + 44, 0.0f);
+            buf.putFloat(index + 48, 0.0f);
+            buf.putFloat(index + 52, 0.0f);
+            buf.putFloat(index + 56, 0.0f);
+            buf.putFloat(index + 60, 1.0f);
+            return buf;
+        }
+
+        public DoubleBuffer storeRM4x4Absolute(Float2x3 self, int index, DoubleBuffer buf) {
+            buf.put(index, self.m00);
+            buf.put(index + 1, self.m01);
+            buf.put(index + 2, 0.0);
+            buf.put(index + 3, self.m02);
+            buf.put(index + 4, self.m10);
+            buf.put(index + 5, self.m11);
+            buf.put(index + 6, 0.0);
+            buf.put(index + 7, self.m12);
+            buf.put(index + 8, 0.0);
+            buf.put(index + 9, 0.0);
+            buf.put(index + 10, 1.0);
+            buf.put(index + 11, 0.0);
+            buf.put(index + 12, 0.0);
+            buf.put(index + 13, 0.0);
+            buf.put(index + 14, 0.0);
+            buf.put(index + 15, 1.0);
+            return buf;
+        }
+
+        public ByteBuffer storeRM4x4DoubleAbsolute(Float2x3 self, int index, ByteBuffer buf) {
+            buf.putDouble(index, self.m00);
+            buf.putDouble(index + 8, self.m01);
+            buf.putDouble(index + 16, 0.0);
+            buf.putDouble(index + 24, self.m02);
+            buf.putDouble(index + 32, self.m10);
+            buf.putDouble(index + 40, self.m11);
+            buf.putDouble(index + 48, 0.0);
+            buf.putDouble(index + 56, self.m12);
+            buf.putDouble(index + 64, 0.0);
+            buf.putDouble(index + 72, 0.0);
+            buf.putDouble(index + 80, 1.0);
+            buf.putDouble(index + 88, 0.0);
+            buf.putDouble(index + 96, 0.0);
+            buf.putDouble(index + 104, 0.0);
+            buf.putDouble(index + 112, 0.0);
+            buf.putDouble(index + 120, 1.0);
+            return buf;
+        }
+    }
+
+    private static final class Float2x3BbOpsUnsafe extends Float2x3BbOps {
+        private static final Float2x3BbOpsApi API = new Float2x3BbOpsApi();
+        private static final Float2x3RawOpsUnsafe RAW = new Float2x3RawOpsUnsafe();
+
+        public FloatBuffer storeCMAbsolute(Float2x3 self, int index, FloatBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeCMAbsolute(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m10);
+            _U.putFloat(address + 8L, self.m01);
+            _U.putFloat(address + 12L, self.m11);
+            _U.putFloat(address + 16L, self.m02);
+            _U.putFloat(address + 20L, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadCMAbsolute(int index, FloatBuffer buf) {
+            if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadCMAbsolute(index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+            float _c0 = _U.getFloat(address);
+            float _c3 = _U.getFloat(address + 4L);
+            float _c1 = _U.getFloat(address + 8L);
+            float _c4 = _U.getFloat(address + 12L);
+            float _c2 = _U.getFloat(address + 16L);
+            float _c5 = _U.getFloat(address + 20L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public ByteBuffer storeCMAbsolute(Float2x3 self, int index, ByteBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeCMAbsoluteElse(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m10);
+            _U.putFloat(address + 8L, self.m01);
+            _U.putFloat(address + 12L, self.m11);
+            _U.putFloat(address + 16L, self.m02);
+            _U.putFloat(address + 20L, self.m12);
+            return buf;
+        }
+
+        private static ByteBuffer storeCMAbsoluteElse(Float2x3 self, int index, ByteBuffer buf) {
+            byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.storeCMAbsolute(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4L, self.m10);
+            _U.putFloat(bytes, address + 8L, self.m01);
+            _U.putFloat(bytes, address + 12L, self.m11);
+            _U.putFloat(bytes, address + 16L, self.m02);
+            _U.putFloat(bytes, address + 20L, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadCMAbsolute(int index, ByteBuffer buf) {
+            if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return loadCMAbsoluteElse(index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            float _c0 = _U.getFloat(address);
+            float _c3 = _U.getFloat(address + 4L);
+            float _c1 = _U.getFloat(address + 8L);
+            float _c4 = _U.getFloat(address + 12L);
+            float _c2 = _U.getFloat(address + 16L);
+            float _c5 = _U.getFloat(address + 20L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        private static Float2x3 loadCMAbsoluteElse(int index, ByteBuffer buf) {
+            byte[] bytes = buf.isDirect() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.loadCMAbsolute(index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            float _c0 = _U.getFloat(bytes, address);
+            float _c3 = _U.getFloat(bytes, address + 4L);
+            float _c1 = _U.getFloat(bytes, address + 8L);
+            float _c4 = _U.getFloat(bytes, address + 12L);
+            float _c2 = _U.getFloat(bytes, address + 16L);
+            float _c5 = _U.getFloat(bytes, address + 20L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public DoubleBuffer storeCMAbsolute(Float2x3 self, int index, DoubleBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeCMAbsolute(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m10);
+            _U.putDouble(address + 16L, self.m01);
+            _U.putDouble(address + 24L, self.m11);
+            _U.putDouble(address + 32L, self.m02);
+            _U.putDouble(address + 40L, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadCMAbsolute(int index, DoubleBuffer buf) {
+            if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadCMAbsolute(index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+            float _c0 = (float) _U.getDouble(address);
+            float _c3 = (float) _U.getDouble(address + 8L);
+            float _c1 = (float) _U.getDouble(address + 16L);
+            float _c4 = (float) _U.getDouble(address + 24L);
+            float _c2 = (float) _U.getDouble(address + 32L);
+            float _c5 = (float) _U.getDouble(address + 40L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public ByteBuffer storeCMDoubleAbsolute(Float2x3 self, int index, ByteBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeCMDoubleAbsoluteElse(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m10);
+            _U.putDouble(address + 16L, self.m01);
+            _U.putDouble(address + 24L, self.m11);
+            _U.putDouble(address + 32L, self.m02);
+            _U.putDouble(address + 40L, self.m12);
+            return buf;
+        }
+
+        private static ByteBuffer storeCMDoubleAbsoluteElse(Float2x3 self, int index, ByteBuffer buf) {
+            byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.storeCMDoubleAbsolute(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8L, self.m10);
+            _U.putDouble(bytes, address + 16L, self.m01);
+            _U.putDouble(bytes, address + 24L, self.m11);
+            _U.putDouble(bytes, address + 32L, self.m02);
+            _U.putDouble(bytes, address + 40L, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadCMDoubleAbsolute(int index, ByteBuffer buf) {
+            if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return loadCMDoubleAbsoluteElse(index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            float _c0 = (float) _U.getDouble(address);
+            float _c3 = (float) _U.getDouble(address + 8L);
+            float _c1 = (float) _U.getDouble(address + 16L);
+            float _c4 = (float) _U.getDouble(address + 24L);
+            float _c2 = (float) _U.getDouble(address + 32L);
+            float _c5 = (float) _U.getDouble(address + 40L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        private static Float2x3 loadCMDoubleAbsoluteElse(int index, ByteBuffer buf) {
+            byte[] bytes = buf.isDirect() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.loadCMDoubleAbsolute(index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            float _c0 = (float) _U.getDouble(bytes, address);
+            float _c3 = (float) _U.getDouble(bytes, address + 8L);
+            float _c1 = (float) _U.getDouble(bytes, address + 16L);
+            float _c4 = (float) _U.getDouble(bytes, address + 24L);
+            float _c2 = (float) _U.getDouble(bytes, address + 32L);
+            float _c5 = (float) _U.getDouble(bytes, address + 40L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public FloatBuffer storeRMAbsolute(Float2x3 self, int index, FloatBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeRMAbsolute(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m01);
+            _U.putFloat(address + 8L, self.m02);
+            _U.putFloat(address + 12L, self.m10);
+            _U.putFloat(address + 16L, self.m11);
+            _U.putFloat(address + 20L, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadRMAbsolute(int index, FloatBuffer buf) {
+            if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadRMAbsolute(index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+            float _c0 = _U.getFloat(address);
+            float _c1 = _U.getFloat(address + 4L);
+            float _c2 = _U.getFloat(address + 8L);
+            float _c3 = _U.getFloat(address + 12L);
+            float _c4 = _U.getFloat(address + 16L);
+            float _c5 = _U.getFloat(address + 20L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public ByteBuffer storeRMAbsolute(Float2x3 self, int index, ByteBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeRMAbsoluteElse(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m01);
+            _U.putFloat(address + 8L, self.m02);
+            _U.putFloat(address + 12L, self.m10);
+            _U.putFloat(address + 16L, self.m11);
+            _U.putFloat(address + 20L, self.m12);
+            return buf;
+        }
+
+        private static ByteBuffer storeRMAbsoluteElse(Float2x3 self, int index, ByteBuffer buf) {
+            byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.storeRMAbsolute(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4L, self.m01);
+            _U.putFloat(bytes, address + 8L, self.m02);
+            _U.putFloat(bytes, address + 12L, self.m10);
+            _U.putFloat(bytes, address + 16L, self.m11);
+            _U.putFloat(bytes, address + 20L, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadRMAbsolute(int index, ByteBuffer buf) {
+            if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return loadRMAbsoluteElse(index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            float _c0 = _U.getFloat(address);
+            float _c1 = _U.getFloat(address + 4L);
+            float _c2 = _U.getFloat(address + 8L);
+            float _c3 = _U.getFloat(address + 12L);
+            float _c4 = _U.getFloat(address + 16L);
+            float _c5 = _U.getFloat(address + 20L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        private static Float2x3 loadRMAbsoluteElse(int index, ByteBuffer buf) {
+            byte[] bytes = buf.isDirect() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.loadRMAbsolute(index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            float _c0 = _U.getFloat(bytes, address);
+            float _c1 = _U.getFloat(bytes, address + 4L);
+            float _c2 = _U.getFloat(bytes, address + 8L);
+            float _c3 = _U.getFloat(bytes, address + 12L);
+            float _c4 = _U.getFloat(bytes, address + 16L);
+            float _c5 = _U.getFloat(bytes, address + 20L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public DoubleBuffer storeRMAbsolute(Float2x3 self, int index, DoubleBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeRMAbsolute(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m01);
+            _U.putDouble(address + 16L, self.m02);
+            _U.putDouble(address + 24L, self.m10);
+            _U.putDouble(address + 32L, self.m11);
+            _U.putDouble(address + 40L, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadRMAbsolute(int index, DoubleBuffer buf) {
+            if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadRMAbsolute(index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+            float _c0 = (float) _U.getDouble(address);
+            float _c1 = (float) _U.getDouble(address + 8L);
+            float _c2 = (float) _U.getDouble(address + 16L);
+            float _c3 = (float) _U.getDouble(address + 24L);
+            float _c4 = (float) _U.getDouble(address + 32L);
+            float _c5 = (float) _U.getDouble(address + 40L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public ByteBuffer storeRMDoubleAbsolute(Float2x3 self, int index, ByteBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeRMDoubleAbsoluteElse(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m01);
+            _U.putDouble(address + 16L, self.m02);
+            _U.putDouble(address + 24L, self.m10);
+            _U.putDouble(address + 32L, self.m11);
+            _U.putDouble(address + 40L, self.m12);
+            return buf;
+        }
+
+        private static ByteBuffer storeRMDoubleAbsoluteElse(Float2x3 self, int index, ByteBuffer buf) {
+            byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.storeRMDoubleAbsolute(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8L, self.m01);
+            _U.putDouble(bytes, address + 16L, self.m02);
+            _U.putDouble(bytes, address + 24L, self.m10);
+            _U.putDouble(bytes, address + 32L, self.m11);
+            _U.putDouble(bytes, address + 40L, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadRMDoubleAbsolute(int index, ByteBuffer buf) {
+            if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return loadRMDoubleAbsoluteElse(index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            float _c0 = (float) _U.getDouble(address);
+            float _c1 = (float) _U.getDouble(address + 8L);
+            float _c2 = (float) _U.getDouble(address + 16L);
+            float _c3 = (float) _U.getDouble(address + 24L);
+            float _c4 = (float) _U.getDouble(address + 32L);
+            float _c5 = (float) _U.getDouble(address + 40L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        private static Float2x3 loadRMDoubleAbsoluteElse(int index, ByteBuffer buf) {
+            byte[] bytes = buf.isDirect() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.loadRMDoubleAbsolute(index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            float _c0 = (float) _U.getDouble(bytes, address);
+            float _c1 = (float) _U.getDouble(bytes, address + 8L);
+            float _c2 = (float) _U.getDouble(bytes, address + 16L);
+            float _c3 = (float) _U.getDouble(bytes, address + 24L);
+            float _c4 = (float) _U.getDouble(bytes, address + 32L);
+            float _c5 = (float) _U.getDouble(bytes, address + 40L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public FloatBuffer storeCMAbsolute(Float2x3 self, int index, FloatBuffer buf, int stride) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeCMAbsolute(self, index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4, self.m10);
+            _U.putFloat(_p1, self.m01);
+            _U.putFloat(_p1 + 4, self.m11);
+            _U.putFloat(_p2, self.m02);
+            _U.putFloat(_p2 + 4, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadCMAbsolute(int index, FloatBuffer buf, int stride) {
+            if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadCMAbsolute(index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            float _c0 = _U.getFloat(address);
+            float _c3 = _U.getFloat(address + 4);
+            float _c1 = _U.getFloat(_p1);
+            float _c4 = _U.getFloat(_p1 + 4);
+            float _c2 = _U.getFloat(_p2);
+            float _c5 = _U.getFloat(_p2 + 4);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public ByteBuffer storeCMAbsolute(Float2x3 self, int index, ByteBuffer buf, int stride) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeCMAbsoluteElse(self, index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4, self.m10);
+            _U.putFloat(_p1, self.m01);
+            _U.putFloat(_p1 + 4, self.m11);
+            _U.putFloat(_p2, self.m02);
+            _U.putFloat(_p2 + 4, self.m12);
+            return buf;
+        }
+
+        private static ByteBuffer storeCMAbsoluteElse(Float2x3 self, int index, ByteBuffer buf, int stride) {
+            byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.storeCMAbsolute(self, index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4, self.m10);
+            _U.putFloat(bytes, _p1, self.m01);
+            _U.putFloat(bytes, _p1 + 4, self.m11);
+            _U.putFloat(bytes, _p2, self.m02);
+            _U.putFloat(bytes, _p2 + 4, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadCMAbsolute(int index, ByteBuffer buf, int stride) {
+            if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return loadCMAbsoluteElse(index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            float _c0 = _U.getFloat(address);
+            float _c3 = _U.getFloat(address + 4);
+            float _c1 = _U.getFloat(_p1);
+            float _c4 = _U.getFloat(_p1 + 4);
+            float _c2 = _U.getFloat(_p2);
+            float _c5 = _U.getFloat(_p2 + 4);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        private static Float2x3 loadCMAbsoluteElse(int index, ByteBuffer buf, int stride) {
+            byte[] bytes = buf.isDirect() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.loadCMAbsolute(index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            float _c0 = _U.getFloat(bytes, address);
+            float _c3 = _U.getFloat(bytes, address + 4);
+            float _c1 = _U.getFloat(bytes, _p1);
+            float _c4 = _U.getFloat(bytes, _p1 + 4);
+            float _c2 = _U.getFloat(bytes, _p2);
+            float _c5 = _U.getFloat(bytes, _p2 + 4);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public DoubleBuffer storeCMAbsolute(Float2x3 self, int index, DoubleBuffer buf, int stride) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeCMAbsolute(self, index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8, self.m10);
+            _U.putDouble(_p1, self.m01);
+            _U.putDouble(_p1 + 8, self.m11);
+            _U.putDouble(_p2, self.m02);
+            _U.putDouble(_p2 + 8, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadCMAbsolute(int index, DoubleBuffer buf, int stride) {
+            if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadCMAbsolute(index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            float _c0 = (float) _U.getDouble(address);
+            float _c3 = (float) _U.getDouble(address + 8);
+            float _c1 = (float) _U.getDouble(_p1);
+            float _c4 = (float) _U.getDouble(_p1 + 8);
+            float _c2 = (float) _U.getDouble(_p2);
+            float _c5 = (float) _U.getDouble(_p2 + 8);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public ByteBuffer storeCMDoubleAbsolute(Float2x3 self, int index, ByteBuffer buf, int stride) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeCMDoubleAbsoluteElse(self, index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8, self.m10);
+            _U.putDouble(_p1, self.m01);
+            _U.putDouble(_p1 + 8, self.m11);
+            _U.putDouble(_p2, self.m02);
+            _U.putDouble(_p2 + 8, self.m12);
+            return buf;
+        }
+
+        private static ByteBuffer storeCMDoubleAbsoluteElse(Float2x3 self, int index, ByteBuffer buf, int stride) {
+            byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.storeCMDoubleAbsolute(self, index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8, self.m10);
+            _U.putDouble(bytes, _p1, self.m01);
+            _U.putDouble(bytes, _p1 + 8, self.m11);
+            _U.putDouble(bytes, _p2, self.m02);
+            _U.putDouble(bytes, _p2 + 8, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadCMDoubleAbsolute(int index, ByteBuffer buf, int stride) {
+            if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return loadCMDoubleAbsoluteElse(index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            float _c0 = (float) _U.getDouble(address);
+            float _c3 = (float) _U.getDouble(address + 8);
+            float _c1 = (float) _U.getDouble(_p1);
+            float _c4 = (float) _U.getDouble(_p1 + 8);
+            float _c2 = (float) _U.getDouble(_p2);
+            float _c5 = (float) _U.getDouble(_p2 + 8);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        private static Float2x3 loadCMDoubleAbsoluteElse(int index, ByteBuffer buf, int stride) {
+            byte[] bytes = buf.isDirect() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.loadCMDoubleAbsolute(index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            float _c0 = (float) _U.getDouble(bytes, address);
+            float _c3 = (float) _U.getDouble(bytes, address + 8);
+            float _c1 = (float) _U.getDouble(bytes, _p1);
+            float _c4 = (float) _U.getDouble(bytes, _p1 + 8);
+            float _c2 = (float) _U.getDouble(bytes, _p2);
+            float _c5 = (float) _U.getDouble(bytes, _p2 + 8);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public FloatBuffer storeRMAbsolute(Float2x3 self, int index, FloatBuffer buf, int stride) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeRMAbsolute(self, index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4, self.m01);
+            _U.putFloat(address + 8, self.m02);
+            _U.putFloat(_p1, self.m10);
+            _U.putFloat(_p1 + 4, self.m11);
+            _U.putFloat(_p1 + 8, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadRMAbsolute(int index, FloatBuffer buf, int stride) {
+            if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadRMAbsolute(index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            float _c0 = _U.getFloat(address);
+            float _c1 = _U.getFloat(address + 4);
+            float _c2 = _U.getFloat(address + 8);
+            float _c3 = _U.getFloat(_p1);
+            float _c4 = _U.getFloat(_p1 + 4);
+            float _c5 = _U.getFloat(_p1 + 8);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public ByteBuffer storeRMAbsolute(Float2x3 self, int index, ByteBuffer buf, int stride) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeRMAbsoluteElse(self, index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4, self.m01);
+            _U.putFloat(address + 8, self.m02);
+            _U.putFloat(_p1, self.m10);
+            _U.putFloat(_p1 + 4, self.m11);
+            _U.putFloat(_p1 + 8, self.m12);
+            return buf;
+        }
+
+        private static ByteBuffer storeRMAbsoluteElse(Float2x3 self, int index, ByteBuffer buf, int stride) {
+            byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.storeRMAbsolute(self, index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4, self.m01);
+            _U.putFloat(bytes, address + 8, self.m02);
+            _U.putFloat(bytes, _p1, self.m10);
+            _U.putFloat(bytes, _p1 + 4, self.m11);
+            _U.putFloat(bytes, _p1 + 8, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadRMAbsolute(int index, ByteBuffer buf, int stride) {
+            if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return loadRMAbsoluteElse(index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            float _c0 = _U.getFloat(address);
+            float _c1 = _U.getFloat(address + 4);
+            float _c2 = _U.getFloat(address + 8);
+            float _c3 = _U.getFloat(_p1);
+            float _c4 = _U.getFloat(_p1 + 4);
+            float _c5 = _U.getFloat(_p1 + 8);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        private static Float2x3 loadRMAbsoluteElse(int index, ByteBuffer buf, int stride) {
+            byte[] bytes = buf.isDirect() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.loadRMAbsolute(index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            float _c0 = _U.getFloat(bytes, address);
+            float _c1 = _U.getFloat(bytes, address + 4);
+            float _c2 = _U.getFloat(bytes, address + 8);
+            float _c3 = _U.getFloat(bytes, _p1);
+            float _c4 = _U.getFloat(bytes, _p1 + 4);
+            float _c5 = _U.getFloat(bytes, _p1 + 8);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public DoubleBuffer storeRMAbsolute(Float2x3 self, int index, DoubleBuffer buf, int stride) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeRMAbsolute(self, index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8, self.m01);
+            _U.putDouble(address + 16, self.m02);
+            _U.putDouble(_p1, self.m10);
+            _U.putDouble(_p1 + 8, self.m11);
+            _U.putDouble(_p1 + 16, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadRMAbsolute(int index, DoubleBuffer buf, int stride) {
+            if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadRMAbsolute(index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            float _c0 = (float) _U.getDouble(address);
+            float _c1 = (float) _U.getDouble(address + 8);
+            float _c2 = (float) _U.getDouble(address + 16);
+            float _c3 = (float) _U.getDouble(_p1);
+            float _c4 = (float) _U.getDouble(_p1 + 8);
+            float _c5 = (float) _U.getDouble(_p1 + 16);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public ByteBuffer storeRMDoubleAbsolute(Float2x3 self, int index, ByteBuffer buf, int stride) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeRMDoubleAbsoluteElse(self, index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8, self.m01);
+            _U.putDouble(address + 16, self.m02);
+            _U.putDouble(_p1, self.m10);
+            _U.putDouble(_p1 + 8, self.m11);
+            _U.putDouble(_p1 + 16, self.m12);
+            return buf;
+        }
+
+        private static ByteBuffer storeRMDoubleAbsoluteElse(Float2x3 self, int index, ByteBuffer buf, int stride) {
+            byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.storeRMDoubleAbsolute(self, index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8, self.m01);
+            _U.putDouble(bytes, address + 16, self.m02);
+            _U.putDouble(bytes, _p1, self.m10);
+            _U.putDouble(bytes, _p1 + 8, self.m11);
+            _U.putDouble(bytes, _p1 + 16, self.m12);
+            return buf;
+        }
+
+        public Float2x3 loadRMDoubleAbsolute(int index, ByteBuffer buf, int stride) {
+            if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return loadRMDoubleAbsoluteElse(index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            float _c0 = (float) _U.getDouble(address);
+            float _c1 = (float) _U.getDouble(address + 8);
+            float _c2 = (float) _U.getDouble(address + 16);
+            float _c3 = (float) _U.getDouble(_p1);
+            float _c4 = (float) _U.getDouble(_p1 + 8);
+            float _c5 = (float) _U.getDouble(_p1 + 16);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        private static Float2x3 loadRMDoubleAbsoluteElse(int index, ByteBuffer buf, int stride) {
+            byte[] bytes = buf.isDirect() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.loadRMDoubleAbsolute(index, buf, stride);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            float _c0 = (float) _U.getDouble(bytes, address);
+            float _c1 = (float) _U.getDouble(bytes, address + 8);
+            float _c2 = (float) _U.getDouble(bytes, address + 16);
+            float _c3 = (float) _U.getDouble(bytes, _p1);
+            float _c4 = (float) _U.getDouble(bytes, _p1 + 8);
+            float _c5 = (float) _U.getDouble(bytes, _p1 + 16);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public FloatBuffer storeCM3x3Absolute(Float2x3 self, int index, FloatBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeCM3x3Absolute(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m10);
+            _U.putFloat(address + 8L, 0.0f);
+            _U.putFloat(address + 12L, self.m01);
+            _U.putFloat(address + 16L, self.m11);
+            _U.putFloat(address + 20L, 0.0f);
+            _U.putFloat(address + 24L, self.m02);
+            _U.putFloat(address + 28L, self.m12);
+            _U.putFloat(address + 32L, 1.0f);
+            return buf;
+        }
+
+        public ByteBuffer storeCM3x3Absolute(Float2x3 self, int index, ByteBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeCM3x3AbsoluteElse(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m10);
+            _U.putFloat(address + 8L, 0.0f);
+            _U.putFloat(address + 12L, self.m01);
+            _U.putFloat(address + 16L, self.m11);
+            _U.putFloat(address + 20L, 0.0f);
+            _U.putFloat(address + 24L, self.m02);
+            _U.putFloat(address + 28L, self.m12);
+            _U.putFloat(address + 32L, 1.0f);
+            return buf;
+        }
+
+        private static ByteBuffer storeCM3x3AbsoluteElse(Float2x3 self, int index, ByteBuffer buf) {
+            byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.storeCM3x3Absolute(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4L, self.m10);
+            _U.putFloat(bytes, address + 8L, 0.0f);
+            _U.putFloat(bytes, address + 12L, self.m01);
+            _U.putFloat(bytes, address + 16L, self.m11);
+            _U.putFloat(bytes, address + 20L, 0.0f);
+            _U.putFloat(bytes, address + 24L, self.m02);
+            _U.putFloat(bytes, address + 28L, self.m12);
+            _U.putFloat(bytes, address + 32L, 1.0f);
+            return buf;
+        }
+
+        public DoubleBuffer storeCM3x3Absolute(Float2x3 self, int index, DoubleBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeCM3x3Absolute(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m10);
+            _U.putDouble(address + 16L, 0.0);
+            _U.putDouble(address + 24L, self.m01);
+            _U.putDouble(address + 32L, self.m11);
+            _U.putDouble(address + 40L, 0.0);
+            _U.putDouble(address + 48L, self.m02);
+            _U.putDouble(address + 56L, self.m12);
+            _U.putDouble(address + 64L, 1.0);
+            return buf;
+        }
+
+        public ByteBuffer storeCM3x3DoubleAbsolute(Float2x3 self, int index, ByteBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeCM3x3DoubleAbsoluteElse(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m10);
+            _U.putDouble(address + 16L, 0.0);
+            _U.putDouble(address + 24L, self.m01);
+            _U.putDouble(address + 32L, self.m11);
+            _U.putDouble(address + 40L, 0.0);
+            _U.putDouble(address + 48L, self.m02);
+            _U.putDouble(address + 56L, self.m12);
+            _U.putDouble(address + 64L, 1.0);
+            return buf;
+        }
+
+        private static ByteBuffer storeCM3x3DoubleAbsoluteElse(Float2x3 self, int index, ByteBuffer buf) {
+            byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.storeCM3x3DoubleAbsolute(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8L, self.m10);
+            _U.putDouble(bytes, address + 16L, 0.0);
+            _U.putDouble(bytes, address + 24L, self.m01);
+            _U.putDouble(bytes, address + 32L, self.m11);
+            _U.putDouble(bytes, address + 40L, 0.0);
+            _U.putDouble(bytes, address + 48L, self.m02);
+            _U.putDouble(bytes, address + 56L, self.m12);
+            _U.putDouble(bytes, address + 64L, 1.0);
+            return buf;
+        }
+
+        public FloatBuffer storeRM3x3Absolute(Float2x3 self, int index, FloatBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeRM3x3Absolute(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m01);
+            _U.putFloat(address + 8L, self.m02);
+            _U.putFloat(address + 12L, self.m10);
+            _U.putFloat(address + 16L, self.m11);
+            _U.putFloat(address + 20L, self.m12);
+            _U.putFloat(address + 24L, 0.0f);
+            _U.putFloat(address + 28L, 0.0f);
+            _U.putFloat(address + 32L, 1.0f);
+            return buf;
+        }
+
+        public ByteBuffer storeRM3x3Absolute(Float2x3 self, int index, ByteBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeRM3x3AbsoluteElse(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m01);
+            _U.putFloat(address + 8L, self.m02);
+            _U.putFloat(address + 12L, self.m10);
+            _U.putFloat(address + 16L, self.m11);
+            _U.putFloat(address + 20L, self.m12);
+            _U.putFloat(address + 24L, 0.0f);
+            _U.putFloat(address + 28L, 0.0f);
+            _U.putFloat(address + 32L, 1.0f);
+            return buf;
+        }
+
+        private static ByteBuffer storeRM3x3AbsoluteElse(Float2x3 self, int index, ByteBuffer buf) {
+            byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.storeRM3x3Absolute(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4L, self.m01);
+            _U.putFloat(bytes, address + 8L, self.m02);
+            _U.putFloat(bytes, address + 12L, self.m10);
+            _U.putFloat(bytes, address + 16L, self.m11);
+            _U.putFloat(bytes, address + 20L, self.m12);
+            _U.putFloat(bytes, address + 24L, 0.0f);
+            _U.putFloat(bytes, address + 28L, 0.0f);
+            _U.putFloat(bytes, address + 32L, 1.0f);
+            return buf;
+        }
+
+        public DoubleBuffer storeRM3x3Absolute(Float2x3 self, int index, DoubleBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeRM3x3Absolute(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m01);
+            _U.putDouble(address + 16L, self.m02);
+            _U.putDouble(address + 24L, self.m10);
+            _U.putDouble(address + 32L, self.m11);
+            _U.putDouble(address + 40L, self.m12);
+            _U.putDouble(address + 48L, 0.0);
+            _U.putDouble(address + 56L, 0.0);
+            _U.putDouble(address + 64L, 1.0);
+            return buf;
+        }
+
+        public ByteBuffer storeRM3x3DoubleAbsolute(Float2x3 self, int index, ByteBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeRM3x3DoubleAbsoluteElse(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m01);
+            _U.putDouble(address + 16L, self.m02);
+            _U.putDouble(address + 24L, self.m10);
+            _U.putDouble(address + 32L, self.m11);
+            _U.putDouble(address + 40L, self.m12);
+            _U.putDouble(address + 48L, 0.0);
+            _U.putDouble(address + 56L, 0.0);
+            _U.putDouble(address + 64L, 1.0);
+            return buf;
+        }
+
+        private static ByteBuffer storeRM3x3DoubleAbsoluteElse(Float2x3 self, int index, ByteBuffer buf) {
+            byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.storeRM3x3DoubleAbsolute(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8L, self.m01);
+            _U.putDouble(bytes, address + 16L, self.m02);
+            _U.putDouble(bytes, address + 24L, self.m10);
+            _U.putDouble(bytes, address + 32L, self.m11);
+            _U.putDouble(bytes, address + 40L, self.m12);
+            _U.putDouble(bytes, address + 48L, 0.0);
+            _U.putDouble(bytes, address + 56L, 0.0);
+            _U.putDouble(bytes, address + 64L, 1.0);
+            return buf;
+        }
+
+        public FloatBuffer storeCM4x4Absolute(Float2x3 self, int index, FloatBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeCM4x4Absolute(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m10);
+            _U.putFloat(address + 8L, 0.0f);
+            _U.putFloat(address + 12L, 0.0f);
+            _U.putFloat(address + 16L, self.m01);
+            _U.putFloat(address + 20L, self.m11);
+            _U.putFloat(address + 24L, 0.0f);
+            _U.putFloat(address + 28L, 0.0f);
+            _U.putFloat(address + 32L, 0.0f);
+            _U.putFloat(address + 36L, 0.0f);
+            _U.putFloat(address + 40L, 1.0f);
+            _U.putFloat(address + 44L, 0.0f);
+            _U.putFloat(address + 48L, self.m02);
+            _U.putFloat(address + 52L, self.m12);
+            _U.putFloat(address + 56L, 0.0f);
+            _U.putFloat(address + 60L, 1.0f);
+            return buf;
+        }
+
+        public ByteBuffer storeCM4x4Absolute(Float2x3 self, int index, ByteBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeCM4x4AbsoluteElse(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m10);
+            _U.putFloat(address + 8L, 0.0f);
+            _U.putFloat(address + 12L, 0.0f);
+            _U.putFloat(address + 16L, self.m01);
+            _U.putFloat(address + 20L, self.m11);
+            _U.putFloat(address + 24L, 0.0f);
+            _U.putFloat(address + 28L, 0.0f);
+            _U.putFloat(address + 32L, 0.0f);
+            _U.putFloat(address + 36L, 0.0f);
+            _U.putFloat(address + 40L, 1.0f);
+            _U.putFloat(address + 44L, 0.0f);
+            _U.putFloat(address + 48L, self.m02);
+            _U.putFloat(address + 52L, self.m12);
+            _U.putFloat(address + 56L, 0.0f);
+            _U.putFloat(address + 60L, 1.0f);
+            return buf;
+        }
+
+        private static ByteBuffer storeCM4x4AbsoluteElse(Float2x3 self, int index, ByteBuffer buf) {
+            byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.storeCM4x4Absolute(self, index, buf);
+            RAW.storeCM4x4Heap(self, bytes, U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index);
+            return buf;
+        }
+
+        public DoubleBuffer storeCM4x4Absolute(Float2x3 self, int index, DoubleBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeCM4x4Absolute(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m10);
+            _U.putDouble(address + 16L, 0.0);
+            _U.putDouble(address + 24L, 0.0);
+            _U.putDouble(address + 32L, self.m01);
+            _U.putDouble(address + 40L, self.m11);
+            _U.putDouble(address + 48L, 0.0);
+            _U.putDouble(address + 56L, 0.0);
+            _U.putDouble(address + 64L, 0.0);
+            _U.putDouble(address + 72L, 0.0);
+            _U.putDouble(address + 80L, 1.0);
+            _U.putDouble(address + 88L, 0.0);
+            _U.putDouble(address + 96L, self.m02);
+            _U.putDouble(address + 104L, self.m12);
+            _U.putDouble(address + 112L, 0.0);
+            _U.putDouble(address + 120L, 1.0);
+            return buf;
+        }
+
+        public ByteBuffer storeCM4x4DoubleAbsolute(Float2x3 self, int index, ByteBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeCM4x4DoubleAbsoluteElse(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m10);
+            _U.putDouble(address + 16L, 0.0);
+            _U.putDouble(address + 24L, 0.0);
+            _U.putDouble(address + 32L, self.m01);
+            _U.putDouble(address + 40L, self.m11);
+            _U.putDouble(address + 48L, 0.0);
+            _U.putDouble(address + 56L, 0.0);
+            _U.putDouble(address + 64L, 0.0);
+            _U.putDouble(address + 72L, 0.0);
+            _U.putDouble(address + 80L, 1.0);
+            _U.putDouble(address + 88L, 0.0);
+            _U.putDouble(address + 96L, self.m02);
+            _U.putDouble(address + 104L, self.m12);
+            _U.putDouble(address + 112L, 0.0);
+            _U.putDouble(address + 120L, 1.0);
+            return buf;
+        }
+
+        private static ByteBuffer storeCM4x4DoubleAbsoluteElse(Float2x3 self, int index, ByteBuffer buf) {
+            byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.storeCM4x4DoubleAbsolute(self, index, buf);
+            RAW.storeCM4x4DoubleHeap(self, bytes, U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index);
+            return buf;
+        }
+
+        public FloatBuffer storeRM4x4Absolute(Float2x3 self, int index, FloatBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeRM4x4Absolute(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 4L;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m01);
+            _U.putFloat(address + 8L, 0.0f);
+            _U.putFloat(address + 12L, self.m02);
+            _U.putFloat(address + 16L, self.m10);
+            _U.putFloat(address + 20L, self.m11);
+            _U.putFloat(address + 24L, 0.0f);
+            _U.putFloat(address + 28L, self.m12);
+            _U.putFloat(address + 32L, 0.0f);
+            _U.putFloat(address + 36L, 0.0f);
+            _U.putFloat(address + 40L, 1.0f);
+            _U.putFloat(address + 44L, 0.0f);
+            _U.putFloat(address + 48L, 0.0f);
+            _U.putFloat(address + 52L, 0.0f);
+            _U.putFloat(address + 56L, 0.0f);
+            _U.putFloat(address + 60L, 1.0f);
+            return buf;
+        }
+
+        public ByteBuffer storeRM4x4Absolute(Float2x3 self, int index, ByteBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeRM4x4AbsoluteElse(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m01);
+            _U.putFloat(address + 8L, 0.0f);
+            _U.putFloat(address + 12L, self.m02);
+            _U.putFloat(address + 16L, self.m10);
+            _U.putFloat(address + 20L, self.m11);
+            _U.putFloat(address + 24L, 0.0f);
+            _U.putFloat(address + 28L, self.m12);
+            _U.putFloat(address + 32L, 0.0f);
+            _U.putFloat(address + 36L, 0.0f);
+            _U.putFloat(address + 40L, 1.0f);
+            _U.putFloat(address + 44L, 0.0f);
+            _U.putFloat(address + 48L, 0.0f);
+            _U.putFloat(address + 52L, 0.0f);
+            _U.putFloat(address + 56L, 0.0f);
+            _U.putFloat(address + 60L, 1.0f);
+            return buf;
+        }
+
+        private static ByteBuffer storeRM4x4AbsoluteElse(Float2x3 self, int index, ByteBuffer buf) {
+            byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.storeRM4x4Absolute(self, index, buf);
+            RAW.storeRM4x4Heap(self, bytes, U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index);
+            return buf;
+        }
+
+        public DoubleBuffer storeRM4x4Absolute(Float2x3 self, int index, DoubleBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeRM4x4Absolute(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index * 8L;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m01);
+            _U.putDouble(address + 16L, 0.0);
+            _U.putDouble(address + 24L, self.m02);
+            _U.putDouble(address + 32L, self.m10);
+            _U.putDouble(address + 40L, self.m11);
+            _U.putDouble(address + 48L, 0.0);
+            _U.putDouble(address + 56L, self.m12);
+            _U.putDouble(address + 64L, 0.0);
+            _U.putDouble(address + 72L, 0.0);
+            _U.putDouble(address + 80L, 1.0);
+            _U.putDouble(address + 88L, 0.0);
+            _U.putDouble(address + 96L, 0.0);
+            _U.putDouble(address + 104L, 0.0);
+            _U.putDouble(address + 112L, 0.0);
+            _U.putDouble(address + 120L, 1.0);
+            return buf;
+        }
+
+        public ByteBuffer storeRM4x4DoubleAbsolute(Float2x3 self, int index, ByteBuffer buf) {
+            if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return storeRM4x4DoubleAbsoluteElse(self, index, buf);
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            long address = _U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m01);
+            _U.putDouble(address + 16L, 0.0);
+            _U.putDouble(address + 24L, self.m02);
+            _U.putDouble(address + 32L, self.m10);
+            _U.putDouble(address + 40L, self.m11);
+            _U.putDouble(address + 48L, 0.0);
+            _U.putDouble(address + 56L, self.m12);
+            _U.putDouble(address + 64L, 0.0);
+            _U.putDouble(address + 72L, 0.0);
+            _U.putDouble(address + 80L, 1.0);
+            _U.putDouble(address + 88L, 0.0);
+            _U.putDouble(address + 96L, 0.0);
+            _U.putDouble(address + 104L, 0.0);
+            _U.putDouble(address + 112L, 0.0);
+            _U.putDouble(address + 120L, 1.0);
+            return buf;
+        }
+
+        private static ByteBuffer storeRM4x4DoubleAbsoluteElse(Float2x3 self, int index, ByteBuffer buf) {
+            byte[] bytes = buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder() ? null : UnsafeCopy.heapBytes(buf);
+            if (bytes == null) return API.storeRM4x4DoubleAbsolute(self, index, buf);
+            RAW.storeRM4x4DoubleHeap(self, bytes, U.getLong(buf, UnsafeCopy.BB_ADDRESS_OFFSET) + index);
+            return buf;
+        }
+    }
+
+    private abstract static class Float2x3RawOps {
+        public abstract Float2x3 storeCMUnsafe(Float2x3 self, long address);
+        public abstract Float2x3 loadCMUnsafe(long address);
+        public abstract Float2x3 storeCMDoubleUnsafe(Float2x3 self, long address);
+        public abstract Float2x3 loadCMDoubleUnsafe(long address);
+        public abstract Float2x3 storeRMUnsafe(Float2x3 self, long address);
+        public abstract Float2x3 loadRMUnsafe(long address);
+        public abstract Float2x3 storeRMDoubleUnsafe(Float2x3 self, long address);
+        public abstract Float2x3 loadRMDoubleUnsafe(long address);
+        public abstract Float2x3 storeCMUnsafe(Float2x3 self, long address, int stride);
+        public abstract Float2x3 loadCMUnsafe(long address, int stride);
+        public abstract Float2x3 storeCMDoubleUnsafe(Float2x3 self, long address, int stride);
+        public abstract Float2x3 loadCMDoubleUnsafe(long address, int stride);
+        public abstract Float2x3 storeRMUnsafe(Float2x3 self, long address, int stride);
+        public abstract Float2x3 loadRMUnsafe(long address, int stride);
+        public abstract Float2x3 storeRMDoubleUnsafe(Float2x3 self, long address, int stride);
+        public abstract Float2x3 loadRMDoubleUnsafe(long address, int stride);
+        public abstract Float2x3 storeCM3x3Unsafe(Float2x3 self, long address);
+        public abstract Float2x3 storeCM3x3DoubleUnsafe(Float2x3 self, long address);
+        public abstract Float2x3 storeRM3x3Unsafe(Float2x3 self, long address);
+        public abstract Float2x3 storeRM3x3DoubleUnsafe(Float2x3 self, long address);
+        public abstract Float2x3 storeCM4x4Unsafe(Float2x3 self, long address);
+        public abstract Float2x3 storeCM4x4DoubleUnsafe(Float2x3 self, long address);
+        public abstract Float2x3 storeRM4x4Unsafe(Float2x3 self, long address);
+        public abstract Float2x3 storeRM4x4DoubleUnsafe(Float2x3 self, long address);
+    }
+
+    private static final class Float2x3RawOpsApi extends Float2x3RawOps {
+        public Float2x3 storeCMUnsafe(Float2x3 self, long address) {
+            self.storeCM(0L, virtualMemory().asSlice(address, 24L));
+            return self;
+        }
+
+        public Float2x3 loadCMUnsafe(long address) {
+            return Float2x3.loadCM(0L, virtualMemory().asSlice(address, 24L));
+        }
+
+        public Float2x3 storeCMDoubleUnsafe(Float2x3 self, long address) {
+            self.storeCMDouble(0L, virtualMemory().asSlice(address, 48L));
+            return self;
+        }
+
+        public Float2x3 loadCMDoubleUnsafe(long address) {
+            return Float2x3.loadCMDouble(0L, virtualMemory().asSlice(address, 48L));
+        }
+
+        public Float2x3 storeRMUnsafe(Float2x3 self, long address) {
+            self.storeRM(0L, virtualMemory().asSlice(address, 24L));
+            return self;
+        }
+
+        public Float2x3 loadRMUnsafe(long address) {
+            return Float2x3.loadRM(0L, virtualMemory().asSlice(address, 24L));
+        }
+
+        public Float2x3 storeRMDoubleUnsafe(Float2x3 self, long address) {
+            self.storeRMDouble(0L, virtualMemory().asSlice(address, 48L));
+            return self;
+        }
+
+        public Float2x3 loadRMDoubleUnsafe(long address) {
+            return Float2x3.loadRMDouble(0L, virtualMemory().asSlice(address, 48L));
+        }
+
+        public Float2x3 storeCMUnsafe(Float2x3 self, long address, int stride) {
+            self.storeCM(0L, virtualMemory().asSlice(address, 4L * (2 * stride + 2)), stride);
+            return self;
+        }
+
+        public Float2x3 loadCMUnsafe(long address, int stride) {
+            return Float2x3.loadCM(0L, virtualMemory().asSlice(address, 4L * (2 * stride + 2)), stride);
+        }
+
+        public Float2x3 storeCMDoubleUnsafe(Float2x3 self, long address, int stride) {
+            self.storeCMDouble(0L, virtualMemory().asSlice(address, 8L * (2 * stride + 2)), stride);
+            return self;
+        }
+
+        public Float2x3 loadCMDoubleUnsafe(long address, int stride) {
+            return Float2x3.loadCMDouble(0L, virtualMemory().asSlice(address, 8L * (2 * stride + 2)), stride);
+        }
+
+        public Float2x3 storeRMUnsafe(Float2x3 self, long address, int stride) {
+            self.storeRM(0L, virtualMemory().asSlice(address, 4L * (stride + 3)), stride);
+            return self;
+        }
+
+        public Float2x3 loadRMUnsafe(long address, int stride) {
+            return Float2x3.loadRM(0L, virtualMemory().asSlice(address, 4L * (stride + 3)), stride);
+        }
+
+        public Float2x3 storeRMDoubleUnsafe(Float2x3 self, long address, int stride) {
+            self.storeRMDouble(0L, virtualMemory().asSlice(address, 8L * (stride + 3)), stride);
+            return self;
+        }
+
+        public Float2x3 loadRMDoubleUnsafe(long address, int stride) {
+            return Float2x3.loadRMDouble(0L, virtualMemory().asSlice(address, 8L * (stride + 3)), stride);
+        }
+
+        public Float2x3 storeCM3x3Unsafe(Float2x3 self, long address) {
+            self.storeCM3x3(0L, virtualMemory().asSlice(address, 36L));
+            return self;
+        }
+
+        public Float2x3 storeCM3x3DoubleUnsafe(Float2x3 self, long address) {
+            self.storeCM3x3Double(0L, virtualMemory().asSlice(address, 72L));
+            return self;
+        }
+
+        public Float2x3 storeRM3x3Unsafe(Float2x3 self, long address) {
+            self.storeRM3x3(0L, virtualMemory().asSlice(address, 36L));
+            return self;
+        }
+
+        public Float2x3 storeRM3x3DoubleUnsafe(Float2x3 self, long address) {
+            self.storeRM3x3Double(0L, virtualMemory().asSlice(address, 72L));
+            return self;
+        }
+
+        public Float2x3 storeCM4x4Unsafe(Float2x3 self, long address) {
+            self.storeCM4x4(0L, virtualMemory().asSlice(address, 64L));
+            return self;
+        }
+
+        public Float2x3 storeCM4x4DoubleUnsafe(Float2x3 self, long address) {
+            self.storeCM4x4Double(0L, virtualMemory().asSlice(address, 128L));
+            return self;
+        }
+
+        public Float2x3 storeRM4x4Unsafe(Float2x3 self, long address) {
+            self.storeRM4x4(0L, virtualMemory().asSlice(address, 64L));
+            return self;
+        }
+
+        public Float2x3 storeRM4x4DoubleUnsafe(Float2x3 self, long address) {
+            self.storeRM4x4Double(0L, virtualMemory().asSlice(address, 128L));
+            return self;
+        }
+    }
+
+    private static final class Float2x3RawOpsUnsafe extends Float2x3RawOps {
+        public Float2x3 storeCMUnsafe(Float2x3 self, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m10);
+            _U.putFloat(address + 8L, self.m01);
+            _U.putFloat(address + 12L, self.m11);
+            _U.putFloat(address + 16L, self.m02);
+            _U.putFloat(address + 20L, self.m12);
+            return self;
+        }
+
+        public Float2x3 storeCMHeap(Float2x3 self, byte[] bytes, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4L, self.m10);
+            _U.putFloat(bytes, address + 8L, self.m01);
+            _U.putFloat(bytes, address + 12L, self.m11);
+            _U.putFloat(bytes, address + 16L, self.m02);
+            _U.putFloat(bytes, address + 20L, self.m12);
+            return self;
+        }
+
+        public Float2x3 loadCMUnsafe(long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = _U.getFloat(address);
+            float _c3 = _U.getFloat(address + 4L);
+            float _c1 = _U.getFloat(address + 8L);
+            float _c4 = _U.getFloat(address + 12L);
+            float _c2 = _U.getFloat(address + 16L);
+            float _c5 = _U.getFloat(address + 20L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public Float2x3 loadCMHeap(byte[] bytes, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = _U.getFloat(bytes, address);
+            float _c3 = _U.getFloat(bytes, address + 4L);
+            float _c1 = _U.getFloat(bytes, address + 8L);
+            float _c4 = _U.getFloat(bytes, address + 12L);
+            float _c2 = _U.getFloat(bytes, address + 16L);
+            float _c5 = _U.getFloat(bytes, address + 20L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public Float2x3 storeCMDoubleUnsafe(Float2x3 self, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m10);
+            _U.putDouble(address + 16L, self.m01);
+            _U.putDouble(address + 24L, self.m11);
+            _U.putDouble(address + 32L, self.m02);
+            _U.putDouble(address + 40L, self.m12);
+            return self;
+        }
+
+        public Float2x3 storeCMDoubleHeap(Float2x3 self, byte[] bytes, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8L, self.m10);
+            _U.putDouble(bytes, address + 16L, self.m01);
+            _U.putDouble(bytes, address + 24L, self.m11);
+            _U.putDouble(bytes, address + 32L, self.m02);
+            _U.putDouble(bytes, address + 40L, self.m12);
+            return self;
+        }
+
+        public Float2x3 loadCMDoubleUnsafe(long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = (float) _U.getDouble(address);
+            float _c3 = (float) _U.getDouble(address + 8L);
+            float _c1 = (float) _U.getDouble(address + 16L);
+            float _c4 = (float) _U.getDouble(address + 24L);
+            float _c2 = (float) _U.getDouble(address + 32L);
+            float _c5 = (float) _U.getDouble(address + 40L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public Float2x3 loadCMDoubleHeap(byte[] bytes, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = (float) _U.getDouble(bytes, address);
+            float _c3 = (float) _U.getDouble(bytes, address + 8L);
+            float _c1 = (float) _U.getDouble(bytes, address + 16L);
+            float _c4 = (float) _U.getDouble(bytes, address + 24L);
+            float _c2 = (float) _U.getDouble(bytes, address + 32L);
+            float _c5 = (float) _U.getDouble(bytes, address + 40L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public Float2x3 storeRMUnsafe(Float2x3 self, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m01);
+            _U.putFloat(address + 8L, self.m02);
+            _U.putFloat(address + 12L, self.m10);
+            _U.putFloat(address + 16L, self.m11);
+            _U.putFloat(address + 20L, self.m12);
+            return self;
+        }
+
+        public Float2x3 storeRMHeap(Float2x3 self, byte[] bytes, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4L, self.m01);
+            _U.putFloat(bytes, address + 8L, self.m02);
+            _U.putFloat(bytes, address + 12L, self.m10);
+            _U.putFloat(bytes, address + 16L, self.m11);
+            _U.putFloat(bytes, address + 20L, self.m12);
+            return self;
+        }
+
+        public Float2x3 loadRMUnsafe(long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = _U.getFloat(address);
+            float _c1 = _U.getFloat(address + 4L);
+            float _c2 = _U.getFloat(address + 8L);
+            float _c3 = _U.getFloat(address + 12L);
+            float _c4 = _U.getFloat(address + 16L);
+            float _c5 = _U.getFloat(address + 20L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public Float2x3 loadRMHeap(byte[] bytes, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = _U.getFloat(bytes, address);
+            float _c1 = _U.getFloat(bytes, address + 4L);
+            float _c2 = _U.getFloat(bytes, address + 8L);
+            float _c3 = _U.getFloat(bytes, address + 12L);
+            float _c4 = _U.getFloat(bytes, address + 16L);
+            float _c5 = _U.getFloat(bytes, address + 20L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public Float2x3 storeRMDoubleUnsafe(Float2x3 self, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m01);
+            _U.putDouble(address + 16L, self.m02);
+            _U.putDouble(address + 24L, self.m10);
+            _U.putDouble(address + 32L, self.m11);
+            _U.putDouble(address + 40L, self.m12);
+            return self;
+        }
+
+        public Float2x3 storeRMDoubleHeap(Float2x3 self, byte[] bytes, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8L, self.m01);
+            _U.putDouble(bytes, address + 16L, self.m02);
+            _U.putDouble(bytes, address + 24L, self.m10);
+            _U.putDouble(bytes, address + 32L, self.m11);
+            _U.putDouble(bytes, address + 40L, self.m12);
+            return self;
+        }
+
+        public Float2x3 loadRMDoubleUnsafe(long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = (float) _U.getDouble(address);
+            float _c1 = (float) _U.getDouble(address + 8L);
+            float _c2 = (float) _U.getDouble(address + 16L);
+            float _c3 = (float) _U.getDouble(address + 24L);
+            float _c4 = (float) _U.getDouble(address + 32L);
+            float _c5 = (float) _U.getDouble(address + 40L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public Float2x3 loadRMDoubleHeap(byte[] bytes, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = (float) _U.getDouble(bytes, address);
+            float _c1 = (float) _U.getDouble(bytes, address + 8L);
+            float _c2 = (float) _U.getDouble(bytes, address + 16L);
+            float _c3 = (float) _U.getDouble(bytes, address + 24L);
+            float _c4 = (float) _U.getDouble(bytes, address + 32L);
+            float _c5 = (float) _U.getDouble(bytes, address + 40L);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public Float2x3 storeCMUnsafe(Float2x3 self, long address, int stride) {
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4, self.m10);
+            _U.putFloat(_p1, self.m01);
+            _U.putFloat(_p1 + 4, self.m11);
+            _U.putFloat(_p2, self.m02);
+            _U.putFloat(_p2 + 4, self.m12);
+            return self;
+        }
+
+        public Float2x3 storeCMHeap(Float2x3 self, byte[] bytes, long address, int stride) {
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4, self.m10);
+            _U.putFloat(bytes, _p1, self.m01);
+            _U.putFloat(bytes, _p1 + 4, self.m11);
+            _U.putFloat(bytes, _p2, self.m02);
+            _U.putFloat(bytes, _p2 + 4, self.m12);
+            return self;
+        }
+
+        public Float2x3 loadCMUnsafe(long address, int stride) {
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = _U.getFloat(address);
+            float _c3 = _U.getFloat(address + 4);
+            float _c1 = _U.getFloat(_p1);
+            float _c4 = _U.getFloat(_p1 + 4);
+            float _c2 = _U.getFloat(_p2);
+            float _c5 = _U.getFloat(_p2 + 4);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public Float2x3 loadCMHeap(byte[] bytes, long address, int stride) {
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = _U.getFloat(bytes, address);
+            float _c3 = _U.getFloat(bytes, address + 4);
+            float _c1 = _U.getFloat(bytes, _p1);
+            float _c4 = _U.getFloat(bytes, _p1 + 4);
+            float _c2 = _U.getFloat(bytes, _p2);
+            float _c5 = _U.getFloat(bytes, _p2 + 4);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public Float2x3 storeCMDoubleUnsafe(Float2x3 self, long address, int stride) {
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8, self.m10);
+            _U.putDouble(_p1, self.m01);
+            _U.putDouble(_p1 + 8, self.m11);
+            _U.putDouble(_p2, self.m02);
+            _U.putDouble(_p2 + 8, self.m12);
+            return self;
+        }
+
+        public Float2x3 storeCMDoubleHeap(Float2x3 self, byte[] bytes, long address, int stride) {
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8, self.m10);
+            _U.putDouble(bytes, _p1, self.m01);
+            _U.putDouble(bytes, _p1 + 8, self.m11);
+            _U.putDouble(bytes, _p2, self.m02);
+            _U.putDouble(bytes, _p2 + 8, self.m12);
+            return self;
+        }
+
+        public Float2x3 loadCMDoubleUnsafe(long address, int stride) {
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = (float) _U.getDouble(address);
+            float _c3 = (float) _U.getDouble(address + 8);
+            float _c1 = (float) _U.getDouble(_p1);
+            float _c4 = (float) _U.getDouble(_p1 + 8);
+            float _c2 = (float) _U.getDouble(_p2);
+            float _c5 = (float) _U.getDouble(_p2 + 8);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public Float2x3 loadCMDoubleHeap(byte[] bytes, long address, int stride) {
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            long _p2 = _p1 + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = (float) _U.getDouble(bytes, address);
+            float _c3 = (float) _U.getDouble(bytes, address + 8);
+            float _c1 = (float) _U.getDouble(bytes, _p1);
+            float _c4 = (float) _U.getDouble(bytes, _p1 + 8);
+            float _c2 = (float) _U.getDouble(bytes, _p2);
+            float _c5 = (float) _U.getDouble(bytes, _p2 + 8);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public Float2x3 storeRMUnsafe(Float2x3 self, long address, int stride) {
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4, self.m01);
+            _U.putFloat(address + 8, self.m02);
+            _U.putFloat(_p1, self.m10);
+            _U.putFloat(_p1 + 4, self.m11);
+            _U.putFloat(_p1 + 8, self.m12);
+            return self;
+        }
+
+        public Float2x3 storeRMHeap(Float2x3 self, byte[] bytes, long address, int stride) {
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4, self.m01);
+            _U.putFloat(bytes, address + 8, self.m02);
+            _U.putFloat(bytes, _p1, self.m10);
+            _U.putFloat(bytes, _p1 + 4, self.m11);
+            _U.putFloat(bytes, _p1 + 8, self.m12);
+            return self;
+        }
+
+        public Float2x3 loadRMUnsafe(long address, int stride) {
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = _U.getFloat(address);
+            float _c1 = _U.getFloat(address + 4);
+            float _c2 = _U.getFloat(address + 8);
+            float _c3 = _U.getFloat(_p1);
+            float _c4 = _U.getFloat(_p1 + 4);
+            float _c5 = _U.getFloat(_p1 + 8);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public Float2x3 loadRMHeap(byte[] bytes, long address, int stride) {
+            long _ps = stride * 4L;
+            long _p1 = address + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = _U.getFloat(bytes, address);
+            float _c1 = _U.getFloat(bytes, address + 4);
+            float _c2 = _U.getFloat(bytes, address + 8);
+            float _c3 = _U.getFloat(bytes, _p1);
+            float _c4 = _U.getFloat(bytes, _p1 + 4);
+            float _c5 = _U.getFloat(bytes, _p1 + 8);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public Float2x3 storeRMDoubleUnsafe(Float2x3 self, long address, int stride) {
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8, self.m01);
+            _U.putDouble(address + 16, self.m02);
+            _U.putDouble(_p1, self.m10);
+            _U.putDouble(_p1 + 8, self.m11);
+            _U.putDouble(_p1 + 16, self.m12);
+            return self;
+        }
+
+        public Float2x3 storeRMDoubleHeap(Float2x3 self, byte[] bytes, long address, int stride) {
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8, self.m01);
+            _U.putDouble(bytes, address + 16, self.m02);
+            _U.putDouble(bytes, _p1, self.m10);
+            _U.putDouble(bytes, _p1 + 8, self.m11);
+            _U.putDouble(bytes, _p1 + 16, self.m12);
+            return self;
+        }
+
+        public Float2x3 loadRMDoubleUnsafe(long address, int stride) {
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = (float) _U.getDouble(address);
+            float _c1 = (float) _U.getDouble(address + 8);
+            float _c2 = (float) _U.getDouble(address + 16);
+            float _c3 = (float) _U.getDouble(_p1);
+            float _c4 = (float) _U.getDouble(_p1 + 8);
+            float _c5 = (float) _U.getDouble(_p1 + 16);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public Float2x3 loadRMDoubleHeap(byte[] bytes, long address, int stride) {
+            long _ps = stride * 8L;
+            long _p1 = address + _ps;
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            float _c0 = (float) _U.getDouble(bytes, address);
+            float _c1 = (float) _U.getDouble(bytes, address + 8);
+            float _c2 = (float) _U.getDouble(bytes, address + 16);
+            float _c3 = (float) _U.getDouble(bytes, _p1);
+            float _c4 = (float) _U.getDouble(bytes, _p1 + 8);
+            float _c5 = (float) _U.getDouble(bytes, _p1 + 16);
+            return new Float2x3(_c0, _c1, _c2, _c3, _c4, _c5);
+        }
+
+        public Float2x3 storeCM3x3Unsafe(Float2x3 self, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m10);
+            _U.putFloat(address + 8L, 0.0f);
+            _U.putFloat(address + 12L, self.m01);
+            _U.putFloat(address + 16L, self.m11);
+            _U.putFloat(address + 20L, 0.0f);
+            _U.putFloat(address + 24L, self.m02);
+            _U.putFloat(address + 28L, self.m12);
+            _U.putFloat(address + 32L, 1.0f);
+            return self;
+        }
+
+        public Float2x3 storeCM3x3Heap(Float2x3 self, byte[] bytes, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4L, self.m10);
+            _U.putFloat(bytes, address + 8L, 0.0f);
+            _U.putFloat(bytes, address + 12L, self.m01);
+            _U.putFloat(bytes, address + 16L, self.m11);
+            _U.putFloat(bytes, address + 20L, 0.0f);
+            _U.putFloat(bytes, address + 24L, self.m02);
+            _U.putFloat(bytes, address + 28L, self.m12);
+            _U.putFloat(bytes, address + 32L, 1.0f);
+            return self;
+        }
+
+        public Float2x3 storeCM3x3DoubleUnsafe(Float2x3 self, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m10);
+            _U.putDouble(address + 16L, 0.0);
+            _U.putDouble(address + 24L, self.m01);
+            _U.putDouble(address + 32L, self.m11);
+            _U.putDouble(address + 40L, 0.0);
+            _U.putDouble(address + 48L, self.m02);
+            _U.putDouble(address + 56L, self.m12);
+            _U.putDouble(address + 64L, 1.0);
+            return self;
+        }
+
+        public Float2x3 storeCM3x3DoubleHeap(Float2x3 self, byte[] bytes, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8L, self.m10);
+            _U.putDouble(bytes, address + 16L, 0.0);
+            _U.putDouble(bytes, address + 24L, self.m01);
+            _U.putDouble(bytes, address + 32L, self.m11);
+            _U.putDouble(bytes, address + 40L, 0.0);
+            _U.putDouble(bytes, address + 48L, self.m02);
+            _U.putDouble(bytes, address + 56L, self.m12);
+            _U.putDouble(bytes, address + 64L, 1.0);
+            return self;
+        }
+
+        public Float2x3 storeRM3x3Unsafe(Float2x3 self, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m01);
+            _U.putFloat(address + 8L, self.m02);
+            _U.putFloat(address + 12L, self.m10);
+            _U.putFloat(address + 16L, self.m11);
+            _U.putFloat(address + 20L, self.m12);
+            _U.putFloat(address + 24L, 0.0f);
+            _U.putFloat(address + 28L, 0.0f);
+            _U.putFloat(address + 32L, 1.0f);
+            return self;
+        }
+
+        public Float2x3 storeRM3x3Heap(Float2x3 self, byte[] bytes, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4L, self.m01);
+            _U.putFloat(bytes, address + 8L, self.m02);
+            _U.putFloat(bytes, address + 12L, self.m10);
+            _U.putFloat(bytes, address + 16L, self.m11);
+            _U.putFloat(bytes, address + 20L, self.m12);
+            _U.putFloat(bytes, address + 24L, 0.0f);
+            _U.putFloat(bytes, address + 28L, 0.0f);
+            _U.putFloat(bytes, address + 32L, 1.0f);
+            return self;
+        }
+
+        public Float2x3 storeRM3x3DoubleUnsafe(Float2x3 self, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m01);
+            _U.putDouble(address + 16L, self.m02);
+            _U.putDouble(address + 24L, self.m10);
+            _U.putDouble(address + 32L, self.m11);
+            _U.putDouble(address + 40L, self.m12);
+            _U.putDouble(address + 48L, 0.0);
+            _U.putDouble(address + 56L, 0.0);
+            _U.putDouble(address + 64L, 1.0);
+            return self;
+        }
+
+        public Float2x3 storeRM3x3DoubleHeap(Float2x3 self, byte[] bytes, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8L, self.m01);
+            _U.putDouble(bytes, address + 16L, self.m02);
+            _U.putDouble(bytes, address + 24L, self.m10);
+            _U.putDouble(bytes, address + 32L, self.m11);
+            _U.putDouble(bytes, address + 40L, self.m12);
+            _U.putDouble(bytes, address + 48L, 0.0);
+            _U.putDouble(bytes, address + 56L, 0.0);
+            _U.putDouble(bytes, address + 64L, 1.0);
+            return self;
+        }
+
+        public Float2x3 storeCM4x4Unsafe(Float2x3 self, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m10);
+            _U.putFloat(address + 8L, 0.0f);
+            _U.putFloat(address + 12L, 0.0f);
+            _U.putFloat(address + 16L, self.m01);
+            _U.putFloat(address + 20L, self.m11);
+            _U.putFloat(address + 24L, 0.0f);
+            _U.putFloat(address + 28L, 0.0f);
+            _U.putFloat(address + 32L, 0.0f);
+            _U.putFloat(address + 36L, 0.0f);
+            _U.putFloat(address + 40L, 1.0f);
+            _U.putFloat(address + 44L, 0.0f);
+            _U.putFloat(address + 48L, self.m02);
+            _U.putFloat(address + 52L, self.m12);
+            _U.putFloat(address + 56L, 0.0f);
+            _U.putFloat(address + 60L, 1.0f);
+            return self;
+        }
+
+        public Float2x3 storeCM4x4Heap(Float2x3 self, byte[] bytes, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4L, self.m10);
+            _U.putFloat(bytes, address + 8L, 0.0f);
+            _U.putFloat(bytes, address + 12L, 0.0f);
+            _U.putFloat(bytes, address + 16L, self.m01);
+            _U.putFloat(bytes, address + 20L, self.m11);
+            _U.putFloat(bytes, address + 24L, 0.0f);
+            _U.putFloat(bytes, address + 28L, 0.0f);
+            _U.putFloat(bytes, address + 32L, 0.0f);
+            _U.putFloat(bytes, address + 36L, 0.0f);
+            _U.putFloat(bytes, address + 40L, 1.0f);
+            _U.putFloat(bytes, address + 44L, 0.0f);
+            _U.putFloat(bytes, address + 48L, self.m02);
+            _U.putFloat(bytes, address + 52L, self.m12);
+            _U.putFloat(bytes, address + 56L, 0.0f);
+            _U.putFloat(bytes, address + 60L, 1.0f);
+            return self;
+        }
+
+        public Float2x3 storeCM4x4DoubleUnsafe(Float2x3 self, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m10);
+            _U.putDouble(address + 16L, 0.0);
+            _U.putDouble(address + 24L, 0.0);
+            _U.putDouble(address + 32L, self.m01);
+            _U.putDouble(address + 40L, self.m11);
+            _U.putDouble(address + 48L, 0.0);
+            _U.putDouble(address + 56L, 0.0);
+            _U.putDouble(address + 64L, 0.0);
+            _U.putDouble(address + 72L, 0.0);
+            _U.putDouble(address + 80L, 1.0);
+            _U.putDouble(address + 88L, 0.0);
+            _U.putDouble(address + 96L, self.m02);
+            _U.putDouble(address + 104L, self.m12);
+            _U.putDouble(address + 112L, 0.0);
+            _U.putDouble(address + 120L, 1.0);
+            return self;
+        }
+
+        public Float2x3 storeCM4x4DoubleHeap(Float2x3 self, byte[] bytes, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8L, self.m10);
+            _U.putDouble(bytes, address + 16L, 0.0);
+            _U.putDouble(bytes, address + 24L, 0.0);
+            _U.putDouble(bytes, address + 32L, self.m01);
+            _U.putDouble(bytes, address + 40L, self.m11);
+            _U.putDouble(bytes, address + 48L, 0.0);
+            _U.putDouble(bytes, address + 56L, 0.0);
+            _U.putDouble(bytes, address + 64L, 0.0);
+            _U.putDouble(bytes, address + 72L, 0.0);
+            _U.putDouble(bytes, address + 80L, 1.0);
+            _U.putDouble(bytes, address + 88L, 0.0);
+            _U.putDouble(bytes, address + 96L, self.m02);
+            _U.putDouble(bytes, address + 104L, self.m12);
+            _U.putDouble(bytes, address + 112L, 0.0);
+            _U.putDouble(bytes, address + 120L, 1.0);
+            return self;
+        }
+
+        public Float2x3 storeRM4x4Unsafe(Float2x3 self, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(address, self.m00);
+            _U.putFloat(address + 4L, self.m01);
+            _U.putFloat(address + 8L, 0.0f);
+            _U.putFloat(address + 12L, self.m02);
+            _U.putFloat(address + 16L, self.m10);
+            _U.putFloat(address + 20L, self.m11);
+            _U.putFloat(address + 24L, 0.0f);
+            _U.putFloat(address + 28L, self.m12);
+            _U.putFloat(address + 32L, 0.0f);
+            _U.putFloat(address + 36L, 0.0f);
+            _U.putFloat(address + 40L, 1.0f);
+            _U.putFloat(address + 44L, 0.0f);
+            _U.putFloat(address + 48L, 0.0f);
+            _U.putFloat(address + 52L, 0.0f);
+            _U.putFloat(address + 56L, 0.0f);
+            _U.putFloat(address + 60L, 1.0f);
+            return self;
+        }
+
+        public Float2x3 storeRM4x4Heap(Float2x3 self, byte[] bytes, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putFloat(bytes, address, self.m00);
+            _U.putFloat(bytes, address + 4L, self.m01);
+            _U.putFloat(bytes, address + 8L, 0.0f);
+            _U.putFloat(bytes, address + 12L, self.m02);
+            _U.putFloat(bytes, address + 16L, self.m10);
+            _U.putFloat(bytes, address + 20L, self.m11);
+            _U.putFloat(bytes, address + 24L, 0.0f);
+            _U.putFloat(bytes, address + 28L, self.m12);
+            _U.putFloat(bytes, address + 32L, 0.0f);
+            _U.putFloat(bytes, address + 36L, 0.0f);
+            _U.putFloat(bytes, address + 40L, 1.0f);
+            _U.putFloat(bytes, address + 44L, 0.0f);
+            _U.putFloat(bytes, address + 48L, 0.0f);
+            _U.putFloat(bytes, address + 52L, 0.0f);
+            _U.putFloat(bytes, address + 56L, 0.0f);
+            _U.putFloat(bytes, address + 60L, 1.0f);
+            return self;
+        }
+
+        public Float2x3 storeRM4x4DoubleUnsafe(Float2x3 self, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(address, self.m00);
+            _U.putDouble(address + 8L, self.m01);
+            _U.putDouble(address + 16L, 0.0);
+            _U.putDouble(address + 24L, self.m02);
+            _U.putDouble(address + 32L, self.m10);
+            _U.putDouble(address + 40L, self.m11);
+            _U.putDouble(address + 48L, 0.0);
+            _U.putDouble(address + 56L, self.m12);
+            _U.putDouble(address + 64L, 0.0);
+            _U.putDouble(address + 72L, 0.0);
+            _U.putDouble(address + 80L, 1.0);
+            _U.putDouble(address + 88L, 0.0);
+            _U.putDouble(address + 96L, 0.0);
+            _U.putDouble(address + 104L, 0.0);
+            _U.putDouble(address + 112L, 0.0);
+            _U.putDouble(address + 120L, 1.0);
+            return self;
+        }
+
+        public Float2x3 storeRM4x4DoubleHeap(Float2x3 self, byte[] bytes, long address) {
+            org.joml2.internal.unsafe.UnsafeOps _U = U;
+            _U.putDouble(bytes, address, self.m00);
+            _U.putDouble(bytes, address + 8L, self.m01);
+            _U.putDouble(bytes, address + 16L, 0.0);
+            _U.putDouble(bytes, address + 24L, self.m02);
+            _U.putDouble(bytes, address + 32L, self.m10);
+            _U.putDouble(bytes, address + 40L, self.m11);
+            _U.putDouble(bytes, address + 48L, 0.0);
+            _U.putDouble(bytes, address + 56L, self.m12);
+            _U.putDouble(bytes, address + 64L, 0.0);
+            _U.putDouble(bytes, address + 72L, 0.0);
+            _U.putDouble(bytes, address + 80L, 1.0);
+            _U.putDouble(bytes, address + 88L, 0.0);
+            _U.putDouble(bytes, address + 96L, 0.0);
+            _U.putDouble(bytes, address + 104L, 0.0);
+            _U.putDouble(bytes, address + 112L, 0.0);
+            _U.putDouble(bytes, address + 120L, 1.0);
+            return self;
+        }
+    }
+}
