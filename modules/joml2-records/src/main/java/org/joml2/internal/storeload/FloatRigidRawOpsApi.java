@@ -1,0 +1,24 @@
+// Copyright (c) 2015-2026 JOML
+// SPDX-License-Identifier: MIT
+package org.joml2.internal.storeload;
+
+import org.joml2.*;
+import org.joml2.Math;
+import static org.joml2.internal.unsafe.VirtualMemoryHolder.virtualMemory;
+
+public final class FloatRigidRawOpsApi extends FloatRigidRawOps {
+    public FloatRigid storeUnsafe(FloatRigid self, long address) {
+        self.store(0L, virtualMemory().asSlice(address, 28L));
+        return self;
+    }
+    public FloatRigid loadUnsafe(long address) {
+        return FloatRigid.load(0L, virtualMemory().asSlice(address, 28L));
+    }
+    public FloatRigid storeDoubleUnsafe(FloatRigid self, long address) {
+        self.storeDouble(0L, virtualMemory().asSlice(address, 56L));
+        return self;
+    }
+    public FloatRigid loadDoubleUnsafe(long address) {
+        return FloatRigid.loadDouble(0L, virtualMemory().asSlice(address, 56L));
+    }
+}

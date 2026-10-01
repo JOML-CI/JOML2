@@ -1,0 +1,101 @@
+// Copyright (c) 2015-2026 JOML
+// SPDX-License-Identifier: MIT
+package org.joml2.internal.kernels;
+
+import org.joml2.*;
+import org.joml2.Math;
+import org.joml2.ops.*;
+import org.joml2.internal.unsafe.*;
+
+/**
+ * Scalar/Unsafe kernel leaves of {@link Double2x2Ops} whose leading storage
+ * parameter is a {@code double[]} array. Split into a sibling compilation unit purely
+ * to keep generated sources IDE-sized; package-private, called only from
+ * {@code Double2x2Ops} and its sibling kernel units. Not public API.
+ */
+public final class Double2x2OpsKernelsArray {
+    private Double2x2OpsKernelsArray() {}
+
+    public static double[] invert_degenerate(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _self00 = src[srcOffset];
+        double _self10 = src[srcOffset + 1];
+        double _self01 = src[srcOffset + 2];
+        double _self11 = src[srcOffset + 3];
+        double _t0 = unitScale(_self10, _self11, _self10);
+        double _t1 = unitScale(_self00, _self01, _self00);
+        double _t6 = _self11 * _t0;
+        double _t7 = _self00 * _t1;
+        double _t8 = _self01 * _t1;
+        double _t9 = _self10 * _t0;
+        double _t12_inv = 1.0 / Math.fma(_t7, _t6, -(_t8 * _t9));
+        double _sp1 = _t0 * _t12_inv;
+        double _sp0 = _t1 * _t12_inv;
+        dest[destOffset] = _t6 * _sp0;
+        dest[destOffset + 1] = -(_t9 * _sp0);
+        dest[destOffset + 2] = -(_t8 * _sp1);
+        dest[destOffset + 3] = _t7 * _sp1;
+        return dest;
+    }
+
+    public static double[] invertProduct_degenerate(double[] dest, int destOffset, double[] src, int srcOffset, double[] other, int otherOffset) {
+        double _self00 = src[srcOffset];
+        double _self10 = src[srcOffset + 1];
+        double _self01 = src[srcOffset + 2];
+        double _self11 = src[srcOffset + 3];
+        double _other00 = other[otherOffset];
+        double _other10 = other[otherOffset + 1];
+        double _other01 = other[otherOffset + 2];
+        double _other11 = other[otherOffset + 3];
+        double _t4 = Math.fma(_other01, _self10, _other11 * _self11);
+        double _t5 = Math.fma(_other00, _self10, _other10 * _self11);
+        double _t6 = Math.fma(_other00, _self00, _other10 * _self01);
+        double _t7 = Math.fma(_other01, _self00, _other11 * _self01);
+        double _t8 = unitScale(_t5, _t4, _t5);
+        double _t9 = unitScale(_t6, _t7, _t6);
+        double _t14 = _t4 * _t8;
+        double _t15 = _t6 * _t9;
+        double _t16 = _t5 * _t8;
+        double _t17 = _t7 * _t9;
+        double _t20_inv = 1.0 / Math.fma(_t15, _t14, -(_t16 * _t17));
+        double _sp1 = _t8 * _t20_inv;
+        double _sp0 = _t9 * _t20_inv;
+        dest[destOffset] = _t14 * _sp0;
+        dest[destOffset + 1] = -(_t16 * _sp0);
+        dest[destOffset + 2] = -(_t17 * _sp1);
+        dest[destOffset + 3] = _t15 * _sp1;
+        return dest;
+    }
+
+    public static double[] normal_degenerate(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _self00 = src[srcOffset];
+        double _self10 = src[srcOffset + 1];
+        double _self01 = src[srcOffset + 2];
+        double _self11 = src[srcOffset + 3];
+        double _t0 = unitScale(_self10, _self11, _self10);
+        double _t1 = unitScale(_self00, _self01, _self00);
+        double _t6 = _self11 * _t0;
+        double _t7 = _self00 * _t1;
+        double _t8 = _self01 * _t1;
+        double _t9 = _self10 * _t0;
+        double _t12_inv = 1.0 / Math.fma(_t7, _t6, -(_t8 * _t9));
+        double _sp1 = _t0 * _t12_inv;
+        double _sp0 = _t1 * _t12_inv;
+        dest[destOffset] = _t6 * _sp0;
+        dest[destOffset + 1] = -(_t8 * _sp1);
+        dest[destOffset + 2] = -(_t9 * _sp0);
+        dest[destOffset + 3] = _t7 * _sp1;
+        return dest;
+    }
+
+    /**
+     * The power of two that brings max(|a|, |b|, |c|) into [1, 2), from the largest exponent
+     * field: multiplying by it is exact. Clamped to [2^-1022, 2^1022], so zero and subnormal
+     * values scale up without overflow and the largest doubles land in [2, 4).
+     */
+    private static double unitScale(double a, double b, double c) {
+        long e = java.lang.Math.max(java.lang.Math.max(Double.doubleToRawLongBits(a) & 0x7FF0000000000000L,
+                Double.doubleToRawLongBits(b) & 0x7FF0000000000000L), Double.doubleToRawLongBits(c) & 0x7FF0000000000000L);
+        return Double.longBitsToDouble(0x7FE0000000000000L
+                - java.lang.Math.min(java.lang.Math.max(e, 0x0010000000000000L), 0x7FD0000000000000L));
+    }
+}

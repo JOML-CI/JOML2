@@ -1,0 +1,1009 @@
+// Copyright (c) 2015-2026 JOML
+// SPDX-License-Identifier: MIT
+package org.joml2.internal.types;
+
+import org.joml2.*;
+import org.joml2.Math;
+import org.joml2.internal.storeload.*;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+import java.nio.ByteBuffer;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+
+/**
+ * Generated implementation of {@link DoubleTriangle} backed by a {@code double[]} array.
+ * <p>
+ * Not part of the public API - obtain instances through the {@link Joml} factory methods.
+ */
+public final class DoubleTriangleImpl implements DoubleTriangle {
+
+    public double[] data;
+
+    /** Store/load dispatch targets, picked on the first store/load (see {@code Joml.storeLoadBackend()}). */
+    private static final class StoreLoad {
+        static final DoubleTriangleSegOps SEG_OPS =
+                Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE
+                        ? new DoubleTriangleSegOpsUnsafe()
+                        : new DoubleTriangleSegOpsMS();
+        static final DoubleTriangleBbOps BB_OPS =
+                Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE
+                        ? new DoubleTriangleBbOpsUnsafe()
+                        : new DoubleTriangleBbOpsApi();
+        static final DoubleTriangleRawOps RAW_OPS =
+                Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE
+                        ? new DoubleTriangleRawOpsUnsafe()
+                        : new DoubleTriangleRawOpsApi();
+    }
+
+    public DoubleTriangleImpl() {
+        data = new double[9];
+    }
+
+    public DoubleTriangleImpl(double v0X, double v0Y, double v0Z, double v1X, double v1Y, double v1Z, double v2X, double v2Y, double v2Z) {
+        double[] dd = this.data = new double[9];
+        dd[0] = v0X;
+        dd[1] = v0Y;
+        dd[2] = v0Z;
+        dd[3] = v1X;
+        dd[4] = v1Y;
+        dd[5] = v1Z;
+        dd[6] = v2X;
+        dd[7] = v2Y;
+        dd[8] = v2Z;
+    }
+
+    public DoubleTriangleImpl(DoubleTriangleR src) {
+        double[] dd = this.data = new double[9];
+        dd[0] = src.v0X();
+        dd[1] = src.v0Y();
+        dd[2] = src.v0Z();
+        dd[3] = src.v1X();
+        dd[4] = src.v1Y();
+        dd[5] = src.v1Z();
+        dd[6] = src.v2X();
+        dd[7] = src.v2Y();
+        dd[8] = src.v2Z();
+    }
+
+
+    /**
+     * Set this triangle to the given values.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param v the triangle to copy
+     * @return this
+     */
+    public @Mutated DoubleTriangle set(DoubleTriangleR v) {
+        double vV0Y = v.v0Y();
+        double vV0Z = v.v0Z();
+        double vV1X = v.v1X();
+        double vV1Y = v.v1Y();
+        double vV1Z = v.v1Z();
+        double vV2X = v.v2X();
+        double vV2Y = v.v2Y();
+        double vV2Z = v.v2Z();
+        double[] dd = this.data;
+        dd[0] = v.v0X();
+        dd[1] = vV0Y;
+        dd[2] = vV0Z;
+        dd[3] = vV1X;
+        dd[4] = vV1Y;
+        dd[5] = vV1Z;
+        dd[6] = vV2X;
+        dd[7] = vV2Y;
+        dd[8] = vV2Z;
+        return this;
+    }
+
+
+    /**
+     * Set this triangle to the given values.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param vV0X the {@code v0X} component of the triangle
+     *        {@code (vV0X, vV0Y, vV0Z, vV1X, vV1Y, vV1Z, vV2X, vV2Y, vV2Z)}
+     * @param vV0Y the {@code v0Y} component of the triangle
+     *        {@code (vV0X, vV0Y, vV0Z, vV1X, vV1Y, vV1Z, vV2X, vV2Y, vV2Z)}
+     * @param vV0Z the {@code v0Z} component of the triangle
+     *        {@code (vV0X, vV0Y, vV0Z, vV1X, vV1Y, vV1Z, vV2X, vV2Y, vV2Z)}
+     * @param vV1X the {@code v1X} component of the triangle
+     *        {@code (vV0X, vV0Y, vV0Z, vV1X, vV1Y, vV1Z, vV2X, vV2Y, vV2Z)}
+     * @param vV1Y the {@code v1Y} component of the triangle
+     *        {@code (vV0X, vV0Y, vV0Z, vV1X, vV1Y, vV1Z, vV2X, vV2Y, vV2Z)}
+     * @param vV1Z the {@code v1Z} component of the triangle
+     *        {@code (vV0X, vV0Y, vV0Z, vV1X, vV1Y, vV1Z, vV2X, vV2Y, vV2Z)}
+     * @param vV2X the {@code v2X} component of the triangle
+     *        {@code (vV0X, vV0Y, vV0Z, vV1X, vV1Y, vV1Z, vV2X, vV2Y, vV2Z)}
+     * @param vV2Y the {@code v2Y} component of the triangle
+     *        {@code (vV0X, vV0Y, vV0Z, vV1X, vV1Y, vV1Z, vV2X, vV2Y, vV2Z)}
+     * @param vV2Z the {@code v2Z} component of the triangle
+     *        {@code (vV0X, vV0Y, vV0Z, vV1X, vV1Y, vV1Z, vV2X, vV2Y, vV2Z)}
+     * @return this
+     */
+    @Mutated public DoubleTriangle set(double vV0X, double vV0Y, double vV0Z, double vV1X, double vV1Y, double vV1Z, double vV2X, double vV2Y, double vV2Z) {
+        double[] dd = this.data;
+        dd[0] = vV0X;
+        dd[1] = vV0Y;
+        dd[2] = vV0Z;
+        dd[3] = vV1X;
+        dd[4] = vV1Y;
+        dd[5] = vV1Z;
+        dd[6] = vV2X;
+        dd[7] = vV2Y;
+        dd[8] = vV2Z;
+        return this;
+    }
+
+
+    /**
+     * Convert this triangle to {@code float} precision and store the result in {@code dest}.
+     * <p>
+     * The conversion may lose precision or range.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    public FloatTriangle toFloat(@Mutated FloatTriangle dest) {
+        double[] sd = this.data;
+        float[] dd = ((FloatTriangleImpl) dest).data;
+        dd[0] = (float) (sd[0]);
+        dd[1] = (float) (sd[1]);
+        dd[2] = (float) (sd[2]);
+        dd[3] = (float) (sd[3]);
+        dd[4] = (float) (sd[4]);
+        dd[5] = (float) (sd[5]);
+        dd[6] = (float) (sd[6]);
+        dd[7] = (float) (sd[7]);
+        dd[8] = (float) (sd[8]);
+        return dest;
+    }
+
+
+    /**
+     * Transform this triangle by {@code m} and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param m the transformation matrix to apply
+     * @param dest will hold the result
+     * @return dest
+     */
+    public DoubleTriangle transform(Double3x4R m, @Mutated DoubleTriangle dest) {
+        if (Math.useFma()) return transform_fma(m, dest);
+        return transform_mulAdd(m, dest);
+    }
+
+    /** {@code transform} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private DoubleTriangle transform_fma(Double3x4R m, @Mutated DoubleTriangle dest) {
+        double[] sd = this.data;
+        double[] mData = ((Double3x4Impl) m).data;
+        double[] dd = ((DoubleTriangleImpl) dest).data;
+        double _rd0 = mData[0];
+        double _rd1 = mData[1];
+        double _rd2 = mData[2];
+        double _rd3 = mData[3];
+        double _rd4 = mData[4];
+        double _rd5 = mData[5];
+        double _rd6 = mData[6];
+        double _rd7 = mData[7];
+        double _rd8 = mData[8];
+        double _rd9 = mData[9];
+        double _rd10 = mData[10];
+        double _rd11 = mData[11];
+        double _rd12 = sd[0];
+        double _rd13 = sd[1];
+        double _rd14 = sd[2];
+        double _rd15 = sd[3];
+        double _rd16 = sd[4];
+        double _rd17 = sd[5];
+        double _rd18 = sd[6];
+        double _rd19 = sd[7];
+        double _rd20 = sd[8];
+        dd[0] = java.lang.Math.fma(_rd2, _rd14, java.lang.Math.fma(_rd0, _rd12, java.lang.Math.fma(_rd1, _rd13, _rd3)));
+        dd[1] = java.lang.Math.fma(_rd6, _rd14, java.lang.Math.fma(_rd4, _rd12, java.lang.Math.fma(_rd5, _rd13, _rd7)));
+        dd[2] = java.lang.Math.fma(_rd10, _rd14, java.lang.Math.fma(_rd8, _rd12, java.lang.Math.fma(_rd9, _rd13, _rd11)));
+        dd[3] = java.lang.Math.fma(_rd2, _rd17, java.lang.Math.fma(_rd0, _rd15, java.lang.Math.fma(_rd1, _rd16, _rd3)));
+        return transform_s6a7b1d9b_1_fma(dest, dd, _rd0, _rd1, _rd2, _rd3, _rd4, _rd5, _rd6, _rd7, _rd8, _rd9, _rd10, _rd11, _rd15, _rd16, _rd17, _rd18, _rd19, _rd20);
+    }
+
+    /** {@code transform} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private DoubleTriangle transform_mulAdd(Double3x4R m, @Mutated DoubleTriangle dest) {
+        double[] sd = this.data;
+        double[] mData = ((Double3x4Impl) m).data;
+        double[] dd = ((DoubleTriangleImpl) dest).data;
+        double _rd0 = mData[0];
+        double _rd1 = mData[1];
+        double _rd2 = mData[2];
+        double _rd3 = mData[3];
+        double _rd4 = mData[4];
+        double _rd5 = mData[5];
+        double _rd6 = mData[6];
+        double _rd7 = mData[7];
+        double _rd8 = mData[8];
+        double _rd9 = mData[9];
+        double _rd10 = mData[10];
+        double _rd11 = mData[11];
+        double _rd12 = sd[0];
+        double _rd13 = sd[1];
+        double _rd14 = sd[2];
+        double _rd15 = sd[3];
+        double _rd16 = sd[4];
+        double _rd17 = sd[5];
+        double _rd18 = sd[6];
+        double _rd19 = sd[7];
+        double _rd20 = sd[8];
+        dd[0] = ((_rd2) * (_rd14) + (((_rd0) * (_rd12) + (((_rd1) * (_rd13) + (_rd3))))));
+        dd[1] = ((_rd6) * (_rd14) + (((_rd4) * (_rd12) + (((_rd5) * (_rd13) + (_rd7))))));
+        dd[2] = ((_rd10) * (_rd14) + (((_rd8) * (_rd12) + (((_rd9) * (_rd13) + (_rd11))))));
+        dd[3] = ((_rd2) * (_rd17) + (((_rd0) * (_rd15) + (((_rd1) * (_rd16) + (_rd3))))));
+        return transform_s6a7b1d9b_1_mulAdd(dest, dd, _rd0, _rd1, _rd2, _rd3, _rd4, _rd5, _rd6, _rd7, _rd8, _rd9, _rd10, _rd11, _rd15, _rd16, _rd17, _rd18, _rd19, _rd20);
+    }
+
+    /** Piece 2 of {@code transform}, split to fit the inline budget; reached only through it. */
+    private DoubleTriangle transform_s6a7b1d9b_1_fma(DoubleTriangle dest, double[] dd, double _rd0, double _rd1, double _rd2, double _rd3, double _rd4, double _rd5, double _rd6, double _rd7, double _rd8, double _rd9, double _rd10, double _rd11, double _rd15, double _rd16, double _rd17, double _rd18, double _rd19, double _rd20) {
+        dd[4] = java.lang.Math.fma(_rd6, _rd17, java.lang.Math.fma(_rd4, _rd15, java.lang.Math.fma(_rd5, _rd16, _rd7)));
+        dd[5] = java.lang.Math.fma(_rd10, _rd17, java.lang.Math.fma(_rd8, _rd15, java.lang.Math.fma(_rd9, _rd16, _rd11)));
+        dd[6] = java.lang.Math.fma(_rd2, _rd20, java.lang.Math.fma(_rd0, _rd18, java.lang.Math.fma(_rd1, _rd19, _rd3)));
+        dd[7] = java.lang.Math.fma(_rd6, _rd20, java.lang.Math.fma(_rd4, _rd18, java.lang.Math.fma(_rd5, _rd19, _rd7)));
+        dd[8] = java.lang.Math.fma(_rd10, _rd20, java.lang.Math.fma(_rd8, _rd18, java.lang.Math.fma(_rd9, _rd19, _rd11)));
+        return dest;
+    }
+
+    /** Piece 2 of {@code transform}, split to fit the inline budget; reached only through it. */
+    private DoubleTriangle transform_s6a7b1d9b_1_mulAdd(DoubleTriangle dest, double[] dd, double _rd0, double _rd1, double _rd2, double _rd3, double _rd4, double _rd5, double _rd6, double _rd7, double _rd8, double _rd9, double _rd10, double _rd11, double _rd15, double _rd16, double _rd17, double _rd18, double _rd19, double _rd20) {
+        dd[4] = ((_rd6) * (_rd17) + (((_rd4) * (_rd15) + (((_rd5) * (_rd16) + (_rd7))))));
+        dd[5] = ((_rd10) * (_rd17) + (((_rd8) * (_rd15) + (((_rd9) * (_rd16) + (_rd11))))));
+        dd[6] = ((_rd2) * (_rd20) + (((_rd0) * (_rd18) + (((_rd1) * (_rd19) + (_rd3))))));
+        dd[7] = ((_rd6) * (_rd20) + (((_rd4) * (_rd18) + (((_rd5) * (_rd19) + (_rd7))))));
+        dd[8] = ((_rd10) * (_rd20) + (((_rd8) * (_rd18) + (((_rd9) * (_rd19) + (_rd11))))));
+        return dest;
+    }
+
+
+    /**
+     * Transform this triangle by {@code m} and store the result in {@code dest}.
+     * <p>
+     * Only the affine part of {@code m} is used: the last row is assumed to be
+     * {@code (0, 0, 0, 1)}, so any projective component is ignored.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param m the transformation matrix to apply
+     * @param dest will hold the result
+     * @return dest
+     */
+    public DoubleTriangle transform(Double4x4R m, @Mutated DoubleTriangle dest) {
+        if (Math.useFma()) return transform_fma(m, dest);
+        return transform_mulAdd(m, dest);
+    }
+
+    /** {@code transform} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private DoubleTriangle transform_fma(Double4x4R m, @Mutated DoubleTriangle dest) {
+        double[] sd = this.data;
+        double[] mData = ((Double4x4Impl) m).data;
+        double[] dd = ((DoubleTriangleImpl) dest).data;
+        double _rd0 = mData[0];
+        double _rd1 = mData[1];
+        double _rd2 = mData[2];
+        double _rd3 = mData[4];
+        double _rd4 = mData[5];
+        double _rd5 = mData[6];
+        double _rd6 = mData[8];
+        double _rd7 = mData[9];
+        double _rd8 = mData[10];
+        double _rd9 = mData[12];
+        double _rd10 = mData[13];
+        double _rd11 = mData[14];
+        double _rd12 = sd[0];
+        double _rd13 = sd[1];
+        double _rd14 = sd[2];
+        double _rd15 = sd[3];
+        double _rd16 = sd[4];
+        double _rd17 = sd[5];
+        double _rd18 = sd[6];
+        double _rd19 = sd[7];
+        double _rd20 = sd[8];
+        dd[0] = java.lang.Math.fma(_rd6, _rd14, java.lang.Math.fma(_rd0, _rd12, java.lang.Math.fma(_rd3, _rd13, _rd9)));
+        dd[1] = java.lang.Math.fma(_rd7, _rd14, java.lang.Math.fma(_rd1, _rd12, java.lang.Math.fma(_rd4, _rd13, _rd10)));
+        dd[2] = java.lang.Math.fma(_rd8, _rd14, java.lang.Math.fma(_rd2, _rd12, java.lang.Math.fma(_rd5, _rd13, _rd11)));
+        dd[3] = java.lang.Math.fma(_rd6, _rd17, java.lang.Math.fma(_rd0, _rd15, java.lang.Math.fma(_rd3, _rd16, _rd9)));
+        return transform_sd79031f4_1_fma(dest, dd, _rd0, _rd1, _rd2, _rd3, _rd4, _rd5, _rd6, _rd7, _rd8, _rd9, _rd10, _rd11, _rd15, _rd16, _rd17, _rd18, _rd19, _rd20);
+    }
+
+    /** {@code transform} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private DoubleTriangle transform_mulAdd(Double4x4R m, @Mutated DoubleTriangle dest) {
+        double[] sd = this.data;
+        double[] mData = ((Double4x4Impl) m).data;
+        double[] dd = ((DoubleTriangleImpl) dest).data;
+        double _rd0 = mData[0];
+        double _rd1 = mData[1];
+        double _rd2 = mData[2];
+        double _rd3 = mData[4];
+        double _rd4 = mData[5];
+        double _rd5 = mData[6];
+        double _rd6 = mData[8];
+        double _rd7 = mData[9];
+        double _rd8 = mData[10];
+        double _rd9 = mData[12];
+        double _rd10 = mData[13];
+        double _rd11 = mData[14];
+        double _rd12 = sd[0];
+        double _rd13 = sd[1];
+        double _rd14 = sd[2];
+        double _rd15 = sd[3];
+        double _rd16 = sd[4];
+        double _rd17 = sd[5];
+        double _rd18 = sd[6];
+        double _rd19 = sd[7];
+        double _rd20 = sd[8];
+        dd[0] = ((_rd6) * (_rd14) + (((_rd0) * (_rd12) + (((_rd3) * (_rd13) + (_rd9))))));
+        dd[1] = ((_rd7) * (_rd14) + (((_rd1) * (_rd12) + (((_rd4) * (_rd13) + (_rd10))))));
+        dd[2] = ((_rd8) * (_rd14) + (((_rd2) * (_rd12) + (((_rd5) * (_rd13) + (_rd11))))));
+        dd[3] = ((_rd6) * (_rd17) + (((_rd0) * (_rd15) + (((_rd3) * (_rd16) + (_rd9))))));
+        return transform_sd79031f4_1_mulAdd(dest, dd, _rd0, _rd1, _rd2, _rd3, _rd4, _rd5, _rd6, _rd7, _rd8, _rd9, _rd10, _rd11, _rd15, _rd16, _rd17, _rd18, _rd19, _rd20);
+    }
+
+    /** Piece 2 of {@code transform}, split to fit the inline budget; reached only through it. */
+    private DoubleTriangle transform_sd79031f4_1_fma(DoubleTriangle dest, double[] dd, double _rd0, double _rd1, double _rd2, double _rd3, double _rd4, double _rd5, double _rd6, double _rd7, double _rd8, double _rd9, double _rd10, double _rd11, double _rd15, double _rd16, double _rd17, double _rd18, double _rd19, double _rd20) {
+        dd[4] = java.lang.Math.fma(_rd7, _rd17, java.lang.Math.fma(_rd1, _rd15, java.lang.Math.fma(_rd4, _rd16, _rd10)));
+        dd[5] = java.lang.Math.fma(_rd8, _rd17, java.lang.Math.fma(_rd2, _rd15, java.lang.Math.fma(_rd5, _rd16, _rd11)));
+        dd[6] = java.lang.Math.fma(_rd6, _rd20, java.lang.Math.fma(_rd0, _rd18, java.lang.Math.fma(_rd3, _rd19, _rd9)));
+        dd[7] = java.lang.Math.fma(_rd7, _rd20, java.lang.Math.fma(_rd1, _rd18, java.lang.Math.fma(_rd4, _rd19, _rd10)));
+        dd[8] = java.lang.Math.fma(_rd8, _rd20, java.lang.Math.fma(_rd2, _rd18, java.lang.Math.fma(_rd5, _rd19, _rd11)));
+        return dest;
+    }
+
+    /** Piece 2 of {@code transform}, split to fit the inline budget; reached only through it. */
+    private DoubleTriangle transform_sd79031f4_1_mulAdd(DoubleTriangle dest, double[] dd, double _rd0, double _rd1, double _rd2, double _rd3, double _rd4, double _rd5, double _rd6, double _rd7, double _rd8, double _rd9, double _rd10, double _rd11, double _rd15, double _rd16, double _rd17, double _rd18, double _rd19, double _rd20) {
+        dd[4] = ((_rd7) * (_rd17) + (((_rd1) * (_rd15) + (((_rd4) * (_rd16) + (_rd10))))));
+        dd[5] = ((_rd8) * (_rd17) + (((_rd2) * (_rd15) + (((_rd5) * (_rd16) + (_rd11))))));
+        dd[6] = ((_rd6) * (_rd20) + (((_rd0) * (_rd18) + (((_rd3) * (_rd19) + (_rd9))))));
+        dd[7] = ((_rd7) * (_rd20) + (((_rd1) * (_rd18) + (((_rd4) * (_rd19) + (_rd10))))));
+        dd[8] = ((_rd8) * (_rd20) + (((_rd2) * (_rd18) + (((_rd5) * (_rd19) + (_rd11))))));
+        return dest;
+    }
+
+
+    /**
+     * Compute the area of this triangle.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @return the area of this triangle
+     */
+    public double area() {
+        if (Math.useFma()) {
+            double[] sd = this.data;
+            double _t0 = sd[3] - sd[0];
+            double _t1 = sd[7] - sd[1];
+            double _t2 = sd[4] - sd[1];
+            double _t3 = sd[6] - sd[0];
+            double _t4 = sd[8] - sd[2];
+            double _t5 = sd[5] - sd[2];
+            double _t12 = java.lang.Math.fma(_t0, _t1, -(_t2 * _t3));
+            double _t13 = java.lang.Math.fma(_t2, _t4, -(_t5 * _t1));
+            double _t14 = java.lang.Math.fma(_t5, _t3, -(_t0 * _t4));
+            return 0.5 * java.lang.Math.sqrt(java.lang.Math.fma(_t12, _t12, java.lang.Math.fma(_t13, _t13, _t14 * _t14)));
+        } else {
+            double[] sd = this.data;
+            double _t0 = sd[3] - sd[0];
+            double _t1 = sd[7] - sd[1];
+            double _t2 = sd[4] - sd[1];
+            double _t3 = sd[6] - sd[0];
+            double _t4 = sd[8] - sd[2];
+            double _t5 = sd[5] - sd[2];
+            double _t12 = ((_t0) * (_t1) - (_t2 * _t3));
+            double _t13 = ((_t2) * (_t4) - (_t5 * _t1));
+            double _t14 = ((_t5) * (_t3) - (_t0 * _t4));
+            return 0.5 * java.lang.Math.sqrt(((_t12) * (_t12) + (((_t13) * (_t13) + (_t14 * _t14)))));
+        }
+    }
+
+
+    /**
+     * Compute the barycentric coordinates of the given point with respect to this triangle and
+     * store the result in {@code dest}.
+     * <p>
+     * The three components weight the triangle's first, second and third vertex respectively and
+     * sum to 1. A point that is not coplanar with the triangle yields the coordinates of its
+     * orthogonal projection onto the triangle's plane. The weights are formed with the
+     * cross-product form (areas of the sub-triangles against the triangle's normal), which stays
+     * accurate for thin triangles.
+     * <p>
+     * Valid input: this triangle must be non-degenerate.
+     *
+     * @param p the point whose barycentric coordinates to compute
+     * @param dest will hold the result
+     * @return dest
+     */
+    public Double3 barycentric(Double3R p, @Mutated Double3 dest) {
+        double pX = p.x();
+        double pY = p.y();
+        double pZ = p.z();
+        if (Math.useFma()) return barycentric_fma(pX, pY, pZ, dest);
+        return barycentric_mulAdd(pX, pY, pZ, dest);
+    }
+
+
+    /**
+     * Compute the barycentric coordinates of the given point with respect to this triangle and
+     * store the result in {@code dest}.
+     * <p>
+     * The three components weight the triangle's first, second and third vertex respectively and
+     * sum to 1. A point that is not coplanar with the triangle yields the coordinates of its
+     * orthogonal projection onto the triangle's plane. The weights are formed with the
+     * cross-product form (areas of the sub-triangles against the triangle's normal), which stays
+     * accurate for thin triangles.
+     * <p>
+     * Valid input: this triangle must be non-degenerate.
+     *
+     * @param pX the {@code x} component of the vector {@code (pX, pY, pZ)}
+     * @param pY the {@code y} component of the vector {@code (pX, pY, pZ)}
+     * @param pZ the {@code z} component of the vector {@code (pX, pY, pZ)}
+     * @param dest will hold the result
+     * @return dest
+     */
+    public Double3 barycentric(double pX, double pY, double pZ, @Mutated Double3 dest) {
+        if (Math.useFma()) return barycentric_fma(pX, pY, pZ, dest);
+        return barycentric_mulAdd(pX, pY, pZ, dest);
+    }
+
+    /** {@code barycentric} with fused multiply-adds ({@code joml.useFma}); reached only through it. */
+    private Double3 barycentric_fma(double pX, double pY, double pZ, @Mutated Double3 dest) {
+        double[] sd = this.data;
+        double[] dd = ((Double3Impl) dest).data;
+        double _t0 = pX - sd[0];
+        double _t1 = sd[7] - sd[1];
+        double _t2 = pY - sd[1];
+        double _t3 = sd[6] - sd[0];
+        double _t4 = sd[3] - sd[0];
+        double _t5 = sd[4] - sd[1];
+        double _t6 = sd[8] - sd[2];
+        double _t7 = pZ - sd[2];
+        double _t8 = sd[5] - sd[2];
+        double _t28 = java.lang.Math.fma(_t4, _t1, -(_t5 * _t3));
+        double _t30 = java.lang.Math.fma(_t5, _t6, -(_t8 * _t1));
+        double _t32 = java.lang.Math.fma(_t8, _t3, -(_t4 * _t6));
+        double _t46 = java.lang.Math.fma(_t28, _t28, java.lang.Math.fma(_t30, _t30, _t32 * _t32));
+        if (!(_t46 > 2.2250738585072014E-308 && _t46 < Double.POSITIVE_INFINITY)) return barycentric_degenerate_fma(pX, pY, pZ, dest);
+        return barycentric_s166cb433_1_fma(pX, pY, pZ, dest, dd, _t0, _t2, _t4, _t5, _t7, _t8, _t28, _t30, _t32, 1.0 / _t46, java.lang.Math.fma(java.lang.Math.fma(_t0, _t1, -(_t2 * _t3)), _t28, java.lang.Math.fma(java.lang.Math.fma(_t2, _t6, -(_t7 * _t1)), _t30, java.lang.Math.fma(_t7, _t3, -(_t0 * _t6)) * _t32)));
+    }
+
+    /** {@code barycentric} with plain multiply-adds ({@code joml.useFma}); reached only through it. */
+    private Double3 barycentric_mulAdd(double pX, double pY, double pZ, @Mutated Double3 dest) {
+        double[] sd = this.data;
+        double[] dd = ((Double3Impl) dest).data;
+        double _t0 = pX - sd[0];
+        double _t1 = sd[7] - sd[1];
+        double _t2 = pY - sd[1];
+        double _t3 = sd[6] - sd[0];
+        double _t4 = sd[3] - sd[0];
+        double _t5 = sd[4] - sd[1];
+        double _t6 = sd[8] - sd[2];
+        double _t7 = pZ - sd[2];
+        double _t8 = sd[5] - sd[2];
+        double _t28 = ((_t4) * (_t1) - (_t5 * _t3));
+        double _t30 = ((_t5) * (_t6) - (_t8 * _t1));
+        double _t32 = ((_t8) * (_t3) - (_t4 * _t6));
+        double _t46 = ((_t28) * (_t28) + (((_t30) * (_t30) + (_t32 * _t32))));
+        if (!(_t46 > 2.2250738585072014E-308 && _t46 < Double.POSITIVE_INFINITY)) return barycentric_degenerate_mulAdd(pX, pY, pZ, dest);
+        return barycentric_s166cb433_1_mulAdd(pX, pY, pZ, dest, dd, _t0, _t2, _t4, _t5, _t7, _t8, _t28, _t30, _t32, 1.0 / _t46, ((((_t0) * (_t1) - (_t2 * _t3))) * (_t28) + (((((_t2) * (_t6) - (_t7 * _t1))) * (_t30) + (((_t7) * (_t3) - (_t0 * _t6)) * _t32)))));
+    }
+
+    /** Piece 2 of {@code barycentric}, split to fit the inline budget; reached only through it. */
+    private Double3 barycentric_s166cb433_1_fma(double pX, double pY, double pZ, Double3 dest, double[] dd, double _t0, double _t2, double _t4, double _t5, double _t7, double _t8, double _t28, double _t30, double _t32, double _t46_inv, double _ct0) {
+        if (!(_ct0 > Double.NEGATIVE_INFINITY && _ct0 < Double.POSITIVE_INFINITY)) return barycentric_degenerate_fma(pX, pY, pZ, dest);
+        double _t48 = _ct0 * _t46_inv;
+        double _ct1 = java.lang.Math.fma(java.lang.Math.fma(_t2, _t4, -(_t0 * _t5)), _t28, java.lang.Math.fma(java.lang.Math.fma(_t0, _t8, -(_t7 * _t4)), _t32, java.lang.Math.fma(_t7, _t5, -(_t2 * _t8)) * _t30));
+        if (!(_ct1 > Double.NEGATIVE_INFINITY && _ct1 < Double.POSITIVE_INFINITY)) return barycentric_degenerate_fma(pX, pY, pZ, dest);
+        double _t49 = _ct1 * _t46_inv;
+        dd[0] = 1.0 - _t48 - _t49;
+        dd[1] = _t48;
+        dd[2] = _t49;
+        return dest;
+    }
+
+    /** Piece 2 of {@code barycentric}, split to fit the inline budget; reached only through it. */
+    private Double3 barycentric_s166cb433_1_mulAdd(double pX, double pY, double pZ, Double3 dest, double[] dd, double _t0, double _t2, double _t4, double _t5, double _t7, double _t8, double _t28, double _t30, double _t32, double _t46_inv, double _ct0) {
+        if (!(_ct0 > Double.NEGATIVE_INFINITY && _ct0 < Double.POSITIVE_INFINITY)) return barycentric_degenerate_mulAdd(pX, pY, pZ, dest);
+        double _t48 = _ct0 * _t46_inv;
+        double _ct1 = ((((_t2) * (_t4) - (_t0 * _t5))) * (_t28) + (((((_t0) * (_t8) - (_t7 * _t4))) * (_t32) + (((_t7) * (_t5) - (_t2 * _t8)) * _t30))));
+        if (!(_ct1 > Double.NEGATIVE_INFINITY && _ct1 < Double.POSITIVE_INFINITY)) return barycentric_degenerate_mulAdd(pX, pY, pZ, dest);
+        double _t49 = _ct1 * _t46_inv;
+        dd[0] = 1.0 - _t48 - _t49;
+        dd[1] = _t48;
+        dd[2] = _t49;
+        return dest;
+    }
+
+    /**
+     * Out-of-range path of {@code barycentric}: its methods leave here when the squared length of
+     * the triangle's normal (quartic in its size) is zero, NaN or outside the normal floating-point
+     * range; reached only through them.
+     */
+    private Double3 barycentric_degenerate_fma(double pX, double pY, double pZ, @Mutated Double3 dest) {
+        double[] sd = this.data;
+        double _t28 = java.lang.Math.min(1.0, unitScale(java.lang.Math.max(java.lang.Math.abs(java.lang.Math.max(java.lang.Math.abs(sd[0]), java.lang.Math.abs(sd[1]))), java.lang.Math.abs(java.lang.Math.max(java.lang.Math.abs(sd[2]), java.lang.Math.abs(sd[3])))), java.lang.Math.max(java.lang.Math.abs(java.lang.Math.max(java.lang.Math.abs(sd[4]), java.lang.Math.abs(sd[5]))), java.lang.Math.abs(java.lang.Math.max(java.lang.Math.abs(sd[6]), java.lang.Math.abs(sd[7])))), java.lang.Math.max(java.lang.Math.abs(java.lang.Math.max(java.lang.Math.abs(sd[8]), java.lang.Math.abs(pX))), java.lang.Math.abs(java.lang.Math.max(java.lang.Math.abs(pY), java.lang.Math.abs(pZ))))));
+        double _t42 = sd[0] * _t28;
+        double _t44 = sd[1] * _t28;
+        double _t46 = sd[2] * _t28;
+        double _t53 = pX * _t28 - _t42;
+        double _t54 = pY * _t28 - _t44;
+        double _t55 = pZ * _t28 - _t46;
+        double _t71 = unitScale(_t53, _t54, _t55);
+        return barycentric_degenerate_s8efdc31a_1_fma(dest, ((Double3Impl) dest).data, sd[7] * _t28 - _t44, sd[3] * _t28 - _t42, sd[4] * _t28 - _t44, sd[5] * _t28 - _t46, sd[6] * _t28 - _t42, sd[8] * _t28 - _t46, _t71, _t53 * _t71, _t54 * _t71, _t55 * _t71);
+    }
+
+    /**
+     * Out-of-range path of {@code barycentric}: its methods leave here when the squared length of
+     * the triangle's normal (quartic in its size) is zero, NaN or outside the normal floating-point
+     * range; reached only through them.
+     */
+    private Double3 barycentric_degenerate_mulAdd(double pX, double pY, double pZ, @Mutated Double3 dest) {
+        double[] sd = this.data;
+        double _t28 = java.lang.Math.min(1.0, unitScale(java.lang.Math.max(java.lang.Math.abs(java.lang.Math.max(java.lang.Math.abs(sd[0]), java.lang.Math.abs(sd[1]))), java.lang.Math.abs(java.lang.Math.max(java.lang.Math.abs(sd[2]), java.lang.Math.abs(sd[3])))), java.lang.Math.max(java.lang.Math.abs(java.lang.Math.max(java.lang.Math.abs(sd[4]), java.lang.Math.abs(sd[5]))), java.lang.Math.abs(java.lang.Math.max(java.lang.Math.abs(sd[6]), java.lang.Math.abs(sd[7])))), java.lang.Math.max(java.lang.Math.abs(java.lang.Math.max(java.lang.Math.abs(sd[8]), java.lang.Math.abs(pX))), java.lang.Math.abs(java.lang.Math.max(java.lang.Math.abs(pY), java.lang.Math.abs(pZ))))));
+        double _t42 = sd[0] * _t28;
+        double _t44 = sd[1] * _t28;
+        double _t46 = sd[2] * _t28;
+        double _t53 = pX * _t28 - _t42;
+        double _t54 = pY * _t28 - _t44;
+        double _t55 = pZ * _t28 - _t46;
+        double _t71 = unitScale(_t53, _t54, _t55);
+        return barycentric_degenerate_s8efdc31a_1_mulAdd(dest, ((Double3Impl) dest).data, sd[7] * _t28 - _t44, sd[3] * _t28 - _t42, sd[4] * _t28 - _t44, sd[5] * _t28 - _t46, sd[6] * _t28 - _t42, sd[8] * _t28 - _t46, _t71, _t53 * _t71, _t54 * _t71, _t55 * _t71);
+    }
+
+    /** Piece 2 of {@code barycentric_degenerate}, split to fit the inline budget; reached only through it. */
+    private Double3 barycentric_degenerate_s8efdc31a_1_fma(Double3 dest, double[] dd, double _t56, double _t57, double _t58, double _t59, double _t60, double _t61, double _t71, double _t75, double _t76, double _t77) {
+        double _t78 = unitScale(java.lang.Math.max(java.lang.Math.abs(_t57), java.lang.Math.abs(_t58)), java.lang.Math.max(java.lang.Math.abs(_t59), java.lang.Math.abs(_t60)), java.lang.Math.max(java.lang.Math.abs(_t56), java.lang.Math.abs(_t61)));
+        double _t85 = _t56 * _t78;
+        double _t86 = _t60 * _t78;
+        double _t87 = _t57 * _t78;
+        double _t88 = _t58 * _t78;
+        double _t89 = _t61 * _t78;
+        double _t90 = _t59 * _t78;
+        double _t117 = java.lang.Math.fma(_t87, _t85, -(_t88 * _t86));
+        double _t118 = java.lang.Math.fma(_t88, _t89, -(_t90 * _t85));
+        double _t119 = java.lang.Math.fma(_t90, _t86, -(_t87 * _t89));
+        double _sp0 = _t78 / _t71 / java.lang.Math.fma(_t117, _t117, java.lang.Math.fma(_t118, _t118, _t119 * _t119));
+        double _t131 = java.lang.Math.fma(java.lang.Math.fma(_t75, _t85, -(_t76 * _t86)), _t117, java.lang.Math.fma(java.lang.Math.fma(_t76, _t89, -(_t77 * _t85)), _t118, java.lang.Math.fma(_t77, _t86, -(_t75 * _t89)) * _t119)) * _sp0;
+        double _t132 = java.lang.Math.fma(java.lang.Math.fma(_t76, _t87, -(_t75 * _t88)), _t117, java.lang.Math.fma(java.lang.Math.fma(_t75, _t90, -(_t77 * _t87)), _t119, java.lang.Math.fma(_t77, _t88, -(_t76 * _t90)) * _t118)) * _sp0;
+        dd[0] = 1.0 - _t131 - _t132;
+        dd[1] = _t131;
+        dd[2] = _t132;
+        return dest;
+    }
+
+    /** Piece 2 of {@code barycentric_degenerate}, split to fit the inline budget; reached only through it. */
+    private Double3 barycentric_degenerate_s8efdc31a_1_mulAdd(Double3 dest, double[] dd, double _t56, double _t57, double _t58, double _t59, double _t60, double _t61, double _t71, double _t75, double _t76, double _t77) {
+        double _t78 = unitScale(java.lang.Math.max(java.lang.Math.abs(_t57), java.lang.Math.abs(_t58)), java.lang.Math.max(java.lang.Math.abs(_t59), java.lang.Math.abs(_t60)), java.lang.Math.max(java.lang.Math.abs(_t56), java.lang.Math.abs(_t61)));
+        double _t85 = _t56 * _t78;
+        double _t86 = _t60 * _t78;
+        double _t87 = _t57 * _t78;
+        double _t88 = _t58 * _t78;
+        double _t89 = _t61 * _t78;
+        double _t90 = _t59 * _t78;
+        double _t117 = ((_t87) * (_t85) - (_t88 * _t86));
+        double _t118 = ((_t88) * (_t89) - (_t90 * _t85));
+        double _t119 = ((_t90) * (_t86) - (_t87 * _t89));
+        double _sp0 = _t78 / _t71 / ((_t117) * (_t117) + (((_t118) * (_t118) + (_t119 * _t119))));
+        double _t131 = ((((_t75) * (_t85) - (_t76 * _t86))) * (_t117) + (((((_t76) * (_t89) - (_t77 * _t85))) * (_t118) + (((_t77) * (_t86) - (_t75 * _t89)) * _t119)))) * _sp0;
+        double _t132 = ((((_t76) * (_t87) - (_t75 * _t88))) * (_t117) + (((((_t75) * (_t90) - (_t77 * _t87))) * (_t119) + (((_t77) * (_t88) - (_t76 * _t90)) * _t118)))) * _sp0;
+        dd[0] = 1.0 - _t131 - _t132;
+        dd[1] = _t131;
+        dd[2] = _t132;
+        return dest;
+    }
+
+
+    /**
+     * Get the centroid (the average of the vertices) of this triangle and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    public Double3 getCentroid(@Mutated Double3 dest) {
+        double[] sd = this.data;
+        double[] dd = ((Double3Impl) dest).data;
+        dd[0] = 0.3333333333333333 * sd[0] + 0.3333333333333333 * sd[3] + 0.3333333333333333 * sd[6];
+        dd[1] = 0.3333333333333333 * sd[1] + 0.3333333333333333 * sd[4] + 0.3333333333333333 * sd[7];
+        dd[2] = 0.3333333333333333 * sd[2] + 0.3333333333333333 * sd[5] + 0.3333333333333333 * sd[8];
+        return dest;
+    }
+
+
+    /**
+     * Get the normal of this triangle, i.e. the cross product {@code (v1 - v0) x (v2 - v0)} (not
+     * unit length: its length is twice the triangle's area) and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    public Double3 getNormal(@Mutated Double3 dest) {
+        if (Math.useFma()) {
+            double[] sd = this.data;
+            double[] dd = ((Double3Impl) dest).data;
+            double _t0 = sd[4] - sd[1];
+            double _t1 = sd[8] - sd[2];
+            double _t2 = sd[5] - sd[2];
+            double _t3 = sd[7] - sd[1];
+            double _t4 = sd[6] - sd[0];
+            double _t5 = sd[3] - sd[0];
+            dd[0] = java.lang.Math.fma(_t0, _t1, -(_t2 * _t3));
+            dd[1] = java.lang.Math.fma(_t2, _t4, -(_t5 * _t1));
+            dd[2] = java.lang.Math.fma(_t5, _t3, -(_t0 * _t4));
+            return dest;
+        } else {
+            double[] sd = this.data;
+            double[] dd = ((Double3Impl) dest).data;
+            double _t0 = sd[4] - sd[1];
+            double _t1 = sd[8] - sd[2];
+            double _t2 = sd[5] - sd[2];
+            double _t3 = sd[7] - sd[1];
+            double _t4 = sd[6] - sd[0];
+            double _t5 = sd[3] - sd[0];
+            dd[0] = ((_t0) * (_t1) - (_t2 * _t3));
+            dd[1] = ((_t2) * (_t4) - (_t5 * _t1));
+            dd[2] = ((_t5) * (_t3) - (_t0 * _t4));
+            return dest;
+        }
+    }
+
+
+    /**
+     * Get the first vertex of this triangle and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    public Double3 getV0(@Mutated Double3 dest) {
+        double[] sd = this.data;
+        double[] dd = ((Double3Impl) dest).data;
+        dd[0] = sd[0];
+        dd[1] = sd[1];
+        dd[2] = sd[2];
+        return dest;
+    }
+
+
+    /**
+     * Get the second vertex of this triangle and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    public Double3 getV1(@Mutated Double3 dest) {
+        double[] sd = this.data;
+        double[] dd = ((Double3Impl) dest).data;
+        dd[0] = sd[3];
+        dd[1] = sd[4];
+        dd[2] = sd[5];
+        return dest;
+    }
+
+
+    /**
+     * Get the third vertex of this triangle and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    public Double3 getV2(@Mutated Double3 dest) {
+        double[] sd = this.data;
+        double[] dd = ((Double3Impl) dest).data;
+        dd[0] = sd[6];
+        dd[1] = sd[7];
+        dd[2] = sd[8];
+        return dest;
+    }
+
+    public double v0X() { return data[0]; }
+    public double v0Y() { return data[1]; }
+    public double v0Z() { return data[2]; }
+    public double v1X() { return data[3]; }
+    public double v1Y() { return data[4]; }
+    public double v1Z() { return data[5]; }
+    public double v2X() { return data[6]; }
+    public double v2Y() { return data[7]; }
+    public double v2Z() { return data[8]; }
+
+    @Override public String toString() {
+        return "DoubleTriangle(" + v0X() + ", " + v0Y() + ", " + v0Z() + ", " + v1X() + ", " + v1Y() + ", " + v1Z() + ", " + v2X() + ", " + v2Y() + ", " + v2Z() + ")";
+    }
+
+    @Override public boolean equals(@org.jspecify.annotations.Nullable Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof DoubleTriangleImpl)) return false;
+        DoubleTriangleImpl o = (DoubleTriangleImpl) obj;
+        return java.util.Arrays.equals(data, o.data);
+    }
+
+    @Override public int hashCode() {
+        return java.util.Arrays.hashCode(data);
+    }
+
+    @Override public boolean isFinite() {
+        return Double.isFinite(data[0])
+            && Double.isFinite(data[1])
+            && Double.isFinite(data[2])
+            && Double.isFinite(data[3])
+            && Double.isFinite(data[4])
+            && Double.isFinite(data[5])
+            && Double.isFinite(data[6])
+            && Double.isFinite(data[7])
+            && Double.isFinite(data[8]);
+    }
+
+    @Override public boolean isNaN() {
+        return Double.isNaN(data[0])
+            || Double.isNaN(data[1])
+            || Double.isNaN(data[2])
+            || Double.isNaN(data[3])
+            || Double.isNaN(data[4])
+            || Double.isNaN(data[5])
+            || Double.isNaN(data[6])
+            || Double.isNaN(data[7])
+            || Double.isNaN(data[8]);
+    }
+
+    @Override public boolean equalsEpsilon(DoubleTriangleR other, double epsilon) {
+        return java.lang.Math.abs(data[0] - other.v0X()) <= epsilon
+            && java.lang.Math.abs(data[1] - other.v0Y()) <= epsilon
+            && java.lang.Math.abs(data[2] - other.v0Z()) <= epsilon
+            && java.lang.Math.abs(data[3] - other.v1X()) <= epsilon
+            && java.lang.Math.abs(data[4] - other.v1Y()) <= epsilon
+            && java.lang.Math.abs(data[5] - other.v1Z()) <= epsilon
+            && java.lang.Math.abs(data[6] - other.v2X()) <= epsilon
+            && java.lang.Math.abs(data[7] - other.v2Y()) <= epsilon
+            && java.lang.Math.abs(data[8] - other.v2Z()) <= epsilon;
+    }
+
+    public boolean containsPoint(double pX, double pY, double pZ) {
+        return Intersectiond.testPointInTriangle(pX, pY, pZ, v0X(), v0Y(), v0Z(), v1X(), v1Y(), v1Z(), v2X(), v2Y(), v2Z());
+    }
+
+    public boolean containsPoint(Double3R p) {
+        return containsPoint(p.x(), p.y(), p.z());
+    }
+
+    public boolean intersectsRay(DoubleRayR ray, double epsilon) {
+        return Intersectiond.testRayTriangle(ray.oX(), ray.oY(), ray.oZ(), ray.dX(), ray.dY(), ray.dZ(), v0X(), v0Y(), v0Z(), v1X(), v1Y(), v1Z(), v2X(), v2Y(), v2Z(), epsilon);
+    }
+
+    public boolean intersectsRayFront(DoubleRayR ray, double epsilon) {
+        return Intersectiond.testRayTriangleFront(ray.oX(), ray.oY(), ray.oZ(), ray.dX(), ray.dY(), ray.dZ(), v0X(), v0Y(), v0Z(), v1X(), v1Y(), v1Z(), v2X(), v2Y(), v2Z(), epsilon);
+    }
+
+    public Double3 closestPointToPoint(double pX, double pY, double pZ, @Mutated Double3 dest) {
+        Intersectiond.findClosestPointOnTriangle(v0X(), v0Y(), v0Z(), v1X(), v1Y(), v1Z(), v2X(), v2Y(), v2Z(), pX, pY, pZ, dest);
+        return dest;
+    }
+
+    public Double3 closestPointToPoint(Double3R p, @Mutated Double3 dest) {
+        double pX = p.x();
+        double pY = p.y();
+        double pZ = p.z();
+        Intersectiond.findClosestPointOnTriangle(v0X(), v0Y(), v0Z(), v1X(), v1Y(), v1Z(), v2X(), v2Y(), v2Z(), pX, pY, pZ, dest);
+        return dest;
+    }
+
+    public double[] store(@Mutated double[] dest, int offset) {
+        dest[offset] = this.data[0];
+        dest[offset + 1] = this.data[1];
+        dest[offset + 2] = this.data[2];
+        dest[offset + 3] = this.data[3];
+        dest[offset + 4] = this.data[4];
+        dest[offset + 5] = this.data[5];
+        dest[offset + 6] = this.data[6];
+        dest[offset + 7] = this.data[7];
+        dest[offset + 8] = this.data[8];
+        return dest;
+    }
+    public @Mutated DoubleTriangle load(double[] src, int offset) {
+        this.data[0] = src[offset];
+        this.data[1] = src[offset + 1];
+        this.data[2] = src[offset + 2];
+        this.data[3] = src[offset + 3];
+        this.data[4] = src[offset + 4];
+        this.data[5] = src[offset + 5];
+        this.data[6] = src[offset + 6];
+        this.data[7] = src[offset + 7];
+        this.data[8] = src[offset + 8];
+        return this;
+    }
+    public DoubleBuffer store(@Mutated DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.storeAbsolute(this, buf.position(), buf);
+    }
+    public DoubleBuffer storeAbsolute(int index, @Mutated DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.storeAbsolute(this, index, buf);
+    }
+    public DoubleBuffer storeRelative(@Mutated DoubleBuffer buf) {
+        if (buf.remaining() < 9) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeAbsolute(this, pos, buf);
+        buf.position(pos + 9);
+        return buf;
+    }
+    @Mutated public DoubleTriangle load(DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.loadAbsolute(this, buf.position(), buf);
+    }
+    @Mutated public DoubleTriangle loadAbsolute(int index, DoubleBuffer buf) {
+        return StoreLoad.BB_OPS.loadAbsolute(this, index, buf);
+    }
+    @Mutated public DoubleTriangle loadRelative(DoubleBuffer buf) {
+        if (buf.remaining() < 9) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.loadAbsolute(this, pos, buf);
+        buf.position(pos + 9);
+        return this;
+    }
+    public ByteBuffer store(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeAbsolute(this, buf.position(), buf);
+    }
+    public ByteBuffer storeAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeAbsolute(this, index, buf);
+    }
+    public ByteBuffer storeRelative(ByteBuffer buf) {
+        if (buf.remaining() < 72) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeAbsolute(this, pos, buf);
+        buf.position(pos + 72);
+        return buf;
+    }
+    public DoubleTriangle load(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.loadAbsolute(this, buf.position(), buf);
+    }
+    public DoubleTriangle loadAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.loadAbsolute(this, index, buf);
+    }
+    public DoubleTriangle loadRelative(ByteBuffer buf) {
+        if (buf.remaining() < 72) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        DoubleTriangle r = StoreLoad.BB_OPS.loadAbsolute(this, pos, buf);
+        buf.position(pos + 72);
+        return r;
+    }
+    public DoubleTriangle storeUnsafe(long address) {
+        return StoreLoad.RAW_OPS.storeUnsafe(this, address);
+    }
+    @Mutated public DoubleTriangle loadUnsafe(long address) {
+        return StoreLoad.RAW_OPS.loadUnsafe(this, address);
+    }
+    public MemorySegment store(@Mutated MemorySegment dest) { return StoreLoad.SEG_OPS.store(this, 0L, dest); }
+    public MemorySegment store(long offset, MemorySegment dest) {
+        return StoreLoad.SEG_OPS.store(this, offset, dest);
+    }
+    @Mutated public DoubleTriangle load(MemorySegment src) { return StoreLoad.SEG_OPS.load(this, 0L, src); }
+    public DoubleTriangle load(long offset, MemorySegment src) {
+        return StoreLoad.SEG_OPS.load(this, offset, src);
+    }
+
+    public float[] store(@Mutated float[] dest, int offset) {
+        dest[offset] = (float) this.data[0];
+        dest[offset + 1] = (float) this.data[1];
+        dest[offset + 2] = (float) this.data[2];
+        dest[offset + 3] = (float) this.data[3];
+        dest[offset + 4] = (float) this.data[4];
+        dest[offset + 5] = (float) this.data[5];
+        dest[offset + 6] = (float) this.data[6];
+        dest[offset + 7] = (float) this.data[7];
+        dest[offset + 8] = (float) this.data[8];
+        return dest;
+    }
+    public @Mutated DoubleTriangle load(float[] src, int offset) {
+        this.data[0] = src[offset];
+        this.data[1] = src[offset + 1];
+        this.data[2] = src[offset + 2];
+        this.data[3] = src[offset + 3];
+        this.data[4] = src[offset + 4];
+        this.data[5] = src[offset + 5];
+        this.data[6] = src[offset + 6];
+        this.data[7] = src[offset + 7];
+        this.data[8] = src[offset + 8];
+        return this;
+    }
+    public FloatBuffer store(@Mutated FloatBuffer buf) {
+        return StoreLoad.BB_OPS.storeAbsolute(this, buf.position(), buf);
+    }
+    public FloatBuffer storeAbsolute(int index, @Mutated FloatBuffer buf) {
+        return StoreLoad.BB_OPS.storeAbsolute(this, index, buf);
+    }
+    public FloatBuffer storeRelative(@Mutated FloatBuffer buf) {
+        if (buf.remaining() < 9) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeAbsolute(this, pos, buf);
+        buf.position(pos + 9);
+        return buf;
+    }
+    @Mutated public DoubleTriangle load(FloatBuffer buf) {
+        return StoreLoad.BB_OPS.loadAbsolute(this, buf.position(), buf);
+    }
+    @Mutated public DoubleTriangle loadAbsolute(int index, FloatBuffer buf) {
+        return StoreLoad.BB_OPS.loadAbsolute(this, index, buf);
+    }
+    @Mutated public DoubleTriangle loadRelative(FloatBuffer buf) {
+        if (buf.remaining() < 9) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.loadAbsolute(this, pos, buf);
+        buf.position(pos + 9);
+        return this;
+    }
+    public ByteBuffer storeFloat(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeFloatAbsolute(this, buf.position(), buf);
+    }
+    public ByteBuffer storeFloatAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.storeFloatAbsolute(this, index, buf);
+    }
+    public ByteBuffer storeFloatRelative(ByteBuffer buf) {
+        if (buf.remaining() < 36) throw new java.nio.BufferOverflowException();
+        int pos = buf.position();
+        StoreLoad.BB_OPS.storeFloatAbsolute(this, pos, buf);
+        buf.position(pos + 36);
+        return buf;
+    }
+    public DoubleTriangle loadFloat(ByteBuffer buf) {
+        return StoreLoad.BB_OPS.loadFloatAbsolute(this, buf.position(), buf);
+    }
+    public DoubleTriangle loadFloatAbsolute(int index, ByteBuffer buf) {
+        return StoreLoad.BB_OPS.loadFloatAbsolute(this, index, buf);
+    }
+    public DoubleTriangle loadFloatRelative(ByteBuffer buf) {
+        if (buf.remaining() < 36) throw new java.nio.BufferUnderflowException();
+        int pos = buf.position();
+        DoubleTriangle r = StoreLoad.BB_OPS.loadFloatAbsolute(this, pos, buf);
+        buf.position(pos + 36);
+        return r;
+    }
+    public DoubleTriangle storeFloatUnsafe(long address) {
+        return StoreLoad.RAW_OPS.storeFloatUnsafe(this, address);
+    }
+    @Mutated public DoubleTriangle loadFloatUnsafe(long address) {
+        return StoreLoad.RAW_OPS.loadFloatUnsafe(this, address);
+    }
+    public MemorySegment storeFloat(@Mutated MemorySegment dest) { return StoreLoad.SEG_OPS.storeFloat(this, 0L, dest); }
+    public MemorySegment storeFloat(long offset, MemorySegment dest) {
+        return StoreLoad.SEG_OPS.storeFloat(this, offset, dest);
+    }
+    @Mutated public DoubleTriangle loadFloat(MemorySegment src) { return StoreLoad.SEG_OPS.loadFloat(this, 0L, src); }
+    public DoubleTriangle loadFloat(long offset, MemorySegment src) {
+        return StoreLoad.SEG_OPS.loadFloat(this, offset, src);
+    }
+
+    /**
+     * The power of two that brings max(|a|, |b|, |c|) into [1, 2), from the largest exponent
+     * field: multiplying by it is exact. Clamped to [2^-126, 2^126], so zero and subnormal
+     * values scale up without overflow and the largest floats land in [2, 4).
+     */
+    private static float unitScale(float a, float b, float c) {
+        int e = java.lang.Math.max(java.lang.Math.max(Float.floatToRawIntBits(a) & 0x7F800000,
+                Float.floatToRawIntBits(b) & 0x7F800000), Float.floatToRawIntBits(c) & 0x7F800000);
+        return Float.intBitsToFloat(0x7F000000 - java.lang.Math.min(java.lang.Math.max(e, 0x00800000), 0x7E800000));
+    }
+
+    /**
+     * The power of two that brings max(|a|, |b|, |c|) into [1, 2), from the largest exponent
+     * field: multiplying by it is exact. Clamped to [2^-1022, 2^1022], so zero and subnormal
+     * values scale up without overflow and the largest doubles land in [2, 4).
+     */
+    private static double unitScale(double a, double b, double c) {
+        long e = java.lang.Math.max(java.lang.Math.max(Double.doubleToRawLongBits(a) & 0x7FF0000000000000L,
+                Double.doubleToRawLongBits(b) & 0x7FF0000000000000L), Double.doubleToRawLongBits(c) & 0x7FF0000000000000L);
+        return Double.longBitsToDouble(0x7FE0000000000000L
+                - java.lang.Math.min(java.lang.Math.max(e, 0x0010000000000000L), 0x7FD0000000000000L));
+    }
+}

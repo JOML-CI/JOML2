@@ -1,0 +1,59 @@
+// Copyright (c) 2015-2026 JOML
+// SPDX-License-Identifier: MIT
+package org.joml2.internal.storeload;
+
+import org.joml2.*;
+import org.joml2.Math;
+import org.joml2.internal.types.*;
+import java.lang.foreign.MemorySegment;
+import static org.joml2.internal.unsafe.UnsafeOpsHolder.U;
+
+public final class DoubleRaySegOpsUnsafe extends DoubleRaySegOps {
+
+    private static final DoubleRaySegOpsMS MS = new DoubleRaySegOpsMS();
+
+    public MemorySegment store(DoubleRayImpl self, long offset, MemorySegment dest) {
+        if (!dest.isNative() || dest.isReadOnly()) return MS.store(self, offset, dest);
+        long address = dest.address() + offset;
+        U.putDouble(address, self.oX);
+        U.putDouble(address + 8L, self.oY);
+        U.putDouble(address + 16L, self.oZ);
+        U.putDouble(address + 24L, self.dX);
+        U.putDouble(address + 32L, self.dY);
+        U.putDouble(address + 40L, self.dZ);
+        return dest;
+    }
+    public DoubleRay load(DoubleRayImpl self, long offset, MemorySegment src) {
+        if (!src.isNative()) return MS.load(self, offset, src);
+        long address = src.address() + offset;
+        self.oX = U.getDouble(address);
+        self.oY = U.getDouble(address + 8L);
+        self.oZ = U.getDouble(address + 16L);
+        self.dX = U.getDouble(address + 24L);
+        self.dY = U.getDouble(address + 32L);
+        self.dZ = U.getDouble(address + 40L);
+        return self;
+    }
+    public MemorySegment storeFloat(DoubleRayImpl self, long offset, MemorySegment dest) {
+        if (!dest.isNative() || dest.isReadOnly()) return MS.storeFloat(self, offset, dest);
+        long address = dest.address() + offset;
+        U.putFloat(address, (float) self.oX);
+        U.putFloat(address + 4L, (float) self.oY);
+        U.putFloat(address + 8L, (float) self.oZ);
+        U.putFloat(address + 12L, (float) self.dX);
+        U.putFloat(address + 16L, (float) self.dY);
+        U.putFloat(address + 20L, (float) self.dZ);
+        return dest;
+    }
+    public DoubleRay loadFloat(DoubleRayImpl self, long offset, MemorySegment src) {
+        if (!src.isNative()) return MS.loadFloat(self, offset, src);
+        long address = src.address() + offset;
+        self.oX = U.getFloat(address);
+        self.oY = U.getFloat(address + 4L);
+        self.oZ = U.getFloat(address + 8L);
+        self.dX = U.getFloat(address + 12L);
+        self.dY = U.getFloat(address + 16L);
+        self.dZ = U.getFloat(address + 20L);
+        return self;
+    }
+}

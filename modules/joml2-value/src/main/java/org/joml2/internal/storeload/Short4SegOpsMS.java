@@ -1,0 +1,39 @@
+// Copyright (c) 2015-2026 JOML
+// SPDX-License-Identifier: MIT
+package org.joml2.internal.storeload;
+
+import org.joml2.*;
+import org.joml2.Math;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+
+public final class Short4SegOpsMS extends Short4SegOps {
+    public MemorySegment store(Short4 self, long offset, MemorySegment dest) {
+        dest.set(ValueLayout.JAVA_SHORT_UNALIGNED, offset, self.x());
+        dest.set(ValueLayout.JAVA_SHORT_UNALIGNED, offset + 2L, self.y());
+        dest.set(ValueLayout.JAVA_SHORT_UNALIGNED, offset + 4L, self.z());
+        dest.set(ValueLayout.JAVA_SHORT_UNALIGNED, offset + 6L, self.w());
+        return dest;
+    }
+    public Short4 load(long offset, MemorySegment src) {
+        short _c0 = src.get(ValueLayout.JAVA_SHORT_UNALIGNED, offset);
+        short _c1 = src.get(ValueLayout.JAVA_SHORT_UNALIGNED, offset + 2L);
+        short _c2 = src.get(ValueLayout.JAVA_SHORT_UNALIGNED, offset + 4L);
+        short _c3 = src.get(ValueLayout.JAVA_SHORT_UNALIGNED, offset + 6L);
+        return new Short4(_c0, _c1, _c2, _c3);
+    }
+    public MemorySegment storeByte(Short4 self, long offset, MemorySegment dest) {
+        dest.set(ValueLayout.JAVA_BYTE, offset, (byte) self.x());
+        dest.set(ValueLayout.JAVA_BYTE, offset + 1L, (byte) self.y());
+        dest.set(ValueLayout.JAVA_BYTE, offset + 2L, (byte) self.z());
+        dest.set(ValueLayout.JAVA_BYTE, offset + 3L, (byte) self.w());
+        return dest;
+    }
+    public Short4 loadByte(long offset, MemorySegment src) {
+        short _c0 = src.get(ValueLayout.JAVA_BYTE, offset);
+        short _c1 = src.get(ValueLayout.JAVA_BYTE, offset + 1L);
+        short _c2 = src.get(ValueLayout.JAVA_BYTE, offset + 2L);
+        short _c3 = src.get(ValueLayout.JAVA_BYTE, offset + 3L);
+        return new Short4(_c0, _c1, _c2, _c3);
+    }
+}

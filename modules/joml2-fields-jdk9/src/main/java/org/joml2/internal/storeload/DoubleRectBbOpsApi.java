@@ -1,0 +1,69 @@
+// Copyright (c) 2015-2026 JOML
+// SPDX-License-Identifier: MIT
+package org.joml2.internal.storeload;
+
+import org.joml2.*;
+import org.joml2.Math;
+import org.joml2.internal.types.*;
+import java.nio.ByteBuffer;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+
+public final class DoubleRectBbOpsApi extends DoubleRectBbOps {
+    public DoubleBuffer storeAbsolute(DoubleRectImpl self, int index, DoubleBuffer buf) {
+        buf.put(index, self.minX);
+        buf.put(index + 1, self.minY);
+        buf.put(index + 2, self.maxX);
+        buf.put(index + 3, self.maxY);
+        return buf;
+    }
+    public DoubleRect loadAbsolute(DoubleRectImpl self, int index, DoubleBuffer buf) {
+        self.minX = buf.get(index);
+        self.minY = buf.get(index + 1);
+        self.maxX = buf.get(index + 2);
+        self.maxY = buf.get(index + 3);
+        return self;
+    }
+    public ByteBuffer storeAbsolute(DoubleRectImpl self, int index, ByteBuffer buf) {
+        buf.putDouble(index, self.minX);
+        buf.putDouble(index + 8, self.minY);
+        buf.putDouble(index + 16, self.maxX);
+        buf.putDouble(index + 24, self.maxY);
+        return buf;
+    }
+    public DoubleRect loadAbsolute(DoubleRectImpl self, int index, ByteBuffer buf) {
+        self.minX = buf.getDouble(index);
+        self.minY = buf.getDouble(index + 8);
+        self.maxX = buf.getDouble(index + 16);
+        self.maxY = buf.getDouble(index + 24);
+        return self;
+    }
+    public FloatBuffer storeAbsolute(DoubleRectImpl self, int index, FloatBuffer buf) {
+        buf.put(index, (float) self.minX);
+        buf.put(index + 1, (float) self.minY);
+        buf.put(index + 2, (float) self.maxX);
+        buf.put(index + 3, (float) self.maxY);
+        return buf;
+    }
+    public DoubleRect loadAbsolute(DoubleRectImpl self, int index, FloatBuffer buf) {
+        self.minX = buf.get(index);
+        self.minY = buf.get(index + 1);
+        self.maxX = buf.get(index + 2);
+        self.maxY = buf.get(index + 3);
+        return self;
+    }
+    public ByteBuffer storeFloatAbsolute(DoubleRectImpl self, int index, ByteBuffer buf) {
+        buf.putFloat(index, (float) self.minX);
+        buf.putFloat(index + 4, (float) self.minY);
+        buf.putFloat(index + 8, (float) self.maxX);
+        buf.putFloat(index + 12, (float) self.maxY);
+        return buf;
+    }
+    public DoubleRect loadFloatAbsolute(DoubleRectImpl self, int index, ByteBuffer buf) {
+        self.minX = buf.getFloat(index);
+        self.minY = buf.getFloat(index + 4);
+        self.maxX = buf.getFloat(index + 8);
+        self.maxY = buf.getFloat(index + 12);
+        return self;
+    }
+}

@@ -1,0 +1,47 @@
+// Copyright (c) 2015-2026 JOML
+// SPDX-License-Identifier: MIT
+package org.joml2.internal.storeload;
+
+import org.joml2.*;
+import org.joml2.Math;
+import org.joml2.internal.types.*;
+import static org.joml2.internal.unsafe.UnsafeOpsHolder.U;
+
+public final class FloatAABBRawOpsUnsafe extends FloatAABBRawOps {
+    public FloatAABB storeUnsafe(FloatAABBImpl self, long address) {
+        U.putFloat(address, self.minX);
+        U.putFloat(address + 4L, self.minY);
+        U.putFloat(address + 8L, self.minZ);
+        U.putFloat(address + 12L, self.maxX);
+        U.putFloat(address + 16L, self.maxY);
+        U.putFloat(address + 20L, self.maxZ);
+        return self;
+    }
+    public FloatAABB loadUnsafe(FloatAABBImpl self, long address) {
+        self.minX = U.getFloat(address);
+        self.minY = U.getFloat(address + 4L);
+        self.minZ = U.getFloat(address + 8L);
+        self.maxX = U.getFloat(address + 12L);
+        self.maxY = U.getFloat(address + 16L);
+        self.maxZ = U.getFloat(address + 20L);
+        return self;
+    }
+    public FloatAABB storeDoubleUnsafe(FloatAABBImpl self, long address) {
+        U.putDouble(address, self.minX);
+        U.putDouble(address + 8L, self.minY);
+        U.putDouble(address + 16L, self.minZ);
+        U.putDouble(address + 24L, self.maxX);
+        U.putDouble(address + 32L, self.maxY);
+        U.putDouble(address + 40L, self.maxZ);
+        return self;
+    }
+    public FloatAABB loadDoubleUnsafe(FloatAABBImpl self, long address) {
+        self.minX = (float) U.getDouble(address);
+        self.minY = (float) U.getDouble(address + 8L);
+        self.minZ = (float) U.getDouble(address + 16L);
+        self.maxX = (float) U.getDouble(address + 24L);
+        self.maxY = (float) U.getDouble(address + 32L);
+        self.maxZ = (float) U.getDouble(address + 40L);
+        return self;
+    }
+}
