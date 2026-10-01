@@ -1,0 +1,45 @@
+// Copyright (c) 2015-2026 JOML
+// SPDX-License-Identifier: MIT
+package org.joml2.internal.storeload;
+
+import org.joml2.*;
+import org.joml2.Math;
+import org.joml2.internal.types.*;
+import java.nio.ByteBuffer;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+
+public abstract class Float4x2BbOps {
+    public abstract FloatBuffer storeCMAbsolute(Float4x2Impl self, int index, FloatBuffer buf);
+    public abstract Float4x2 loadCMAbsolute(Float4x2Impl self, int index, FloatBuffer buf);
+    public abstract ByteBuffer storeCMAbsolute(Float4x2Impl self, int index, ByteBuffer buf);
+    public abstract Float4x2 loadCMAbsolute(Float4x2Impl self, int index, ByteBuffer buf);
+    public abstract DoubleBuffer storeCMAbsolute(Float4x2Impl self, int index, DoubleBuffer buf);
+    public abstract Float4x2 loadCMAbsolute(Float4x2Impl self, int index, DoubleBuffer buf);
+    public abstract ByteBuffer storeCMDoubleAbsolute(Float4x2Impl self, int index, ByteBuffer buf);
+    public abstract Float4x2 loadCMDoubleAbsolute(Float4x2Impl self, int index, ByteBuffer buf);
+    public abstract FloatBuffer storeRMAbsolute(Float4x2Impl self, int index, FloatBuffer buf);
+    public abstract Float4x2 loadRMAbsolute(Float4x2Impl self, int index, FloatBuffer buf);
+    public abstract ByteBuffer storeRMAbsolute(Float4x2Impl self, int index, ByteBuffer buf);
+    public abstract Float4x2 loadRMAbsolute(Float4x2Impl self, int index, ByteBuffer buf);
+    public abstract DoubleBuffer storeRMAbsolute(Float4x2Impl self, int index, DoubleBuffer buf);
+    public abstract Float4x2 loadRMAbsolute(Float4x2Impl self, int index, DoubleBuffer buf);
+    public abstract ByteBuffer storeRMDoubleAbsolute(Float4x2Impl self, int index, ByteBuffer buf);
+    public abstract Float4x2 loadRMDoubleAbsolute(Float4x2Impl self, int index, ByteBuffer buf);
+    public abstract FloatBuffer storeCMAbsolute(Float4x2Impl self, int index, FloatBuffer buf, int stride);
+    public abstract Float4x2 loadCMAbsolute(Float4x2Impl self, int index, FloatBuffer buf, int stride);
+    public abstract ByteBuffer storeCMAbsolute(Float4x2Impl self, int index, ByteBuffer buf, int stride);
+    public abstract Float4x2 loadCMAbsolute(Float4x2Impl self, int index, ByteBuffer buf, int stride);
+    public abstract DoubleBuffer storeCMAbsolute(Float4x2Impl self, int index, DoubleBuffer buf, int stride);
+    public abstract Float4x2 loadCMAbsolute(Float4x2Impl self, int index, DoubleBuffer buf, int stride);
+    public abstract ByteBuffer storeCMDoubleAbsolute(Float4x2Impl self, int index, ByteBuffer buf, int stride);
+    public abstract Float4x2 loadCMDoubleAbsolute(Float4x2Impl self, int index, ByteBuffer buf, int stride);
+    public abstract FloatBuffer storeRMAbsolute(Float4x2Impl self, int index, FloatBuffer buf, int stride);
+    public abstract Float4x2 loadRMAbsolute(Float4x2Impl self, int index, FloatBuffer buf, int stride);
+    public abstract ByteBuffer storeRMAbsolute(Float4x2Impl self, int index, ByteBuffer buf, int stride);
+    public abstract Float4x2 loadRMAbsolute(Float4x2Impl self, int index, ByteBuffer buf, int stride);
+    public abstract DoubleBuffer storeRMAbsolute(Float4x2Impl self, int index, DoubleBuffer buf, int stride);
+    public abstract Float4x2 loadRMAbsolute(Float4x2Impl self, int index, DoubleBuffer buf, int stride);
+    public abstract ByteBuffer storeRMDoubleAbsolute(Float4x2Impl self, int index, ByteBuffer buf, int stride);
+    public abstract Float4x2 loadRMDoubleAbsolute(Float4x2Impl self, int index, ByteBuffer buf, int stride);
+}
