@@ -1,0 +1,6 @@
+{
+  "reflection": [
+    { "type": "java.nio.Buffer", "fields": [{ "name": "address" }] },
+    { "type": "sun.misc.Unsafe", "fields": [{ "name": "theUnsafe" }] }
+  ]
+}

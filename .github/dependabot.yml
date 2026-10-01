@@ -1,0 +1,18 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    ignore:
+      # joml2-records-kotlin depends on the stdlib of its Kotlin API level (2.0), not the latest.
+      - dependency-name: org.jetbrains.kotlin:kotlin-stdlib

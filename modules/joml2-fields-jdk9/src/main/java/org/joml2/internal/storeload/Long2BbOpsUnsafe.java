@@ -1,0 +1,65 @@
+// Copyright (c) 2015-2026 JOML
+// SPDX-License-Identifier: MIT
+package org.joml2.internal.storeload;
+
+import org.joml2.*;
+import org.joml2.Math;
+import org.joml2.internal.types.*;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.IntBuffer;
+import java.nio.LongBuffer;
+import static org.joml2.internal.unsafe.UnsafeOpsHolder.U;
+
+public final class Long2BbOpsUnsafe implements Long2BbOps {
+
+    private static final Long2BbOpsApi API = new Long2BbOpsApi();
+    private static final Long2RawOpsUnsafe RAW = new Long2RawOpsUnsafe();
+
+    private static final long BB_ADDRESS_OFFSET;
+    static {
+        try {
+            BB_ADDRESS_OFFSET = U.objectFieldOffset(Buffer.class.getDeclaredField("address"));
+        } catch (ReflectiveOperationException ex) {
+            throw new ExceptionInInitializerError(ex);
+        }
+    }
+
+    public LongBuffer storeAbsolute(Long2Impl self, int index, LongBuffer buf) {
+        if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeAbsolute(self, index, buf);
+        RAW.storeUnsafe(self, U.getLong(buf, BB_ADDRESS_OFFSET) + (long) index * 8);
+        return buf;
+    }
+    public Long2 loadAbsolute(Long2Impl self, int index, LongBuffer buf) {
+        if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadAbsolute(self, index, buf);
+        return RAW.loadUnsafe(self, U.getLong(buf, BB_ADDRESS_OFFSET) + (long) index * 8);
+    }
+    public ByteBuffer storeAbsolute(Long2Impl self, int index, ByteBuffer buf) {
+        if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeAbsolute(self, index, buf);
+        RAW.storeUnsafe(self, U.getLong(buf, BB_ADDRESS_OFFSET) + index);
+        return buf;
+    }
+    public Long2 loadAbsolute(Long2Impl self, int index, ByteBuffer buf) {
+        if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadAbsolute(self, index, buf);
+        return RAW.loadUnsafe(self, U.getLong(buf, BB_ADDRESS_OFFSET) + index);
+    }
+    public IntBuffer storeAbsolute(Long2Impl self, int index, IntBuffer buf) {
+        if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeAbsolute(self, index, buf);
+        RAW.storeIntUnsafe(self, U.getLong(buf, BB_ADDRESS_OFFSET) + (long) index * 4);
+        return buf;
+    }
+    public Long2 loadAbsolute(Long2Impl self, int index, IntBuffer buf) {
+        if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadAbsolute(self, index, buf);
+        return RAW.loadIntUnsafe(self, U.getLong(buf, BB_ADDRESS_OFFSET) + (long) index * 4);
+    }
+    public ByteBuffer storeIntAbsolute(Long2Impl self, int index, ByteBuffer buf) {
+        if (!buf.isDirect() || buf.isReadOnly() || buf.order() != ByteOrder.nativeOrder()) return API.storeIntAbsolute(self, index, buf);
+        RAW.storeIntUnsafe(self, U.getLong(buf, BB_ADDRESS_OFFSET) + index);
+        return buf;
+    }
+    public Long2 loadIntAbsolute(Long2Impl self, int index, ByteBuffer buf) {
+        if (!buf.isDirect() || buf.order() != ByteOrder.nativeOrder()) return API.loadIntAbsolute(self, index, buf);
+        return RAW.loadIntUnsafe(self, U.getLong(buf, BB_ADDRESS_OFFSET) + index);
+    }
+}

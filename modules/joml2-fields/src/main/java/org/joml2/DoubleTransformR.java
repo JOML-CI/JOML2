@@ -1,0 +1,1880 @@
+// Copyright (c) 2015-2026 JOML
+// SPDX-License-Identifier: MIT
+package org.joml2;
+
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+import java.nio.ByteBuffer;
+import java.lang.foreign.MemorySegment;
+
+/**
+ * Read-only view of a transform of double-precision {@code double} components.
+ * <p>
+ * Declares the accessors, queries, store methods and dest-form operations that read but never
+ * mutate the receiver; the mutable counterpart is {@link DoubleTransform}. APIs that only read a
+ * transform should accept {@code DoubleTransformR}, so callers can pass mutable instances without
+ * exposing them to modification.
+ * <p>
+ * Arguments of type {@code DoubleTransformR} must be instances created by the library ({@link Joml}
+ * factories / the library's own types); the implementations read cached state through the library's
+ * own classes, so foreign implementations of the {@code *R} interfaces are not supported as
+ * arguments.
+ * <p>
+ * Its rotation is a unit quaternion. Every operation that applies, composes, inverts or converts
+ * this transform assumes its rotation has unit length and does not divide it out. A value that has
+ * drifted from unit length (after many multiplications, say) gives wrong results rather than an
+ * error: {@code normalize} it first.
+ * <p>
+ * {@code equals} compares the components element-wise and bitwise, as by
+ * {@code Double.doubleToLongBits}: {@code 0.0} and {@code -0.0} are not equal, and NaN is equal to
+ * NaN. {@code hashCode} is consistent with it (derived from the same bit patterns). Only instances
+ * of this library's implementation compare equal to each other; the {@code equals} of a transform
+ * never returns {@code true} for an object of another type.
+ * <p>
+ * {@code equalsEpsilon} compares per component with a tolerance: an infinite component never
+ * compares equal, not even to an equal infinity (the difference {@code Inf - Inf} is NaN), and a
+ * NaN component never compares equal to anything.
+ */
+public interface DoubleTransformR {
+    /** The number of bytes one instance occupies in the natural {@code store}/{@code load} layout. */
+    public static final int SIZE_BYTES = 80;
+
+    /** {@return a shared all-zero transform} Never mutate it - it is returned as the read-only view for that reason. <p>Valid input: any value, NaN and the infinities included. */
+    public static DoubleTransformR ZERO() { return Holder.ZERO; }
+
+
+    /**
+     * Set the rotation of this transform to {@code r} and store the result in {@code dest}.
+     * <p>
+     * Valid input: {@code r} must have unit length.
+     *
+     * @param r the new rotation
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform setRotation(DoubleQuatR r, @Mutated DoubleTransform dest);
+
+    /**
+     * Set the rotation of this transform to ({@code x}, {@code y}, {@code z}, {@code w}) and store
+     * the result in {@code dest}.
+     * <p>
+     * Valid input: {@code (x, y, z, w)} must have unit length.
+     *
+     * @param x the {@code x} component of the quaternion {@code (x, y, z, w)}
+     * @param y the {@code y} component of the quaternion {@code (x, y, z, w)}
+     * @param z the {@code z} component of the quaternion {@code (x, y, z, w)}
+     * @param w the {@code w} component of the quaternion {@code (x, y, z, w)}
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform setRotation(double x, double y, double z, double w, @Mutated DoubleTransform dest);
+
+    /**
+     * Set the scale of this transform to {@code s} and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param s the scale factors
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform setScale(Double3R s, @Mutated DoubleTransform dest);
+
+    /**
+     * Set the scale of this transform to ({@code x}, {@code y}, {@code z}) and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param x the {@code x} component of the vector {@code (x, y, z)}
+     * @param y the {@code y} component of the vector {@code (x, y, z)}
+     * @param z the {@code z} component of the vector {@code (x, y, z)}
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform setScale(double x, double y, double z, @Mutated DoubleTransform dest);
+
+    /**
+     * Set the scale of this transform to {@code uniform} and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param uniform the uniform scale factor
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform setScale(double uniform, @Mutated DoubleTransform dest);
+
+    /**
+     * Set the translation of this transform to {@code t} and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param t the translation vector
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform setTranslation(Double3R t, @Mutated DoubleTransform dest);
+
+    /**
+     * Set the translation of this transform to ({@code x}, {@code y}, {@code z}) and store the
+     * result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param x the {@code x} component of the vector {@code (x, y, z)}
+     * @param y the {@code y} component of the vector {@code (x, y, z)}
+     * @param z the {@code z} component of the vector {@code (x, y, z)}
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform setTranslation(double x, double y, double z, @Mutated DoubleTransform dest);
+
+    /**
+     * Convert this transform's rigid motion (rotation and translation) to a unit dual quaternion;
+     * the scale is dropped (dual quaternions cannot represent it) and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleDualQuat toDualQuat(@Mutated DoubleDualQuat dest);
+
+    /**
+     * Compute the matrix representation of this transform and store the result in {@code dest}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double4x4 toMatrix(@Mutated Double4x4 dest);
+
+    /**
+     * Compute the 3x3 linear block ({@code R * S}) of this transform (the translation is dropped)
+     * and store the result in {@code dest}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3x3 toMatrix3x3(@Mutated Double3x3 dest);
+
+    /**
+     * Compute the 3x4 matrix representation of this transform (the omitted last row is implicitly
+     * {@code 0, 0, 0, 1}) and store the result in {@code dest}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3x4 toMatrix3x4(@Mutated Double3x4 dest);
+
+    /**
+     * Narrow this transform to a rigid transform (translation and rotation; the scale is dropped)
+     * and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleRigid toRigid(@Mutated DoubleRigid dest);
+
+    /**
+     * Convert this transform to {@code float} precision and store the result in {@code dest}.
+     * <p>
+     * The conversion may lose precision or range.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    FloatTransform toFloat(@Mutated FloatTransform dest);
+
+    /**
+     * Interpolate between this transform and {@code other} using the interpolation factor
+     * {@code t}, interpolating translation and scale linearly and the rotation via shortest-arc
+     * slerp and store the result in {@code dest}.
+     * <p>
+     * The interpolation starts at this transform (interpolation factor {@code 0}) and ends at
+     * {@code other} (interpolation factor {@code 1}). Each linearly interpolated component is
+     * {@code this + (other - this) * t}, as in JOML and glMatrix: monotone in {@code t} and exact
+     * at {@code 0}, but at {@code 1} exact only up to the rounding of {@code other - this}, which
+     * shows when this component is much larger in magnitude than the other one (in {@code float},
+     * 1e8 towards 1 ends at 0).
+     * <p>
+     * Valid input: the rotation of this transform must have unit length; the rotation of
+     * {@code other} must have unit length.
+     *
+     * @param other the transform to interpolate towards
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform lerp(DoubleTransformR other, double t, @Mutated DoubleTransform dest);
+
+    /**
+     * Interpolate between this transform and ({@code tX}, {@code tY}, {@code tZ}, {@code rX},
+     * {@code rY}, {@code rZ}, {@code rW}, {@code sX}, {@code sY}, {@code sZ}) using the
+     * interpolation factor {@code t}, interpolating translation and scale linearly and the rotation
+     * via shortest-arc slerp and store the result in {@code dest}.
+     * <p>
+     * The interpolation starts at this transform (interpolation factor {@code 0}) and ends at
+     * ({@code tX}, {@code tY}, {@code tZ}, {@code rX}, {@code rY}, {@code rZ}, {@code rW},
+     * {@code sX}, {@code sY}, {@code sZ}) (interpolation factor {@code 1}). Each linearly
+     * interpolated component is {@code this + (other - this) * t}, as in JOML and glMatrix:
+     * monotone in {@code t} and exact at {@code 0}, but at {@code 1} exact only up to the rounding
+     * of {@code other - this}, which shows when this component is much larger in magnitude than the
+     * other one (in {@code float}, 1e8 towards 1 ends at 0).
+     * <p>
+     * Valid input: the rotation of this transform must have unit length; {@code (rX, rY, rZ, rW)}
+     * must have unit length.
+     *
+     * @param tX the {@code tX} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param tY the {@code tY} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param tZ the {@code tZ} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param rX the {@code rX} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param rY the {@code rY} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param rZ the {@code rZ} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param rW the {@code rW} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param sX the {@code sX} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param sY the {@code sY} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param sZ the {@code sZ} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform lerp(double tX, double tY, double tZ, double rX, double rY, double rZ, double rW, double sX, double sY, double sZ, double t, @Mutated DoubleTransform dest);
+
+    /**
+     * Multiply this transform by {@code other} and store the result in {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code R} the operand, then the new transform will
+     * be {@code M * R}. So when transforming a vector {@code v} with the new transform by using
+     * {@code M * R * v}, the transformation of the operand will be applied first.
+     * <p>
+     * A transform carries no shear, so this composition is exact only for a uniform scale: under a
+     * non-uniform scale the shear the product would have is dropped, and applying the result to a
+     * point is then not the same as applying the operands one after the other (likewise
+     * {@code invert()} composes with {@code this} to the identity but is not the pointwise inverse;
+     * {@code transformPositionInverse} is).
+     * <p>
+     * Valid input: the rotation of this transform must have unit length; the rotation of
+     * {@code other} must have unit length.
+     *
+     * @param other the right operand
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform mul(DoubleTransformR other, @Mutated DoubleTransform dest);
+
+    /**
+     * Multiply this transform by ({@code tX}, {@code tY}, {@code tZ}, {@code rX}, {@code rY},
+     * {@code rZ}, {@code rW}, {@code sX}, {@code sY}, {@code sZ}) and store the result in
+     * {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code R} the operand, then the new transform will
+     * be {@code M * R}. So when transforming a vector {@code v} with the new transform by using
+     * {@code M * R * v}, the transformation of the operand will be applied first.
+     * <p>
+     * A transform carries no shear, so this composition is exact only for a uniform scale: under a
+     * non-uniform scale the shear the product would have is dropped, and applying the result to a
+     * point is then not the same as applying the operands one after the other (likewise
+     * {@code invert()} composes with {@code this} to the identity but is not the pointwise inverse;
+     * {@code transformPositionInverse} is).
+     * <p>
+     * Valid input: the rotation of this transform must have unit length; {@code (rX, rY, rZ, rW)}
+     * must have unit length.
+     *
+     * @param tX the {@code tX} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param tY the {@code tY} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param tZ the {@code tZ} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param rX the {@code rX} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param rY the {@code rY} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param rZ the {@code rZ} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param rW the {@code rW} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param sX the {@code sX} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param sY the {@code sY} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param sZ the {@code sZ} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform mul(double tX, double tY, double tZ, double rX, double rY, double rZ, double rW, double sX, double sY, double sZ, @Mutated DoubleTransform dest);
+
+    /**
+     * Pre-multiply {@code other} onto this transform and store the result in {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code R} the operand, then the new transform will
+     * be {@code R * M}. So when transforming a vector {@code v} with the new transform by using
+     * {@code R * M * v}, the transformation of the operand will be applied last.
+     * <p>
+     * A transform carries no shear, so this composition is exact only for a uniform scale: under a
+     * non-uniform scale the shear the product would have is dropped, and applying the result to a
+     * point is then not the same as applying the operands one after the other (likewise
+     * {@code invert()} composes with {@code this} to the identity but is not the pointwise inverse;
+     * {@code transformPositionInverse} is).
+     * <p>
+     * Valid input: the rotation of this transform must have unit length; the rotation of
+     * {@code other} must have unit length.
+     *
+     * @param other the left operand
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform preMul(DoubleTransformR other, @Mutated DoubleTransform dest);
+
+    /**
+     * Pre-multiply ({@code tX}, {@code tY}, {@code tZ}, {@code rX}, {@code rY}, {@code rZ},
+     * {@code rW}, {@code sX}, {@code sY}, {@code sZ}) onto this transform and store the result in
+     * {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code R} the operand, then the new transform will
+     * be {@code R * M}. So when transforming a vector {@code v} with the new transform by using
+     * {@code R * M * v}, the transformation of the operand will be applied last.
+     * <p>
+     * A transform carries no shear, so this composition is exact only for a uniform scale: under a
+     * non-uniform scale the shear the product would have is dropped, and applying the result to a
+     * point is then not the same as applying the operands one after the other (likewise
+     * {@code invert()} composes with {@code this} to the identity but is not the pointwise inverse;
+     * {@code transformPositionInverse} is).
+     * <p>
+     * Valid input: the rotation of this transform must have unit length; {@code (rX, rY, rZ, rW)}
+     * must have unit length.
+     *
+     * @param tX the {@code tX} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param tY the {@code tY} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param tZ the {@code tZ} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param rX the {@code rX} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param rY the {@code rY} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param rZ the {@code rZ} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param rW the {@code rW} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param sX the {@code sX} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param sY the {@code sY} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param sZ the {@code sZ} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform preMul(double tX, double tY, double tZ, double rX, double rY, double rZ, double rW, double sX, double sY, double sZ, @Mutated DoubleTransform dest);
+
+    /**
+     * Compute the difference between this transform and {@code other}, i.e. the
+     * translation-rotation-scale transformation {@code D} with {@code this * D = other}, that is
+     * {@code D = this^-1 * other} and store the result in {@code dest}.
+     * <p>
+     * A transform carries no shear, so this composition is exact only for a uniform scale: under a
+     * non-uniform scale the shear the product would have is dropped, and applying the result to a
+     * point is then not the same as applying the operands one after the other (likewise
+     * {@code invert()} composes with {@code this} to the identity but is not the pointwise inverse;
+     * {@code transformPositionInverse} is).
+     * <p>
+     * Valid input: each component of the scale of this transform must be non-zero.
+     *
+     * @param other the target transform, reached by composing this transform with the result
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform difference(DoubleTransformR other, @Mutated DoubleTransform dest);
+
+    /**
+     * Compute the difference between this transform and ({@code tX}, {@code tY}, {@code tZ},
+     * {@code rX}, {@code rY}, {@code rZ}, {@code rW}, {@code sX}, {@code sY}, {@code sZ}), i.e. the
+     * translation-rotation-scale transformation {@code D} with
+     * {@code this * D = (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}, that is
+     * {@code D = this^-1 * (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)} and store the result in
+     * {@code dest}.
+     * <p>
+     * A transform carries no shear, so this composition is exact only for a uniform scale: under a
+     * non-uniform scale the shear the product would have is dropped, and applying the result to a
+     * point is then not the same as applying the operands one after the other (likewise
+     * {@code invert()} composes with {@code this} to the identity but is not the pointwise inverse;
+     * {@code transformPositionInverse} is).
+     * <p>
+     * Valid input: each component of the scale of this transform must be non-zero.
+     *
+     * @param tX the {@code tX} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param tY the {@code tY} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param tZ the {@code tZ} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param rX the {@code rX} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param rY the {@code rY} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param rZ the {@code rZ} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param rW the {@code rW} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param sX the {@code sX} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param sY the {@code sY} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param sZ the {@code sZ} component of the transform
+     *        {@code (tX, tY, tZ, rX, rY, rZ, rW, sX, sY, sZ)}
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform difference(double tX, double tY, double tZ, double rX, double rY, double rZ, double rW, double sX, double sY, double sZ, @Mutated DoubleTransform dest);
+
+    /**
+     * Invert this transform within its shear-free translation-rotation-scale form
+     * ({@code inverse.mul(this)} is the identity) and store the result in {@code dest}.
+     * <p>
+     * The result is the exact pointwise inverse only for a rigid or uniformly scaled transform:
+     * under non-uniform scale, undoing {@code transformPosition} needs a shear that this type
+     * cannot hold, so {@code this.mul(inverse)} is not the identity and the inverse does not map
+     * transformed points back. {@code transformPositionInverse} and {@code transformVectorInverse}
+     * do that exactly for any scale. A zero scale component has no inverse: the corresponding
+     * inverse scale is infinite (with the sign of the zero) and the inverse translation is not
+     * finite.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length; each component of the
+     * scale of this transform must be non-zero.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform invert(@Mutated DoubleTransform dest);
+
+    /**
+     * Normalize this transform so that its rotation part has unit length, leaving its translation
+     * and scale unchanged (a zero-length rotation yields the zero quaternion) and store the result
+     * in {@code dest}.
+     * <p>
+     * Valid input: nonzero magnitudes must lie between {@code 1.5e-154} and {@code 3.8e153}.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform normalize(@Mutated DoubleTransform dest);
+
+    /**
+     * Get the Euler angles in radians of this transform, to be applied about the X, Y and Z axes,
+     * in that order and store the result in {@code dest}.
+     * <p>
+     * The result holds each angle at the component of its axis, not at its position in the order:
+     * the angle about X in {@code x}, about Y in {@code y} and about Z in {@code z}. So, with
+     * {@code e} the result, {@code makeRotationXYZ(e.x(), e.y(), e.z())}, which takes the angles in
+     * application order, rebuilds the rotation.
+     * <p>
+     * At gimbal lock (a middle rotation of ±90 degrees) the decomposition is not unique; one valid
+     * set of angles is returned.
+     * <p>
+     * The middle angle is recovered with {@code atan2} rather than {@code asin}, so it keeps full
+     * {@code double} resolution over its whole range, down to 0.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 getEulerAnglesXYZ(@Mutated Double3 dest);
+
+    /**
+     * Get the Euler angles in radians of this transform, to be applied about the X, Z and Y axes,
+     * in that order and store the result in {@code dest}.
+     * <p>
+     * The result holds each angle at the component of its axis, not at its position in the order:
+     * the angle about X in {@code x}, about Y in {@code y} and about Z in {@code z}. So, with
+     * {@code e} the result, {@code makeRotationXZY(e.x(), e.z(), e.y())}, which takes the angles in
+     * application order, rebuilds the rotation.
+     * <p>
+     * At gimbal lock (a middle rotation of ±90 degrees) the decomposition is not unique; one valid
+     * set of angles is returned.
+     * <p>
+     * The middle angle is recovered with {@code atan2} rather than {@code asin}, so it keeps full
+     * {@code double} resolution over its whole range, down to 0.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 getEulerAnglesXZY(@Mutated Double3 dest);
+
+    /**
+     * Get the Euler angles in radians of this transform, to be applied about the Y, X and Z axes,
+     * in that order and store the result in {@code dest}.
+     * <p>
+     * The result holds each angle at the component of its axis, not at its position in the order:
+     * the angle about X in {@code x}, about Y in {@code y} and about Z in {@code z}. So, with
+     * {@code e} the result, {@code makeRotationYXZ(e.y(), e.x(), e.z())}, which takes the angles in
+     * application order, rebuilds the rotation.
+     * <p>
+     * At gimbal lock (a middle rotation of ±90 degrees) the decomposition is not unique; one valid
+     * set of angles is returned.
+     * <p>
+     * The middle angle is recovered with {@code atan2} rather than {@code asin}, so it keeps full
+     * {@code double} resolution over its whole range, down to 0.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 getEulerAnglesYXZ(@Mutated Double3 dest);
+
+    /**
+     * Get the Euler angles in radians of this transform, to be applied about the Y, Z and X axes,
+     * in that order and store the result in {@code dest}.
+     * <p>
+     * The result holds each angle at the component of its axis, not at its position in the order:
+     * the angle about X in {@code x}, about Y in {@code y} and about Z in {@code z}. So, with
+     * {@code e} the result, {@code makeRotationYZX(e.y(), e.z(), e.x())}, which takes the angles in
+     * application order, rebuilds the rotation.
+     * <p>
+     * At gimbal lock (a middle rotation of ±90 degrees) the decomposition is not unique; one valid
+     * set of angles is returned.
+     * <p>
+     * The middle angle is recovered with {@code atan2} rather than {@code asin}, so it keeps full
+     * {@code double} resolution over its whole range, down to 0.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 getEulerAnglesYZX(@Mutated Double3 dest);
+
+    /**
+     * Get the Euler angles in radians of this transform, to be applied about the Z, X and Y axes,
+     * in that order and store the result in {@code dest}.
+     * <p>
+     * The result holds each angle at the component of its axis, not at its position in the order:
+     * the angle about X in {@code x}, about Y in {@code y} and about Z in {@code z}. So, with
+     * {@code e} the result, {@code makeRotationZXY(e.z(), e.x(), e.y())}, which takes the angles in
+     * application order, rebuilds the rotation.
+     * <p>
+     * At gimbal lock (a middle rotation of ±90 degrees) the decomposition is not unique; one valid
+     * set of angles is returned.
+     * <p>
+     * The middle angle is recovered with {@code atan2} rather than {@code asin}, so it keeps full
+     * {@code double} resolution over its whole range, down to 0.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 getEulerAnglesZXY(@Mutated Double3 dest);
+
+    /**
+     * Get the Euler angles in radians of this transform, to be applied about the Z, Y and X axes,
+     * in that order and store the result in {@code dest}.
+     * <p>
+     * The result holds each angle at the component of its axis, not at its position in the order:
+     * the angle about X in {@code x}, about Y in {@code y} and about Z in {@code z}. So, with
+     * {@code e} the result, {@code makeRotationZYX(e.z(), e.y(), e.x())}, which takes the angles in
+     * application order, rebuilds the rotation.
+     * <p>
+     * At gimbal lock (a middle rotation of ±90 degrees) the decomposition is not unique; one valid
+     * set of angles is returned.
+     * <p>
+     * The middle angle is recovered with {@code atan2} rather than {@code asin}, so it keeps full
+     * {@code double} resolution over its whole range, down to 0.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 getEulerAnglesZYX(@Mutated Double3 dest);
+
+    /**
+     * Get the rotation of this transform and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleQuat getRotation(@Mutated DoubleQuat dest);
+
+    /**
+     * Get the scaling factors of this transform and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 getScale(@Mutated Double3 dest);
+
+    /**
+     * Get the translation of this transform and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 getTranslation(@Mutated Double3 dest);
+
+    /**
+     * Apply the rotation represented by the quaternion {@code rotation} to this transform and store
+     * the result in {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code R} the rotation transform, then the new
+     * transform will be {@code M * R}. So when transforming a vector {@code v} with the new
+     * transform by using {@code M * R * v}, the rotation will be applied first.
+     * <p>
+     * A transform carries no shear, so this composition is exact only for a uniform scale: under a
+     * non-uniform scale the shear the product would have is dropped, and applying the result to a
+     * point is then not the same as applying the operands one after the other (likewise
+     * {@code invert()} composes with {@code this} to the identity but is not the pointwise inverse;
+     * {@code transformPositionInverse} is).
+     * <p>
+     * Valid input: {@code rotation} must have unit length.
+     *
+     * @param rotation the rotation to apply
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform rotate(DoubleQuatR rotation, @Mutated DoubleTransform dest);
+
+    /**
+     * Apply the rotation represented by the quaternion ({@code x}, {@code y}, {@code z}, {@code w})
+     * to this transform and store the result in {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code R} the rotation transform, then the new
+     * transform will be {@code M * R}. So when transforming a vector {@code v} with the new
+     * transform by using {@code M * R * v}, the rotation will be applied first.
+     * <p>
+     * A transform carries no shear, so this composition is exact only for a uniform scale: under a
+     * non-uniform scale the shear the product would have is dropped, and applying the result to a
+     * point is then not the same as applying the operands one after the other (likewise
+     * {@code invert()} composes with {@code this} to the identity but is not the pointwise inverse;
+     * {@code transformPositionInverse} is).
+     * <p>
+     * Valid input: {@code (x, y, z, w)} must have unit length.
+     *
+     * @param x the {@code x} component of the quaternion {@code (x, y, z, w)}
+     * @param y the {@code y} component of the quaternion {@code (x, y, z, w)}
+     * @param z the {@code z} component of the quaternion {@code (x, y, z, w)}
+     * @param w the {@code w} component of the quaternion {@code (x, y, z, w)}
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform rotate(double x, double y, double z, double w, @Mutated DoubleTransform dest);
+
+    /**
+     * Apply a rotation of {@code angle} radians about the axis {@code axis} to this transform and
+     * store the result in {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code R} the rotation transform, then the new
+     * transform will be {@code M * R}. So when transforming a vector {@code v} with the new
+     * transform by using {@code M * R * v}, the rotation will be applied first.
+     * <p>
+     * A transform carries no shear, so this composition is exact only for a uniform scale: under a
+     * non-uniform scale the shear the product would have is dropped, and applying the result to a
+     * point is then not the same as applying the operands one after the other (likewise
+     * {@code invert()} composes with {@code this} to the identity but is not the pointwise inverse;
+     * {@code transformPositionInverse} is).
+     * <p>
+     * Valid input: {@code axis} must have unit length.
+     *
+     * @param angle the angle in radians
+     * @param axis the rotation axis
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform rotateAxis(double angle, Double3R axis, @Mutated DoubleTransform dest);
+
+    /**
+     * Apply a rotation of {@code angle} radians about the axis ({@code x}, {@code y}, {@code z}) to
+     * this transform and store the result in {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code R} the rotation transform, then the new
+     * transform will be {@code M * R}. So when transforming a vector {@code v} with the new
+     * transform by using {@code M * R * v}, the rotation will be applied first.
+     * <p>
+     * A transform carries no shear, so this composition is exact only for a uniform scale: under a
+     * non-uniform scale the shear the product would have is dropped, and applying the result to a
+     * point is then not the same as applying the operands one after the other (likewise
+     * {@code invert()} composes with {@code this} to the identity but is not the pointwise inverse;
+     * {@code transformPositionInverse} is).
+     * <p>
+     * Valid input: {@code (x, y, z)} must have unit length.
+     *
+     * @param angle the angle in radians
+     * @param x the {@code x} component of the vector {@code (x, y, z)}
+     * @param y the {@code y} component of the vector {@code (x, y, z)}
+     * @param z the {@code z} component of the vector {@code (x, y, z)}
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform rotateAxis(double angle, double x, double y, double z, @Mutated DoubleTransform dest);
+
+    /**
+     * Apply a rotation of {@code angle} radians about the X axis to this transform and store the
+     * result in {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code R} the rotation transform, then the new
+     * transform will be {@code M * R}. So when transforming a vector {@code v} with the new
+     * transform by using {@code M * R * v}, the rotation will be applied first.
+     * <p>
+     * A transform carries no shear, so this composition is exact only for a uniform scale: under a
+     * non-uniform scale the shear the product would have is dropped, and applying the result to a
+     * point is then not the same as applying the operands one after the other (likewise
+     * {@code invert()} composes with {@code this} to the identity but is not the pointwise inverse;
+     * {@code transformPositionInverse} is).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angle the angle in radians
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform rotateX(double angle, @Mutated DoubleTransform dest);
+
+    /**
+     * Apply a rotation of {@code angleX}, {@code angleY} and {@code angleZ} radians about the X, Y
+     * and Z axes, in that order (the matrix product {@code Rx * Ry * Rz}, so a vector is rotated
+     * about the Z axis first, then Y, then X), to this transform and store the result in
+     * {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code R} the rotation transform, then the new
+     * transform will be {@code M * R}. So when transforming a vector {@code v} with the new
+     * transform by using {@code M * R * v}, the rotation will be applied first.
+     * <p>
+     * A transform carries no shear, so this composition is exact only for a uniform scale: under a
+     * non-uniform scale the shear the product would have is dropped, and applying the result to a
+     * point is then not the same as applying the operands one after the other (likewise
+     * {@code invert()} composes with {@code this} to the identity but is not the pointwise inverse;
+     * {@code transformPositionInverse} is).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angleX the angle in radians to rotate about the X axis
+     * @param angleY the angle in radians to rotate about the Y axis
+     * @param angleZ the angle in radians to rotate about the Z axis
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform rotateXYZ(double angleX, double angleY, double angleZ, @Mutated DoubleTransform dest);
+
+    /**
+     * Apply a rotation of {@code angleX}, {@code angleZ} and {@code angleY} radians about the X, Z
+     * and Y axes, in that order (the matrix product {@code Rx * Rz * Ry}, so a vector is rotated
+     * about the Y axis first, then Z, then X), to this transform and store the result in
+     * {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code R} the rotation transform, then the new
+     * transform will be {@code M * R}. So when transforming a vector {@code v} with the new
+     * transform by using {@code M * R * v}, the rotation will be applied first.
+     * <p>
+     * A transform carries no shear, so this composition is exact only for a uniform scale: under a
+     * non-uniform scale the shear the product would have is dropped, and applying the result to a
+     * point is then not the same as applying the operands one after the other (likewise
+     * {@code invert()} composes with {@code this} to the identity but is not the pointwise inverse;
+     * {@code transformPositionInverse} is).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angleX the angle in radians to rotate about the X axis
+     * @param angleZ the angle in radians to rotate about the Z axis
+     * @param angleY the angle in radians to rotate about the Y axis
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform rotateXZY(double angleX, double angleZ, double angleY, @Mutated DoubleTransform dest);
+
+    /**
+     * Apply a rotation of {@code angle} radians about the Y axis to this transform and store the
+     * result in {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code R} the rotation transform, then the new
+     * transform will be {@code M * R}. So when transforming a vector {@code v} with the new
+     * transform by using {@code M * R * v}, the rotation will be applied first.
+     * <p>
+     * A transform carries no shear, so this composition is exact only for a uniform scale: under a
+     * non-uniform scale the shear the product would have is dropped, and applying the result to a
+     * point is then not the same as applying the operands one after the other (likewise
+     * {@code invert()} composes with {@code this} to the identity but is not the pointwise inverse;
+     * {@code transformPositionInverse} is).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angle the angle in radians
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform rotateY(double angle, @Mutated DoubleTransform dest);
+
+    /**
+     * Apply a rotation of {@code angleY}, {@code angleX} and {@code angleZ} radians about the Y, X
+     * and Z axes, in that order (the matrix product {@code Ry * Rx * Rz}, so a vector is rotated
+     * about the Z axis first, then X, then Y), to this transform and store the result in
+     * {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code R} the rotation transform, then the new
+     * transform will be {@code M * R}. So when transforming a vector {@code v} with the new
+     * transform by using {@code M * R * v}, the rotation will be applied first.
+     * <p>
+     * A transform carries no shear, so this composition is exact only for a uniform scale: under a
+     * non-uniform scale the shear the product would have is dropped, and applying the result to a
+     * point is then not the same as applying the operands one after the other (likewise
+     * {@code invert()} composes with {@code this} to the identity but is not the pointwise inverse;
+     * {@code transformPositionInverse} is).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angleY the angle in radians to rotate about the Y axis
+     * @param angleX the angle in radians to rotate about the X axis
+     * @param angleZ the angle in radians to rotate about the Z axis
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform rotateYXZ(double angleY, double angleX, double angleZ, @Mutated DoubleTransform dest);
+
+    /**
+     * Apply a rotation of {@code angleY}, {@code angleZ} and {@code angleX} radians about the Y, Z
+     * and X axes, in that order (the matrix product {@code Ry * Rz * Rx}, so a vector is rotated
+     * about the X axis first, then Z, then Y), to this transform and store the result in
+     * {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code R} the rotation transform, then the new
+     * transform will be {@code M * R}. So when transforming a vector {@code v} with the new
+     * transform by using {@code M * R * v}, the rotation will be applied first.
+     * <p>
+     * A transform carries no shear, so this composition is exact only for a uniform scale: under a
+     * non-uniform scale the shear the product would have is dropped, and applying the result to a
+     * point is then not the same as applying the operands one after the other (likewise
+     * {@code invert()} composes with {@code this} to the identity but is not the pointwise inverse;
+     * {@code transformPositionInverse} is).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angleY the angle in radians to rotate about the Y axis
+     * @param angleZ the angle in radians to rotate about the Z axis
+     * @param angleX the angle in radians to rotate about the X axis
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform rotateYZX(double angleY, double angleZ, double angleX, @Mutated DoubleTransform dest);
+
+    /**
+     * Apply a rotation of {@code angle} radians about the Z axis to this transform and store the
+     * result in {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code R} the rotation transform, then the new
+     * transform will be {@code M * R}. So when transforming a vector {@code v} with the new
+     * transform by using {@code M * R * v}, the rotation will be applied first.
+     * <p>
+     * A transform carries no shear, so this composition is exact only for a uniform scale: under a
+     * non-uniform scale the shear the product would have is dropped, and applying the result to a
+     * point is then not the same as applying the operands one after the other (likewise
+     * {@code invert()} composes with {@code this} to the identity but is not the pointwise inverse;
+     * {@code transformPositionInverse} is).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angle the angle in radians
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform rotateZ(double angle, @Mutated DoubleTransform dest);
+
+    /**
+     * Apply a rotation of {@code angleZ}, {@code angleX} and {@code angleY} radians about the Z, X
+     * and Y axes, in that order (the matrix product {@code Rz * Rx * Ry}, so a vector is rotated
+     * about the Y axis first, then X, then Z), to this transform and store the result in
+     * {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code R} the rotation transform, then the new
+     * transform will be {@code M * R}. So when transforming a vector {@code v} with the new
+     * transform by using {@code M * R * v}, the rotation will be applied first.
+     * <p>
+     * A transform carries no shear, so this composition is exact only for a uniform scale: under a
+     * non-uniform scale the shear the product would have is dropped, and applying the result to a
+     * point is then not the same as applying the operands one after the other (likewise
+     * {@code invert()} composes with {@code this} to the identity but is not the pointwise inverse;
+     * {@code transformPositionInverse} is).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angleZ the angle in radians to rotate about the Z axis
+     * @param angleX the angle in radians to rotate about the X axis
+     * @param angleY the angle in radians to rotate about the Y axis
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform rotateZXY(double angleZ, double angleX, double angleY, @Mutated DoubleTransform dest);
+
+    /**
+     * Apply a rotation of {@code angleZ}, {@code angleY} and {@code angleX} radians about the Z, Y
+     * and X axes, in that order (the matrix product {@code Rz * Ry * Rx}, so a vector is rotated
+     * about the X axis first, then Y, then Z), to this transform and store the result in
+     * {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code R} the rotation transform, then the new
+     * transform will be {@code M * R}. So when transforming a vector {@code v} with the new
+     * transform by using {@code M * R * v}, the rotation will be applied first.
+     * <p>
+     * A transform carries no shear, so this composition is exact only for a uniform scale: under a
+     * non-uniform scale the shear the product would have is dropped, and applying the result to a
+     * point is then not the same as applying the operands one after the other (likewise
+     * {@code invert()} composes with {@code this} to the identity but is not the pointwise inverse;
+     * {@code transformPositionInverse} is).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param angleZ the angle in radians to rotate about the Z axis
+     * @param angleY the angle in radians to rotate about the Y axis
+     * @param angleX the angle in radians to rotate about the X axis
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform rotateZYX(double angleZ, double angleY, double angleX, @Mutated DoubleTransform dest);
+
+    /**
+     * Apply a scaling by {@code scale} to this transform and store the result in {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code S} the scaling transform, then the new
+     * transform will be {@code M * S}. So when transforming a vector {@code v} with the new
+     * transform by using {@code M * S * v}, the scaling will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param scale the scale factors
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform scale(Double3R scale, @Mutated DoubleTransform dest);
+
+    /**
+     * Apply a scaling by ({@code x}, {@code y}, {@code z}) to this transform and store the result
+     * in {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code S} the scaling transform, then the new
+     * transform will be {@code M * S}. So when transforming a vector {@code v} with the new
+     * transform by using {@code M * S * v}, the scaling will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param x the {@code x} component of the vector {@code (x, y, z)}
+     * @param y the {@code y} component of the vector {@code (x, y, z)}
+     * @param z the {@code z} component of the vector {@code (x, y, z)}
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform scale(double x, double y, double z, @Mutated DoubleTransform dest);
+
+    /**
+     * Apply a scaling by {@code scale} to this transform and store the result in {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code S} the scaling transform, then the new
+     * transform will be {@code M * S}. So when transforming a vector {@code v} with the new
+     * transform by using {@code M * S * v}, the scaling will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param scale the scale factor
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform scale(double scale, @Mutated DoubleTransform dest);
+
+    /**
+     * Apply a translation by {@code translation} to this transform and store the result in
+     * {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code T} the translation transform, then the new
+     * transform will be {@code M * T}. So when transforming a vector {@code v} with the new
+     * transform by using {@code M * T * v}, the translation will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param translation the translation offsets
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform translate(Double3R translation, @Mutated DoubleTransform dest);
+
+    /**
+     * Apply a translation by ({@code x}, {@code y}, {@code z}) to this transform and store the
+     * result in {@code dest}.
+     * <p>
+     * If {@code M} is {@code this} transform and {@code T} the translation transform, then the new
+     * transform will be {@code M * T}. So when transforming a vector {@code v} with the new
+     * transform by using {@code M * T * v}, the translation will be applied first.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param x the {@code x} component of the vector {@code (x, y, z)}
+     * @param y the {@code y} component of the vector {@code (x, y, z)}
+     * @param z the {@code z} component of the vector {@code (x, y, z)}
+     * @param dest will hold the result
+     * @return dest
+     */
+    DoubleTransform translate(double x, double y, double z, @Mutated DoubleTransform dest);
+
+    /**
+     * Transform {@code v} by this transform and store the result in {@code dest}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param v the vector to transform
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 transform(Double3R v, @Mutated Double3 dest);
+
+    /**
+     * Transform ({@code x}, {@code y}, {@code z}) by this transform and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param x the {@code x} component of the vector {@code (x, y, z)}
+     * @param y the {@code y} component of the vector {@code (x, y, z)}
+     * @param z the {@code z} component of the vector {@code (x, y, z)}
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 transform(double x, double y, double z, @Mutated Double3 dest);
+
+    /**
+     * Transform {@code v} by this transform and store the result back into {@code v}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param v the vector to transform (also receives the result)
+     * @return {@code v}
+     */
+    default Double3 transform(@Mutated Double3 v) { return transform(v, v); }
+
+    /**
+     * Transform the given direction by the rotation part of this transform, ignoring translation
+     * and scale and store the result in {@code dest}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param v the direction to transform
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 transformDirection(Double3R v, @Mutated Double3 dest);
+
+    /**
+     * Transform the given direction by the rotation part of this transform, ignoring translation
+     * and scale and store the result in {@code dest}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param x the {@code x} component of the vector {@code (x, y, z)}
+     * @param y the {@code y} component of the vector {@code (x, y, z)}
+     * @param z the {@code z} component of the vector {@code (x, y, z)}
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 transformDirection(double x, double y, double z, @Mutated Double3 dest);
+
+    /**
+     * Transform the given direction by the rotation part of this transform, ignoring translation
+     * and scale and store the result back into {@code v}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param v the direction to transform (also receives the result)
+     * @return {@code v}
+     */
+    default Double3 transformDirection(@Mutated Double3 v) { return transformDirection(v, v); }
+
+    /**
+     * Transform the given direction by the inverse of this transform's rotation (world to local),
+     * ignoring translation and scale, without materializing {@code invert()} and store the result
+     * in {@code dest}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param v the direction to transform
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 transformDirectionInverse(Double3R v, @Mutated Double3 dest);
+
+    /**
+     * Transform the given direction by the inverse of this transform's rotation (world to local),
+     * ignoring translation and scale, without materializing {@code invert()} and store the result
+     * in {@code dest}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param x the {@code x} component of the vector {@code (x, y, z)}
+     * @param y the {@code y} component of the vector {@code (x, y, z)}
+     * @param z the {@code z} component of the vector {@code (x, y, z)}
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 transformDirectionInverse(double x, double y, double z, @Mutated Double3 dest);
+
+    /**
+     * Transform the given direction by the inverse of this transform's rotation (world to local),
+     * ignoring translation and scale, without materializing {@code invert()} and store the result
+     * back into {@code v}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param v the direction to transform (also receives the result)
+     * @return {@code v}
+     */
+    default Double3 transformDirectionInverse(@Mutated Double3 v) { return transformDirectionInverse(v, v); }
+
+    /**
+     * Transform {@code p} by the inverse of this transform and store the result in {@code dest}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length; each component of the
+     * scale of this transform must be non-zero.
+     *
+     * @param p the position to transform
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 transformInverse(Double3R p, @Mutated Double3 dest);
+
+    /**
+     * Transform ({@code x}, {@code y}, {@code z}) by the inverse of this transform and store the
+     * result in {@code dest}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length; each component of the
+     * scale of this transform must be non-zero.
+     *
+     * @param x the {@code x} component of the vector {@code (x, y, z)}
+     * @param y the {@code y} component of the vector {@code (x, y, z)}
+     * @param z the {@code z} component of the vector {@code (x, y, z)}
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 transformInverse(double x, double y, double z, @Mutated Double3 dest);
+
+    /**
+     * Transform {@code p} by the inverse of this transform and store the result back into
+     * {@code p}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length; each component of the
+     * scale of this transform must be non-zero.
+     *
+     * @param p the position to transform (also receives the result)
+     * @return {@code p}
+     */
+    default Double3 transformInverse(@Mutated Double3 p) { return transformInverse(p, p); }
+
+    /**
+     * Transform the given position by this transform, treating it as a point with an implicit
+     * {@code w = 1} and store the result in {@code dest}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param v the position to transform
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 transformPosition(Double3R v, @Mutated Double3 dest);
+
+    /**
+     * Transform the given position by this transform, treating it as a point with an implicit
+     * {@code w = 1} and store the result in {@code dest}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param x the {@code x} component of the vector {@code (x, y, z)}
+     * @param y the {@code y} component of the vector {@code (x, y, z)}
+     * @param z the {@code z} component of the vector {@code (x, y, z)}
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 transformPosition(double x, double y, double z, @Mutated Double3 dest);
+
+    /**
+     * Transform the given position by this transform, treating it as a point with an implicit
+     * {@code w = 1} and store the result back into {@code v}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param v the position to transform (also receives the result)
+     * @return {@code v}
+     */
+    default Double3 transformPosition(@Mutated Double3 v) { return transformPosition(v, v); }
+
+    /**
+     * Transform the given position by the inverse of this transform (world to local), without
+     * materializing {@code invert()} and store the result in {@code dest}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length; each component of the
+     * scale of this transform must be non-zero.
+     *
+     * @param p the position to transform
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 transformPositionInverse(Double3R p, @Mutated Double3 dest);
+
+    /**
+     * Transform the given position by the inverse of this transform (world to local), without
+     * materializing {@code invert()} and store the result in {@code dest}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length; each component of the
+     * scale of this transform must be non-zero.
+     *
+     * @param x the {@code x} component of the vector {@code (x, y, z)}
+     * @param y the {@code y} component of the vector {@code (x, y, z)}
+     * @param z the {@code z} component of the vector {@code (x, y, z)}
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 transformPositionInverse(double x, double y, double z, @Mutated Double3 dest);
+
+    /**
+     * Transform the given position by the inverse of this transform (world to local), without
+     * materializing {@code invert()} and store the result back into {@code p}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length; each component of the
+     * scale of this transform must be non-zero.
+     *
+     * @param p the position to transform (also receives the result)
+     * @return {@code p}
+     */
+    default Double3 transformPositionInverse(@Mutated Double3 p) { return transformPositionInverse(p, p); }
+
+    /**
+     * Transform the given vector by the linear part of this transform, i.e. apply its scale and
+     * rotation but not its translation and store the result in {@code dest}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param v the vector to transform
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 transformVector(Double3R v, @Mutated Double3 dest);
+
+    /**
+     * Transform the given vector by the linear part of this transform, i.e. apply its scale and
+     * rotation but not its translation and store the result in {@code dest}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param x the {@code x} component of the vector {@code (x, y, z)}
+     * @param y the {@code y} component of the vector {@code (x, y, z)}
+     * @param z the {@code z} component of the vector {@code (x, y, z)}
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 transformVector(double x, double y, double z, @Mutated Double3 dest);
+
+    /**
+     * Transform the given vector by the linear part of this transform, i.e. apply its scale and
+     * rotation but not its translation and store the result back into {@code v}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length.
+     *
+     * @param v the vector to transform (also receives the result)
+     * @return {@code v}
+     */
+    default Double3 transformVector(@Mutated Double3 v) { return transformVector(v, v); }
+
+    /**
+     * Transform the given vector by the inverse of this transform's linear part (world to local),
+     * i.e. undo its rotation and scale but not its translation, without materializing
+     * {@code invert()} and store the result in {@code dest}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length; each component of the
+     * scale of this transform must be non-zero.
+     *
+     * @param v the vector to transform
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 transformVectorInverse(Double3R v, @Mutated Double3 dest);
+
+    /**
+     * Transform the given vector by the inverse of this transform's linear part (world to local),
+     * i.e. undo its rotation and scale but not its translation, without materializing
+     * {@code invert()} and store the result in {@code dest}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length; each component of the
+     * scale of this transform must be non-zero.
+     *
+     * @param x the {@code x} component of the vector {@code (x, y, z)}
+     * @param y the {@code y} component of the vector {@code (x, y, z)}
+     * @param z the {@code z} component of the vector {@code (x, y, z)}
+     * @param dest will hold the result
+     * @return dest
+     */
+    Double3 transformVectorInverse(double x, double y, double z, @Mutated Double3 dest);
+
+    /**
+     * Transform the given vector by the inverse of this transform's linear part (world to local),
+     * i.e. undo its rotation and scale but not its translation, without materializing
+     * {@code invert()} and store the result back into {@code v}.
+     * <p>
+     * Valid input: the rotation of this transform must have unit length; each component of the
+     * scale of this transform must be non-zero.
+     *
+     * @param v the vector to transform (also receives the result)
+     * @return {@code v}
+     */
+    default Double3 transformVectorInverse(@Mutated Double3 v) { return transformVectorInverse(v, v); }
+    /** {@return the value of the {@code tX} component} <p>Valid input: any value, NaN and the infinities included. */
+    double tX();
+    /** {@return the value of the {@code tY} component} <p>Valid input: any value, NaN and the infinities included. */
+    double tY();
+    /** {@return the value of the {@code tZ} component} <p>Valid input: any value, NaN and the infinities included. */
+    double tZ();
+    /** {@return the value of the {@code rX} component} <p>Valid input: any value, NaN and the infinities included. */
+    double rX();
+    /** {@return the value of the {@code rY} component} <p>Valid input: any value, NaN and the infinities included. */
+    double rY();
+    /** {@return the value of the {@code rZ} component} <p>Valid input: any value, NaN and the infinities included. */
+    double rZ();
+    /** {@return the value of the {@code rW} component} <p>Valid input: any value, NaN and the infinities included. */
+    double rW();
+    /** {@return the value of the {@code sX} component} <p>Valid input: any value, NaN and the infinities included. */
+    double sX();
+    /** {@return the value of the {@code sY} component} <p>Valid input: any value, NaN and the infinities included. */
+    double sY();
+    /** {@return the value of the {@code sZ} component} <p>Valid input: any value, NaN and the infinities included. */
+    double sZ();
+
+    /**
+     * Store the elements into the given array.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    default double[] store(@Mutated double[] dest) { return store(dest, 0); }
+
+    /**
+     * Store the elements into the given array, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    double[] store(@Mutated double[] dest, int offset);
+
+    /**
+     * Store the elements into the given buffer, starting at its current position (the position is
+     * not modified).
+     * <p>
+     * A buffer in native byte order takes the fast path; any other byte order is honoured through
+     * the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers and native segments are not
+     * bounds-checked and segment liveness / thread confinement is not verified; the API backend
+     * performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest the destination buffer
+     * @return dest
+     */
+    default DoubleBuffer store(@Mutated DoubleBuffer dest) { return storeAbsolute(dest.position(), dest); }
+
+    /**
+     * Store the elements into the given buffer, starting at its current position (the position is
+     * not modified).
+     * <p>
+     * A buffer in native byte order takes the fast path; any other byte order is honoured through
+     * the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers and native segments are not
+     * bounds-checked and segment liveness / thread confinement is not verified; the API backend
+     * performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest the destination buffer
+     * @return dest
+     */
+    default DoubleBuffer storeAbsolute(@Mutated DoubleBuffer dest) { return storeAbsolute(dest.position(), dest); }
+
+    /**
+     * Store the elements into the given buffer, starting at the given absolute index (the position
+     * is not used or modified).
+     * <p>
+     * A buffer in native byte order takes the fast path; any other byte order is honoured through
+     * the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers and native segments are not
+     * bounds-checked and segment liveness / thread confinement is not verified; the API backend
+     * performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param index the absolute element index in the buffer
+     * @param dest the destination buffer
+     * @return dest
+     */
+    DoubleBuffer storeAbsolute(int index, @Mutated DoubleBuffer dest);
+
+    /**
+     * Store the elements into the given buffer, starting at its current position and advancing the
+     * position accordingly.
+     * <p>
+     * A buffer in native byte order takes the fast path; any other byte order is honoured through
+     * the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers and native segments are not
+     * bounds-checked and segment liveness / thread confinement is not verified; the API backend
+     * performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest the destination buffer
+     * @return dest
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    default DoubleBuffer storeRelative(@Mutated DoubleBuffer dest) {
+        if (dest.remaining() < 10) throw new java.nio.BufferOverflowException();
+        int pos = dest.position();
+        storeAbsolute(pos, dest);
+        dest.position(pos + 10);
+        return dest;
+    }
+
+    /**
+     * Store the elements into the given byte buffer, starting at its current position (the position
+     * is not modified).
+     * <p>
+     * A buffer in native byte order takes the fast path; any other byte order is honoured through
+     * the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers and native segments are not
+     * bounds-checked and segment liveness / thread confinement is not verified; the API backend
+     * performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest the destination byte buffer
+     * @return dest
+     */
+    default ByteBuffer store(@Mutated ByteBuffer dest) { return storeAbsolute(dest.position(), dest); }
+
+    /**
+     * Store the elements into the given byte buffer, starting at its current position (the position
+     * is not modified).
+     * <p>
+     * A buffer in native byte order takes the fast path; any other byte order is honoured through
+     * the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers and native segments are not
+     * bounds-checked and segment liveness / thread confinement is not verified; the API backend
+     * performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest the destination byte buffer
+     * @return dest
+     */
+    default ByteBuffer storeAbsolute(@Mutated ByteBuffer dest) { return storeAbsolute(dest.position(), dest); }
+
+    /**
+     * Store the elements into the given byte buffer, starting at the given absolute index (the
+     * position is not used or modified).
+     * <p>
+     * A buffer in native byte order takes the fast path; any other byte order is honoured through
+     * the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers and native segments are not
+     * bounds-checked and segment liveness / thread confinement is not verified; the API backend
+     * performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param dest the destination byte buffer
+     * @return dest
+     */
+    ByteBuffer storeAbsolute(int index, @Mutated ByteBuffer dest);
+
+    /**
+     * Store the elements into the given byte buffer, starting at its current position and advancing
+     * the position accordingly.
+     * <p>
+     * A buffer in native byte order takes the fast path; any other byte order is honoured through
+     * the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers and native segments are not
+     * bounds-checked and segment liveness / thread confinement is not verified; the API backend
+     * performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest the destination byte buffer
+     * @return dest
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    default ByteBuffer storeRelative(@Mutated ByteBuffer dest) {
+        if (dest.remaining() < 80) throw new java.nio.BufferOverflowException();
+        int pos = dest.position();
+        storeAbsolute(pos, dest);
+        dest.position(pos + 80);
+        return dest;
+    }
+
+    /**
+     * Store the elements into the given memory segment.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers and native segments are not
+     * bounds-checked and segment liveness / thread confinement is not verified; the API backend
+     * performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    default MemorySegment store(@Mutated MemorySegment dest) { return store(0L, dest); }
+
+    /**
+     * Store the elements into the given memory segment, starting at the given offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers and native segments are not
+     * bounds-checked and segment liveness / thread confinement is not verified; the API backend
+     * performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    MemorySegment store(long offset, @Mutated MemorySegment dest);
+
+    /**
+     * Store the elements into the given raw memory address. No bounds or liveness checks are
+     * performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param address the raw memory address
+     * @return this
+     */
+    DoubleTransform storeUnsafe(long address);
+
+    /**
+     * Store the elements into the given array.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest the destination array
+     * @return dest
+     */
+    default float[] store(@Mutated float[] dest) { return store(dest, 0); }
+
+    /**
+     * Store the elements into the given array, starting at the given offset.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest the destination array
+     * @param offset the start offset in the array, in elements
+     * @return dest
+     */
+    float[] store(@Mutated float[] dest, int offset);
+
+    /**
+     * Store the elements into the given buffer, starting at its current position (the position is
+     * not modified).
+     * <p>
+     * A buffer in native byte order takes the fast path; any other byte order is honoured through
+     * the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers and native segments are not
+     * bounds-checked and segment liveness / thread confinement is not verified; the API backend
+     * performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest the destination buffer
+     * @return dest
+     */
+    default FloatBuffer store(@Mutated FloatBuffer dest) { return storeAbsolute(dest.position(), dest); }
+
+    /**
+     * Store the elements into the given buffer, starting at its current position (the position is
+     * not modified).
+     * <p>
+     * A buffer in native byte order takes the fast path; any other byte order is honoured through
+     * the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers and native segments are not
+     * bounds-checked and segment liveness / thread confinement is not verified; the API backend
+     * performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest the destination buffer
+     * @return dest
+     */
+    default FloatBuffer storeAbsolute(@Mutated FloatBuffer dest) { return storeAbsolute(dest.position(), dest); }
+
+    /**
+     * Store the elements into the given buffer, starting at the given absolute index (the position
+     * is not used or modified).
+     * <p>
+     * A buffer in native byte order takes the fast path; any other byte order is honoured through
+     * the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers and native segments are not
+     * bounds-checked and segment liveness / thread confinement is not verified; the API backend
+     * performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param index the absolute element index in the buffer
+     * @param dest the destination buffer
+     * @return dest
+     */
+    FloatBuffer storeAbsolute(int index, @Mutated FloatBuffer dest);
+
+    /**
+     * Store the elements into the given buffer, starting at its current position and advancing the
+     * position accordingly.
+     * <p>
+     * A buffer in native byte order takes the fast path; any other byte order is honoured through
+     * the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers and native segments are not
+     * bounds-checked and segment liveness / thread confinement is not verified; the API backend
+     * performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest the destination buffer
+     * @return dest
+     * @throws java.nio.BufferOverflowException if less remains in the buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    default FloatBuffer storeRelative(@Mutated FloatBuffer dest) {
+        if (dest.remaining() < 10) throw new java.nio.BufferOverflowException();
+        int pos = dest.position();
+        storeAbsolute(pos, dest);
+        dest.position(pos + 10);
+        return dest;
+    }
+
+    /**
+     * Store the elements into the given byte buffer, converting each element to {@code float},
+     * starting at its current position (the position is not modified).
+     * <p>
+     * A buffer in native byte order takes the fast path; any other byte order is honoured through
+     * the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers and native segments are not
+     * bounds-checked and segment liveness / thread confinement is not verified; the API backend
+     * performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest the destination byte buffer
+     * @return dest
+     */
+    default ByteBuffer storeFloat(@Mutated ByteBuffer dest) { return storeFloatAbsolute(dest.position(), dest); }
+
+    /**
+     * Store the elements into the given byte buffer, converting each element to {@code float},
+     * starting at its current position (the position is not modified).
+     * <p>
+     * A buffer in native byte order takes the fast path; any other byte order is honoured through
+     * the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers and native segments are not
+     * bounds-checked and segment liveness / thread confinement is not verified; the API backend
+     * performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest the destination byte buffer
+     * @return dest
+     */
+    default ByteBuffer storeFloatAbsolute(@Mutated ByteBuffer dest) { return storeFloatAbsolute(dest.position(), dest); }
+
+    /**
+     * Store the elements into the given byte buffer, converting each element to {@code float},
+     * starting at the given absolute index (the position is not used or modified).
+     * <p>
+     * A buffer in native byte order takes the fast path; any other byte order is honoured through
+     * the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers and native segments are not
+     * bounds-checked and segment liveness / thread confinement is not verified; the API backend
+     * performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param index the absolute byte index in the byte buffer
+     * @param dest the destination byte buffer
+     * @return dest
+     */
+    ByteBuffer storeFloatAbsolute(int index, @Mutated ByteBuffer dest);
+
+    /**
+     * Store the elements into the given byte buffer, converting each element to {@code float},
+     * starting at its current position and advancing the position accordingly.
+     * <p>
+     * A buffer in native byte order takes the fast path; any other byte order is honoured through
+     * the slower API path.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers and native segments are not
+     * bounds-checked and segment liveness / thread confinement is not verified; the API backend
+     * performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest the destination byte buffer
+     * @return dest
+     * @throws java.nio.BufferOverflowException if less remains in the byte buffer than the position
+     *        advances over; nothing is written and the position is unchanged
+     */
+    default ByteBuffer storeFloatRelative(@Mutated ByteBuffer dest) {
+        if (dest.remaining() < 40) throw new java.nio.BufferOverflowException();
+        int pos = dest.position();
+        storeFloatAbsolute(pos, dest);
+        dest.position(pos + 40);
+        return dest;
+    }
+
+    /**
+     * Store the elements into the given memory segment, converting each element to {@code float}.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers and native segments are not
+     * bounds-checked and segment liveness / thread confinement is not verified; the API backend
+     * performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    default MemorySegment storeFloat(@Mutated MemorySegment dest) { return storeFloat(0L, dest); }
+
+    /**
+     * Store the elements into the given memory segment, converting each element to {@code float},
+     * starting at the given offset.
+     * <p>
+     * With the UNSAFE backend, offsets into direct buffers and native segments are not
+     * bounds-checked and segment liveness / thread confinement is not verified; the API backend
+     * performs the standard checks.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param offset the start offset into the memory segment, in bytes
+     * @param dest the destination memory segment
+     * @return dest
+     */
+    MemorySegment storeFloat(long offset, @Mutated MemorySegment dest);
+
+    /**
+     * Store the elements into the given raw memory address, converting each element to
+     * {@code float}. No bounds or liveness checks are performed.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param address the raw memory address
+     * @return this
+     */
+    DoubleTransform storeFloatUnsafe(long address);
+
+    /** {@return whether all components of this transform are finite, i.e. neither NaN nor infinite} <p>Valid input: any value, NaN and the infinities included. */
+    boolean isFinite();
+
+    /** {@return whether any component of this transform is NaN} <p>Valid input: any value, NaN and the infinities included. */
+    boolean isNaN();
+
+    /**
+     * Compare this transform component-wise against {@code other}, allowing a difference
+     * of at most {@code epsilon} per component.
+     * <p>
+     * {@code equalsEpsilon} compares per component with a tolerance: an infinite component never
+     * compares equal, not even to an equal infinity (the difference {@code Inf - Inf} is NaN), and
+     * a NaN component never compares equal to anything.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param other the transform to compare against
+     * @param epsilon the maximum allowed difference per component
+     * @return {@code true} if all components differ by at most {@code epsilon}, {@code false} otherwise
+     */
+    boolean equalsEpsilon(DoubleTransformR other, double epsilon);
+
+    /**
+     * Compare this transform with the given object for element-wise equality.
+     * <p>
+     * Each component is compared bitwise, as by {@code Double.doubleToLongBits}: {@code 0.0} and
+     * {@code -0.0} are not equal, and NaN is equal to NaN. Use {@link #equalsEpsilon} for a
+     * tolerant comparison.
+     * <p>
+     * Only instances of this library's implementation compare equal to each other; any other object
+     * yields {@code false}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param obj the object to compare with
+     * @return {@code true} if {@code obj} is a transform of this library with element-wise equal
+     *        components, {@code false} otherwise
+     */
+    boolean equals(@org.jspecify.annotations.Nullable Object obj);
+
+    /**
+     * Compute a hash code consistent with {@link #equals}: it is derived from the components via
+     * {@code Double.doubleToLongBits} alone.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @return the hash code of this transform
+     */
+    int hashCode();
+
+    /** Backs {@code ZERO()}: defers the shared instance's
+     *  allocation to first use, avoiding a class-initialization cycle with the
+     *  implementation class. Not part of the public API. */
+    final class Holder {
+        private Holder() {}
+        static final DoubleTransformR ZERO = Joml.doubleTransform(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    }
+}

@@ -1,0 +1,9616 @@
+// Copyright (c) 2015-2026 JOML
+// SPDX-License-Identifier: MIT
+package org.joml2.ops;
+
+import org.joml2.*;
+import org.joml2.Math;
+import org.joml2.internal.kernels.*;
+import org.joml2.internal.unsafe.*;
+import org.joml2.internal.simd.*;
+
+/**
+ * Static, allocation-free operations on raw storage holding a {@link Double4}.
+ *
+ * <p>Each method takes one or more buffers ({@code double[]},
+ * {@link java.nio.DoubleBuffer}, {@link java.nio.ByteBuffer}, or
+ * {@link java.lang.foreign.MemorySegment}) plus an element/byte offset and operates
+ * directly on that storage. No {@link Double4} instance is allocated;
+ * the array overloads and the Unsafe-backed buffer fast paths never allocate at all.
+ * The portable fallback taken for heap {@code ByteBuffer}s, read-only buffers, and the
+ * API backend may wrap buffers in lightweight {@link java.lang.foreign.MemorySegment} views.</p>
+ *
+ * <p>NIO buffers in native byte order take the fast paths; any other byte order
+ * (the {@code ByteBuffer} default is big-endian) is honoured through the slower
+ * API path. Writing into a read-only buffer throws
+ * {@link java.nio.ReadOnlyBufferException}, as NIO's own {@code put} does.</p>
+ *
+ * <p>With the UNSAFE backend, offsets into direct buffers and native segments are not
+ * bounds-checked and segment liveness / thread confinement is not verified; the API
+ * backend performs the standard checks. Heap arrays are bounds-checked on every backend
+ * ({@link IndexOutOfBoundsException}). The UNSAFE backend uses {@code sun.misc.Unsafe}; on
+ * JDK 23+ (JEP 471) run with {@code --sun-misc-unsafe-memory-access=allow} or select
+ * {@code -Djoml.storeLoadBackend=api}.</p>
+ *
+ * <p>Edge cases, per backend: a read-only {@code dest} buffer or segment never takes the
+ * Unsafe path and is rejected by the API path ({@link IllegalArgumentException} from the
+ * read-only segment view, or {@link java.nio.ReadOnlyBufferException} from a buffer
+ * {@code put}). Buffer offsets are absolute indices counted from index 0, regardless of
+ * the buffer's position; the API path addresses a buffer through a segment view that ends at
+ * its {@code limit}, so an access beyond the limit throws {@link IndexOutOfBoundsException},
+ * whereas the UNSAFE path addresses a direct buffer by its base address and ignores position,
+ * limit and capacity. A negative {@code count} performs no reads or writes on the API and
+ * SIMD paths, except through the raw {@code long}-address {@code copy} overloads, whose API path
+ * slices {@code count} elements off the address first and throws {@link IllegalArgumentException}
+ * for a negative length; the UNSAFE {@code copy} fast path rejects it ({@link IndexOutOfBoundsException}
+ * for an array end, {@link IllegalArgumentException} from {@code Unsafe.copyMemory} otherwise).</p>
+ *
+ * <p>All buffer parameters in a single call must use the same storage backing,
+ * except the {@code copy} methods, which translate between any two backings.
+ * Elements are laid out in component order: what {@code store}/{@code load} of
+ * Double4 write and read.</p>
+ *
+ * <p>Configuration freezing: this class holds no static state of its own, so a call freezes only
+ * the flags its overload reads. Every non-bulk buffer, segment and raw-address overload - and the
+ * array-to-array {@code copy} - reads {@code Joml.storeLoadBackend()}, which class-initializes
+ * {@link Joml} and freezes the {@link JomlConfig} flags ({@code returnNew},
+ * {@code storeLoadBackend}, {@code vectorApi}); the bulk {@code count} overloads dispatch through
+ * {@code SimdSupport} like every other SIMD path (below). Every overload with a Vector-API or
+ * fused-multiply-add dispatch consults {@code SimdSupport}, whose initialization snapshots
+ * {@code Math.useFma()} - freezing all {@link Math} flags ({@code useFma}, {@code cosFromSin},
+ * {@code fastmath}, {@code sinLookup}, {@code strictMath}) - and {@code Joml.VECTOR_API}, freezing
+ * the {@link JomlConfig} flags as well; the scalar kernels call {@link Math} for their
+ * multiply-adds and transcendentals, which freezes the {@code Math} flags likewise. Only the array
+ * overloads of operations with neither a SIMD path nor a multiply-add nor a transcendental freeze
+ * nothing.</p>
+ *
+ * <p>Each method summary below is the one the {@link Double4} API carries, so
+ * the two can never describe the same operation differently: "this vector" there is the
+ * vector held in {@code src} at {@code srcOffset}, and the result is written to
+ * {@code dest} at {@code destOffset}. The full text sits on the {@code double[]} overload of
+ * each method; the other storage overloads point at it, differing from it in
+ * storage alone.</p>
+ */
+public final class Double4Ops {
+    private Double4Ops() {}
+
+    /**
+     * Add ({@code otherX}, {@code otherY}, {@code otherZ}, {@code otherW}) to this vector and store
+     * the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param otherX the {@code x} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @return {@code dest}
+     */
+    public static double[] add(double[] dest, int destOffset, double[] src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = otherX + _selfx;
+        dest[destOffset + 1] = otherY + _selfy;
+        dest[destOffset + 2] = otherZ + _selfz;
+        dest[destOffset + 3] = otherW + _selfw;
+        return dest;
+    }
+
+    /** {@link #add(double[], int, double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer add(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.add_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsTypedBuffer.add_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #add(double[], int, double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer add(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.add_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsByteBuffer.add_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #add(double[], int, double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment add(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.add_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsSegment.add_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #add(double[], int, double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long add(long dest, long src, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.add_unsafe(dest, src, otherX, otherY, otherZ, otherW);
+        add(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, otherX, otherY, otherZ, otherW);
+        return dest;
+    }
+
+    /**
+     * Add {@code other} to this vector and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param other the storage holding the vector to add
+     * @param otherOffset the element index in {@code other} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] add(double[] dest, int destOffset, double[] src, int srcOffset, double[] other, int otherOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.add(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsArray.add_scalar(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #add(double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer add(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.add_unsafe(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsTypedBuffer.add_api(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #add(double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer add(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.add_unsafe(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsByteBuffer.add_api(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #add(double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment add(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment other, long otherOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.add(dest, destOffset, src, srcOffset, other, otherOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && other.isNative()) return Double4OpsKernelsSegment.add_unsafe(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsSegment.add_api(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #add(double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long add(long dest, long src, long other) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.add_unsafe(dest, src, other);
+        add(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(other, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Divide each component of this vector by {@code scalar} and store the result in {@code dest}.
+     * <p>
+     * Valid input: {@code scalar} must be non-zero.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param scalar the divisor
+     * @return {@code dest}
+     */
+    public static double[] div(double[] dest, int destOffset, double[] src, int srcOffset, double scalar) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.div(dest, destOffset, src, srcOffset, scalar);
+        return Double4OpsKernelsArray.div_scalar(dest, destOffset, src, srcOffset, scalar);
+    }
+
+    /** {@link #div(double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer div(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double scalar) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.div_unsafe(dest, destOffset, src, srcOffset, scalar);
+        return Double4OpsKernelsTypedBuffer.div_api(dest, destOffset, src, srcOffset, scalar);
+    }
+
+    /** {@link #div(double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer div(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double scalar) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.div_unsafe(dest, destOffset, src, srcOffset, scalar);
+        return Double4OpsKernelsByteBuffer.div_api(dest, destOffset, src, srcOffset, scalar);
+    }
+
+    /** {@link #div(double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment div(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double scalar) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.div(dest, destOffset, src, srcOffset, scalar);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.div_unsafe(dest, destOffset, src, srcOffset, scalar);
+        return Double4OpsKernelsSegment.div_api(dest, destOffset, src, srcOffset, scalar);
+    }
+
+    /** {@link #div(double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long div(long dest, long src, double scalar) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.div_unsafe(dest, src, scalar);
+        div(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, scalar);
+        return dest;
+    }
+
+    /**
+     * Divide this vector component-wise by ({@code otherX}, {@code otherY}, {@code otherZ},
+     * {@code otherW}) and store the result in {@code dest}.
+     * <p>
+     * Valid input: each component of {@code (otherX, otherY, otherZ, otherW)} must be non-zero.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param otherX the {@code x} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @return {@code dest}
+     */
+    public static double[] div(double[] dest, int destOffset, double[] src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = _selfx / otherX;
+        dest[destOffset + 1] = _selfy / otherY;
+        dest[destOffset + 2] = _selfz / otherZ;
+        dest[destOffset + 3] = _selfw / otherW;
+        return dest;
+    }
+
+    /** {@link #div(double[], int, double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer div(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.div_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsTypedBuffer.div_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #div(double[], int, double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer div(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.div_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsByteBuffer.div_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #div(double[], int, double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment div(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.div_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsSegment.div_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #div(double[], int, double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long div(long dest, long src, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.div_unsafe(dest, src, otherX, otherY, otherZ, otherW);
+        div(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, otherX, otherY, otherZ, otherW);
+        return dest;
+    }
+
+    /**
+     * Divide this vector component-wise by {@code other} and store the result in {@code dest}.
+     * <p>
+     * Valid input: each component of {@code other} must be non-zero.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param other the storage holding the vector of per-component divisors
+     * @param otherOffset the element index in {@code other} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] div(double[] dest, int destOffset, double[] src, int srcOffset, double[] other, int otherOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.div(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsArray.div_scalar(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #div(double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer div(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.div_unsafe(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsTypedBuffer.div_api(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #div(double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer div(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.div_unsafe(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsByteBuffer.div_api(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #div(double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment div(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment other, long otherOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.div(dest, destOffset, src, srcOffset, other, otherOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && other.isNative()) return Double4OpsKernelsSegment.div_unsafe(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsSegment.div_api(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #div(double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long div(long dest, long src, long other) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.div_unsafe(dest, src, other);
+        div(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(other, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Multiply this vector component-wise by {@code b} and add ({@code cX}, {@code cY}, {@code cZ},
+     * {@code cW}), i.e. compute {@code this * b + (cX, cY, cZ, cW)} per component and store the
+     * result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param b the factor to multiply this vector by
+     * @param cX the {@code x} component of the vector {@code (cX, cY, cZ, cW)}
+     * @param cY the {@code y} component of the vector {@code (cX, cY, cZ, cW)}
+     * @param cZ the {@code z} component of the vector {@code (cX, cY, cZ, cW)}
+     * @param cW the {@code w} component of the vector {@code (cX, cY, cZ, cW)}
+     * @return {@code dest}
+     */
+    public static double[] fma(double[] dest, int destOffset, double[] src, int srcOffset, double b, double cX, double cY, double cZ, double cW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.fma(_selfx, b, cX);
+        dest[destOffset + 1] = Math.fma(_selfy, b, cY);
+        dest[destOffset + 2] = Math.fma(_selfz, b, cZ);
+        dest[destOffset + 3] = Math.fma(_selfw, b, cW);
+        return dest;
+    }
+
+    /** {@link #fma(double[], int, double[], int, double, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer fma(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double b, double cX, double cY, double cZ, double cW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.fma_unsafe(dest, destOffset, src, srcOffset, b, cX, cY, cZ, cW);
+        return Double4OpsKernelsTypedBuffer.fma_api(dest, destOffset, src, srcOffset, b, cX, cY, cZ, cW);
+    }
+
+    /** {@link #fma(double[], int, double[], int, double, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double b, double cX, double cY, double cZ, double cW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.fma_unsafe(dest, destOffset, src, srcOffset, b, cX, cY, cZ, cW);
+        return Double4OpsKernelsByteBuffer.fma_api(dest, destOffset, src, srcOffset, b, cX, cY, cZ, cW);
+    }
+
+    /** {@link #fma(double[], int, double[], int, double, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment fma(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double b, double cX, double cY, double cZ, double cW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.fma_unsafe(dest, destOffset, src, srcOffset, b, cX, cY, cZ, cW);
+        return Double4OpsKernelsSegment.fma_api(dest, destOffset, src, srcOffset, b, cX, cY, cZ, cW);
+    }
+
+    /** {@link #fma(double[], int, double[], int, double, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long fma(long dest, long src, double b, double cX, double cY, double cZ, double cW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.fma_unsafe(dest, src, b, cX, cY, cZ, cW);
+        fma(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, b, cX, cY, cZ, cW);
+        return dest;
+    }
+
+    /**
+     * Multiply this vector component-wise by {@code b} and add {@code c}, i.e. compute
+     * {@code this * b + c} per component and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param c the storage holding the vector to add
+     * @param cOffset the element index in {@code c} at which the vector starts
+     * @param b the factor to multiply this vector by
+     * @return {@code dest}
+     */
+    public static double[] fma(double[] dest, int destOffset, double[] src, int srcOffset, double[] c, int cOffset, double b) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.fma(dest, destOffset, src, srcOffset, c, cOffset, b);
+        return Double4OpsKernelsArray.fma_scalar(dest, destOffset, src, srcOffset, c, cOffset, b);
+    }
+
+    /** {@link #fma(double[], int, double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer fma(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer c, int cOffset, double b) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && c.isDirect() && c.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.fma_unsafe(dest, destOffset, src, srcOffset, c, cOffset, b);
+        return Double4OpsKernelsTypedBuffer.fma_api(dest, destOffset, src, srcOffset, c, cOffset, b);
+    }
+
+    /** {@link #fma(double[], int, double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer c, int cOffset, double b) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && c.isDirect() && c.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.fma_unsafe(dest, destOffset, src, srcOffset, c, cOffset, b);
+        return Double4OpsKernelsByteBuffer.fma_api(dest, destOffset, src, srcOffset, c, cOffset, b);
+    }
+
+    /** {@link #fma(double[], int, double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment fma(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment c, long cOffset, double b) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.fma(dest, destOffset, src, srcOffset, c, cOffset, b);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && c.isNative()) return Double4OpsKernelsSegment.fma_unsafe(dest, destOffset, src, srcOffset, c, cOffset, b);
+        return Double4OpsKernelsSegment.fma_api(dest, destOffset, src, srcOffset, c, cOffset, b);
+    }
+
+    /** {@link #fma(double[], int, double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long fma(long dest, long src, long c, double b) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.fma_unsafe(dest, src, c, b);
+        fma(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(c, 32L), 0L, b);
+        return dest;
+    }
+
+    /**
+     * Multiply this vector component-wise by ({@code bX}, {@code bY}, {@code bZ}, {@code bW}) and
+     * add ({@code cX}, {@code cY}, {@code cZ}, {@code cW}), i.e. compute
+     * {@code this * (bX, bY, bZ, bW) + (cX, cY, cZ, cW)} per component and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param bX the {@code x} component of the vector {@code (bX, bY, bZ, bW)}
+     * @param bY the {@code y} component of the vector {@code (bX, bY, bZ, bW)}
+     * @param bZ the {@code z} component of the vector {@code (bX, bY, bZ, bW)}
+     * @param bW the {@code w} component of the vector {@code (bX, bY, bZ, bW)}
+     * @param cX the {@code x} component of the vector {@code (cX, cY, cZ, cW)}
+     * @param cY the {@code y} component of the vector {@code (cX, cY, cZ, cW)}
+     * @param cZ the {@code z} component of the vector {@code (cX, cY, cZ, cW)}
+     * @param cW the {@code w} component of the vector {@code (cX, cY, cZ, cW)}
+     * @return {@code dest}
+     */
+    public static double[] fma(double[] dest, int destOffset, double[] src, int srcOffset, double bX, double bY, double bZ, double bW, double cX, double cY, double cZ, double cW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.fma(_selfx, bX, cX);
+        dest[destOffset + 1] = Math.fma(_selfy, bY, cY);
+        dest[destOffset + 2] = Math.fma(_selfz, bZ, cZ);
+        dest[destOffset + 3] = Math.fma(_selfw, bW, cW);
+        return dest;
+    }
+
+    /** {@link #fma(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer fma(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double bX, double bY, double bZ, double bW, double cX, double cY, double cZ, double cW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.fma_unsafe(dest, destOffset, src, srcOffset, bX, bY, bZ, bW, cX, cY, cZ, cW);
+        return Double4OpsKernelsTypedBuffer.fma_api(dest, destOffset, src, srcOffset, bX, bY, bZ, bW, cX, cY, cZ, cW);
+    }
+
+    /** {@link #fma(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double bX, double bY, double bZ, double bW, double cX, double cY, double cZ, double cW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.fma_unsafe(dest, destOffset, src, srcOffset, bX, bY, bZ, bW, cX, cY, cZ, cW);
+        return Double4OpsKernelsByteBuffer.fma_api(dest, destOffset, src, srcOffset, bX, bY, bZ, bW, cX, cY, cZ, cW);
+    }
+
+    /** {@link #fma(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment fma(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double bX, double bY, double bZ, double bW, double cX, double cY, double cZ, double cW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.fma_unsafe(dest, destOffset, src, srcOffset, bX, bY, bZ, bW, cX, cY, cZ, cW);
+        return Double4OpsKernelsSegment.fma_api(dest, destOffset, src, srcOffset, bX, bY, bZ, bW, cX, cY, cZ, cW);
+    }
+
+    /** {@link #fma(double[], int, double[], int, double, double, double, double, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long fma(long dest, long src, double bX, double bY, double bZ, double bW, double cX, double cY, double cZ, double cW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.fma_unsafe(dest, src, bX, bY, bZ, bW, cX, cY, cZ, cW);
+        fma(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, bX, bY, bZ, bW, cX, cY, cZ, cW);
+        return dest;
+    }
+
+    /**
+     * Multiply this vector component-wise by {@code b} and add {@code c}, i.e. compute
+     * {@code this * b + c} per component and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param b the storage holding the factor to multiply this vector by
+     * @param bOffset the element index in {@code b} at which the vector starts
+     * @param c the storage holding the vector to add
+     * @param cOffset the element index in {@code c} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] fma(double[] dest, int destOffset, double[] src, int srcOffset, double[] b, int bOffset, double[] c, int cOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.fma(dest, destOffset, src, srcOffset, b, bOffset, c, cOffset);
+        return Double4OpsKernelsArray.fma_scalar(dest, destOffset, src, srcOffset, b, bOffset, c, cOffset);
+    }
+
+    /** {@link #fma(double[], int, double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer fma(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer b, int bOffset, java.nio.DoubleBuffer c, int cOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && b.isDirect() && b.order() == java.nio.ByteOrder.nativeOrder() && c.isDirect() && c.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.fma_unsafe(dest, destOffset, src, srcOffset, b, bOffset, c, cOffset);
+        return Double4OpsKernelsTypedBuffer.fma_api(dest, destOffset, src, srcOffset, b, bOffset, c, cOffset);
+    }
+
+    /** {@link #fma(double[], int, double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer b, int bOffset, java.nio.ByteBuffer c, int cOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && b.isDirect() && b.order() == java.nio.ByteOrder.nativeOrder() && c.isDirect() && c.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.fma_unsafe(dest, destOffset, src, srcOffset, b, bOffset, c, cOffset);
+        return Double4OpsKernelsByteBuffer.fma_api(dest, destOffset, src, srcOffset, b, bOffset, c, cOffset);
+    }
+
+    /** {@link #fma(double[], int, double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment fma(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment b, long bOffset, java.lang.foreign.MemorySegment c, long cOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.fma(dest, destOffset, src, srcOffset, b, bOffset, c, cOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && b.isNative() && c.isNative()) return Double4OpsKernelsSegment.fma_unsafe(dest, destOffset, src, srcOffset, b, bOffset, c, cOffset);
+        return Double4OpsKernelsSegment.fma_api(dest, destOffset, src, srcOffset, b, bOffset, c, cOffset);
+    }
+
+    /** {@link #fma(double[], int, double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long fma(long dest, long src, long b, long c) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.fma_unsafe(dest, src, b, c);
+        fma(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(b, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(c, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Multiply each component of this vector by {@code scalar} and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param scalar the factor to multiply each component by
+     * @return {@code dest}
+     */
+    public static double[] mul(double[] dest, int destOffset, double[] src, int srcOffset, double scalar) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.mul(dest, destOffset, src, srcOffset, scalar);
+        return Double4OpsKernelsArray.mul_scalar(dest, destOffset, src, srcOffset, scalar);
+    }
+
+    /** {@link #mul(double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer mul(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double scalar) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.mul_unsafe(dest, destOffset, src, srcOffset, scalar);
+        return Double4OpsKernelsTypedBuffer.mul_api(dest, destOffset, src, srcOffset, scalar);
+    }
+
+    /** {@link #mul(double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer mul(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double scalar) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.mul_unsafe(dest, destOffset, src, srcOffset, scalar);
+        return Double4OpsKernelsByteBuffer.mul_api(dest, destOffset, src, srcOffset, scalar);
+    }
+
+    /** {@link #mul(double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment mul(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double scalar) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.mul(dest, destOffset, src, srcOffset, scalar);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.mul_unsafe(dest, destOffset, src, srcOffset, scalar);
+        return Double4OpsKernelsSegment.mul_api(dest, destOffset, src, srcOffset, scalar);
+    }
+
+    /** {@link #mul(double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long mul(long dest, long src, double scalar) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.mul_unsafe(dest, src, scalar);
+        mul(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, scalar);
+        return dest;
+    }
+
+    /**
+     * Multiply this vector component-wise by ({@code otherX}, {@code otherY}, {@code otherZ},
+     * {@code otherW}) and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param otherX the {@code x} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @return {@code dest}
+     */
+    public static double[] mul(double[] dest, int destOffset, double[] src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = otherX * _selfx;
+        dest[destOffset + 1] = otherY * _selfy;
+        dest[destOffset + 2] = otherZ * _selfz;
+        dest[destOffset + 3] = otherW * _selfw;
+        return dest;
+    }
+
+    /** {@link #mul(double[], int, double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer mul(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.mul_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsTypedBuffer.mul_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #mul(double[], int, double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer mul(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.mul_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsByteBuffer.mul_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #mul(double[], int, double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment mul(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.mul_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsSegment.mul_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #mul(double[], int, double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long mul(long dest, long src, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.mul_unsafe(dest, src, otherX, otherY, otherZ, otherW);
+        mul(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, otherX, otherY, otherZ, otherW);
+        return dest;
+    }
+
+    /**
+     * Multiply this vector component-wise by {@code other} and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param other the storage holding the vector of per-component factors
+     * @param otherOffset the element index in {@code other} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] mul(double[] dest, int destOffset, double[] src, int srcOffset, double[] other, int otherOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.mul(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsArray.mul_scalar(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #mul(double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer mul(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.mul_unsafe(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsTypedBuffer.mul_api(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #mul(double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer mul(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.mul_unsafe(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsByteBuffer.mul_api(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #mul(double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment mul(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment other, long otherOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.mul(dest, destOffset, src, srcOffset, other, otherOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && other.isNative()) return Double4OpsKernelsSegment.mul_unsafe(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsSegment.mul_api(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #mul(double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long mul(long dest, long src, long other) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.mul_unsafe(dest, src, other);
+        mul(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(other, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Negate this vector and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] negate(double[] dest, int destOffset, double[] src, int srcOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.negate(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsArray.negate_scalar(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #negate(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer negate(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.negate_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.negate_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #negate(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer negate(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.negate_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.negate_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #negate(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment negate(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.negate(dest, destOffset, src, srcOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.negate_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.negate_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #negate(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long negate(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.negate_unsafe(dest, src);
+        negate(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Subtract ({@code otherX}, {@code otherY}, {@code otherZ}, {@code otherW}) from this vector
+     * and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param otherX the {@code x} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @return {@code dest}
+     */
+    public static double[] sub(double[] dest, int destOffset, double[] src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = _selfx - otherX;
+        dest[destOffset + 1] = _selfy - otherY;
+        dest[destOffset + 2] = _selfz - otherZ;
+        dest[destOffset + 3] = _selfw - otherW;
+        return dest;
+    }
+
+    /** {@link #sub(double[], int, double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer sub(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.sub_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsTypedBuffer.sub_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #sub(double[], int, double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer sub(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.sub_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsByteBuffer.sub_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #sub(double[], int, double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment sub(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.sub_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsSegment.sub_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #sub(double[], int, double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long sub(long dest, long src, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.sub_unsafe(dest, src, otherX, otherY, otherZ, otherW);
+        sub(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, otherX, otherY, otherZ, otherW);
+        return dest;
+    }
+
+    /**
+     * Subtract {@code other} from this vector and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param other the storage holding the vector to subtract
+     * @param otherOffset the element index in {@code other} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] sub(double[] dest, int destOffset, double[] src, int srcOffset, double[] other, int otherOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.sub(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsArray.sub_scalar(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #sub(double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer sub(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.sub_unsafe(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsTypedBuffer.sub_api(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #sub(double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer sub(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.sub_unsafe(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsByteBuffer.sub_api(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #sub(double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment sub(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment other, long otherOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.sub(dest, destOffset, src, srcOffset, other, otherOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && other.isNative()) return Double4OpsKernelsSegment.sub_unsafe(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsSegment.sub_api(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #sub(double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long sub(long dest, long src, long other) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.sub_unsafe(dest, src, other);
+        sub(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(other, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Set this vector to the unit vector
+     * {@code (sqrt(1 - u) cos(2 PI v), sqrt(1 - u) sin(2 PI v), sqrt(u) cos(2 PI w), sqrt(u) sin(2 PI w))}:
+     * samples uniformly distributed in {@code [0, 1)} give a direction uniformly distributed on the
+     * unit sphere of four dimensions ({@code makeRandomDirection} draws them from a
+     * {@link java.util.Random}).
+     * <p>
+     * Valid input: {@code u} must lie in {@code [0, 1]}.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param u the sample that splits the unit length between {@code (x, y)} and {@code (z, w)},
+     *        uniformly distributed in {@code [0, 1)} for a uniformly distributed direction
+     * @param v the fraction of a full turn of {@code (x, y)}, uniformly distributed in
+     *        {@code [0, 1)} for a uniformly distributed direction
+     * @param w the fraction of a full turn of {@code (z, w)}, uniformly distributed in
+     *        {@code [0, 1)} for a uniformly distributed direction
+     * @return {@code dest}
+     */
+    public static double[] makeUniformDirection(double[] dest, int destOffset, double u, double v, double w) {
+        double _t0 = Math.sqrt(u);
+        double _t1 = v * 6.283185307179586;
+        double _t3 = w * 6.283185307179586;
+        double _t4 = Math.sin(_t1);
+        double _t5 = Math.sqrt(1.0 - u);
+        double _t6 = Math.sin(_t3);
+        dest[destOffset + 0] = Math.cosFromSin(_t4, _t1) * _t5;
+        dest[destOffset + 1] = _t4 * _t5;
+        dest[destOffset + 2] = Math.cosFromSin(_t6, _t3) * _t0;
+        dest[destOffset + 3] = _t6 * _t0;
+        return dest;
+    }
+
+    /** {@link #makeUniformDirection(double[], int, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer makeUniformDirection(java.nio.DoubleBuffer dest, int destOffset, double u, double v, double w) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.makeUniformDirection_unsafe(dest, destOffset, u, v, w);
+        return Double4OpsKernelsTypedBuffer.makeUniformDirection_api(dest, destOffset, u, v, w);
+    }
+
+    /** {@link #makeUniformDirection(double[], int, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer makeUniformDirection(java.nio.ByteBuffer dest, int destOffset, double u, double v, double w) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.makeUniformDirection_unsafe(dest, destOffset, u, v, w);
+        return Double4OpsKernelsByteBuffer.makeUniformDirection_api(dest, destOffset, u, v, w);
+    }
+
+    /** {@link #makeUniformDirection(double[], int, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment makeUniformDirection(java.lang.foreign.MemorySegment dest, long destOffset, double u, double v, double w) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly()) return Double4OpsKernelsSegment.makeUniformDirection_unsafe(dest, destOffset, u, v, w);
+        return Double4OpsKernelsSegment.makeUniformDirection_api(dest, destOffset, u, v, w);
+    }
+
+    /** {@link #makeUniformDirection(double[], int, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long makeUniformDirection(long dest, double u, double v, double w) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.makeUniformDirection_unsafe(dest, u, v, w);
+        makeUniformDirection(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, u, v, w);
+        return dest;
+    }
+
+    /**
+     * Set this vector to the given values.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param vX the {@code x} component of the vector {@code (vX, vY, vZ, vW)}
+     * @param vY the {@code y} component of the vector {@code (vX, vY, vZ, vW)}
+     * @param vZ the {@code z} component of the vector {@code (vX, vY, vZ, vW)}
+     * @param vW the {@code w} component of the vector {@code (vX, vY, vZ, vW)}
+     * @return {@code dest}
+     */
+    public static double[] set(double[] dest, int destOffset, double vX, double vY, double vZ, double vW) {
+        dest[destOffset + 0] = vX;
+        dest[destOffset + 1] = vY;
+        dest[destOffset + 2] = vZ;
+        dest[destOffset + 3] = vW;
+        return dest;
+    }
+
+    /** {@link #set(double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer set(java.nio.DoubleBuffer dest, int destOffset, double vX, double vY, double vZ, double vW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.set_unsafe(dest, destOffset, vX, vY, vZ, vW);
+        return Double4OpsKernelsTypedBuffer.set_api(dest, destOffset, vX, vY, vZ, vW);
+    }
+
+    /** {@link #set(double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer set(java.nio.ByteBuffer dest, int destOffset, double vX, double vY, double vZ, double vW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.set_unsafe(dest, destOffset, vX, vY, vZ, vW);
+        return Double4OpsKernelsByteBuffer.set_api(dest, destOffset, vX, vY, vZ, vW);
+    }
+
+    /** {@link #set(double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment set(java.lang.foreign.MemorySegment dest, long destOffset, double vX, double vY, double vZ, double vW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly()) return Double4OpsKernelsSegment.set_unsafe(dest, destOffset, vX, vY, vZ, vW);
+        return Double4OpsKernelsSegment.set_api(dest, destOffset, vX, vY, vZ, vW);
+    }
+
+    /** {@link #set(double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long set(long dest, double vX, double vY, double vZ, double vW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.set_unsafe(dest, vX, vY, vZ, vW);
+        set(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, vX, vY, vZ, vW);
+        return dest;
+    }
+
+    /**
+     * Set this vector to the given values.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param v the storage holding the vector to copy
+     * @param vOffset the element index in {@code v} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] set(double[] dest, int destOffset, double[] v, int vOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.set(dest, destOffset, v, vOffset);
+        return Double4OpsKernelsArray.set_scalar(dest, destOffset, v, vOffset);
+    }
+
+    /** {@link #set(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer set(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer v, int vOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && v.isDirect() && v.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.set_unsafe(dest, destOffset, v, vOffset);
+        return Double4OpsKernelsTypedBuffer.set_api(dest, destOffset, v, vOffset);
+    }
+
+    /** {@link #set(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer set(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer v, int vOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && v.isDirect() && v.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.set_unsafe(dest, destOffset, v, vOffset);
+        return Double4OpsKernelsByteBuffer.set_api(dest, destOffset, v, vOffset);
+    }
+
+    /** {@link #set(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment set(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment v, long vOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.set(dest, destOffset, v, vOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && v.isNative()) return Double4OpsKernelsSegment.set_unsafe(dest, destOffset, v, vOffset);
+        return Double4OpsKernelsSegment.set_api(dest, destOffset, v, vOffset);
+    }
+
+    /** {@link #set(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long set(long dest, long v) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.set_unsafe(dest, v);
+        set(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(v, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Set this vector to {@code s} and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param s the value assigned to every component
+     * @return {@code dest}
+     */
+    public static double[] set(double[] dest, int destOffset, double s) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.set(dest, destOffset, s);
+        return Double4OpsKernelsArray.set_scalar(dest, destOffset, s);
+    }
+
+    /** {@link #set(double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer set(java.nio.DoubleBuffer dest, int destOffset, double s) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.set_unsafe(dest, destOffset, s);
+        return Double4OpsKernelsTypedBuffer.set_api(dest, destOffset, s);
+    }
+
+    /** {@link #set(double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer set(java.nio.ByteBuffer dest, int destOffset, double s) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.set_unsafe(dest, destOffset, s);
+        return Double4OpsKernelsByteBuffer.set_api(dest, destOffset, s);
+    }
+
+    /** {@link #set(double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment set(java.lang.foreign.MemorySegment dest, long destOffset, double s) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.set(dest, destOffset, s);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly()) return Double4OpsKernelsSegment.set_unsafe(dest, destOffset, s);
+        return Double4OpsKernelsSegment.set_api(dest, destOffset, s);
+    }
+
+    /** {@link #set(double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long set(long dest, double s) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.set_unsafe(dest, s);
+        set(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, s);
+        return dest;
+    }
+
+    /**
+     * Set all components of this vector to zero.
+     * <p>
+     * Valid input: the method reads no input.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] makeZero(double[] dest, int destOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.makeZero(dest, destOffset);
+        return Double4OpsKernelsArray.makeZero_scalar(dest, destOffset);
+    }
+
+    /** {@link #makeZero(double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer makeZero(java.nio.DoubleBuffer dest, int destOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.makeZero_unsafe(dest, destOffset);
+        return Double4OpsKernelsTypedBuffer.makeZero_api(dest, destOffset);
+    }
+
+    /** {@link #makeZero(double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer makeZero(java.nio.ByteBuffer dest, int destOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.makeZero_unsafe(dest, destOffset);
+        return Double4OpsKernelsByteBuffer.makeZero_api(dest, destOffset);
+    }
+
+    /** {@link #makeZero(double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment makeZero(java.lang.foreign.MemorySegment dest, long destOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.makeZero(dest, destOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly()) return Double4OpsKernelsSegment.makeZero_unsafe(dest, destOffset);
+        return Double4OpsKernelsSegment.makeZero_api(dest, destOffset);
+    }
+
+    /** {@link #makeZero(double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long makeZero(long dest) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.makeZero_unsafe(dest);
+        makeZero(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Interpolate along the cubic Bézier curve that starts at this vector, is shaped by the control
+     * points ({@code p1X}, {@code p1Y}, {@code p1Z}, {@code p1W}) and ({@code p2X}, {@code p2Y},
+     * {@code p2Z}, {@code p2W}) and ends at ({@code p3X}, {@code p3Y}, {@code p3Z}, {@code p3W})
+     * and store the result in {@code dest}.
+     * <p>
+     * The curve passes through this vector at {@code t = 0} and through ({@code p3X}, {@code p3Y},
+     * {@code p3Z}, {@code p3W}) at {@code t = 1}; the control points ({@code p1X}, {@code p1Y},
+     * {@code p1Z}, {@code p1W}) and ({@code p2X}, {@code p2Y}, {@code p2Z}, {@code p2W}) pull it
+     * towards themselves but are generally not on the curve.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param p1X the {@code x} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p1Y the {@code y} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p1Z the {@code z} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p1W the {@code w} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p2X the {@code x} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p2Y the {@code y} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p2Z the {@code z} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p2W the {@code w} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p3X the {@code x} component of the vector {@code (p3X, p3Y, p3Z, p3W)}
+     * @param p3Y the {@code y} component of the vector {@code (p3X, p3Y, p3Z, p3W)}
+     * @param p3Z the {@code z} component of the vector {@code (p3X, p3Y, p3Z, p3W)}
+     * @param p3W the {@code w} component of the vector {@code (p3X, p3Y, p3Z, p3W)}
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return {@code dest}
+     */
+    public static double[] bezier(double[] dest, int destOffset, double[] src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _t0 = 1.0 - t;
+        double _t1 = t * t;
+        double _t2 = t * _t1;
+        double _t3 = _t0 * _t0;
+        double _t6 = 3.0 * _t0 * _t1;
+        double _t7 = 3.0 * t * _t3;
+        double _t8 = _t0 * _t3;
+        dest[destOffset + 0] = Math.fma(p1X, _t7, _selfx * _t8) + Math.fma(p2X, _t6, p3X * _t2);
+        dest[destOffset + 1] = Math.fma(p1Y, _t7, _selfy * _t8) + Math.fma(p2Y, _t6, p3Y * _t2);
+        dest[destOffset + 2] = Math.fma(p1Z, _t7, _selfz * _t8) + Math.fma(p2Z, _t6, p3Z * _t2);
+        dest[destOffset + 3] = Math.fma(p1W, _t7, _selfw * _t8) + Math.fma(p2W, _t6, p3W * _t2);
+        return dest;
+    }
+
+    /** {@link #bezier(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer bezier(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.bezier_unsafe(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return Double4OpsKernelsTypedBuffer.bezier_api(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+    }
+
+    /** {@link #bezier(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer bezier(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.bezier_unsafe(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return Double4OpsKernelsByteBuffer.bezier_api(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+    }
+
+    /** {@link #bezier(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment bezier(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.bezier_unsafe(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return Double4OpsKernelsSegment.bezier_api(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+    }
+
+    /** {@link #bezier(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long bezier(long dest, long src, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.bezier_unsafe(dest, src, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        bezier(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return dest;
+    }
+
+    /**
+     * Interpolate along the cubic Bézier curve that starts at this vector, is shaped by the control
+     * points {@code p1} and {@code p2} and ends at {@code p3} and store the result in {@code dest}.
+     * <p>
+     * The curve passes through this vector at {@code t = 0} and through {@code p3} at
+     * {@code t = 1}; the control points {@code p1} and {@code p2} pull it towards themselves but
+     * are generally not on the curve.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param p1 the storage holding the first control point
+     * @param p1Offset the element index in {@code p1} at which the vector starts
+     * @param p2 the storage holding the second control point
+     * @param p2Offset the element index in {@code p2} at which the vector starts
+     * @param p3 the storage holding the end point of the curve
+     * @param p3Offset the element index in {@code p3} at which the vector starts
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return {@code dest}
+     */
+    public static double[] bezier(double[] dest, int destOffset, double[] src, int srcOffset, double[] p1, int p1Offset, double[] p2, int p2Offset, double[] p3, int p3Offset, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.bezier(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        return Double4OpsKernelsArray.bezier_scalar(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+    }
+
+    /** {@link #bezier(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer bezier(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer p1, int p1Offset, java.nio.DoubleBuffer p2, int p2Offset, java.nio.DoubleBuffer p3, int p3Offset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && p1.isDirect() && p1.order() == java.nio.ByteOrder.nativeOrder() && p2.isDirect() && p2.order() == java.nio.ByteOrder.nativeOrder() && p3.isDirect() && p3.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.bezier_unsafe(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        return Double4OpsKernelsTypedBuffer.bezier_api(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+    }
+
+    /** {@link #bezier(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer bezier(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, java.nio.ByteBuffer p3, int p3Offset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && p1.isDirect() && p1.order() == java.nio.ByteOrder.nativeOrder() && p2.isDirect() && p2.order() == java.nio.ByteOrder.nativeOrder() && p3.isDirect() && p3.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.bezier_unsafe(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        return Double4OpsKernelsByteBuffer.bezier_api(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+    }
+
+    /** {@link #bezier(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment bezier(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment p1, long p1Offset, java.lang.foreign.MemorySegment p2, long p2Offset, java.lang.foreign.MemorySegment p3, long p3Offset, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.bezier(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && p1.isNative() && p2.isNative() && p3.isNative()) return Double4OpsKernelsSegment.bezier_unsafe(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        return Double4OpsKernelsSegment.bezier_api(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+    }
+
+    /** {@link #bezier(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long bezier(long dest, long src, long p1, long p2, long p3, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.bezier_unsafe(dest, src, p1, p2, p3, t);
+        bezier(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(p1, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(p2, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(p3, 32L), 0L, t);
+        return dest;
+    }
+
+    /**
+     * Interpolate along the quadratic Bézier curve that starts at this vector, is shaped by the
+     * control point ({@code p1X}, {@code p1Y}, {@code p1Z}, {@code p1W}) and ends at ({@code p2X},
+     * {@code p2Y}, {@code p2Z}, {@code p2W}) and store the result in {@code dest}.
+     * <p>
+     * The curve passes through this vector at {@code t = 0} and through ({@code p2X}, {@code p2Y},
+     * {@code p2Z}, {@code p2W}) at {@code t = 1}; the control point ({@code p1X}, {@code p1Y},
+     * {@code p1Z}, {@code p1W}) pulls it towards itself but is generally not on the curve.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param p1X the {@code x} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p1Y the {@code y} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p1Z the {@code z} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p1W the {@code w} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p2X the {@code x} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p2Y the {@code y} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p2Z the {@code z} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p2W the {@code w} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return {@code dest}
+     */
+    public static double[] bezier2(double[] dest, int destOffset, double[] src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double t) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _t0 = t * t;
+        double _t1 = 1.0 - t;
+        double _t3 = (t + t) * _t1;
+        double _t4 = _t1 * _t1;
+        dest[destOffset + 0] = Math.fma(p2X, _t0, Math.fma(p1X, _t3, _selfx * _t4));
+        dest[destOffset + 1] = Math.fma(p2Y, _t0, Math.fma(p1Y, _t3, _selfy * _t4));
+        dest[destOffset + 2] = Math.fma(p2Z, _t0, Math.fma(p1Z, _t3, _selfz * _t4));
+        dest[destOffset + 3] = Math.fma(p2W, _t0, Math.fma(p1W, _t3, _selfw * _t4));
+        return dest;
+    }
+
+    /** {@link #bezier2(double[], int, double[], int, double, double, double, double, double, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer bezier2(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.bezier2_unsafe(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+        return Double4OpsKernelsTypedBuffer.bezier2_api(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+    }
+
+    /** {@link #bezier2(double[], int, double[], int, double, double, double, double, double, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer bezier2(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.bezier2_unsafe(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+        return Double4OpsKernelsByteBuffer.bezier2_api(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+    }
+
+    /** {@link #bezier2(double[], int, double[], int, double, double, double, double, double, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment bezier2(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.bezier2_unsafe(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+        return Double4OpsKernelsSegment.bezier2_api(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+    }
+
+    /** {@link #bezier2(double[], int, double[], int, double, double, double, double, double, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long bezier2(long dest, long src, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.bezier2_unsafe(dest, src, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+        bezier2(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+        return dest;
+    }
+
+    /**
+     * Interpolate along the quadratic Bézier curve that starts at this vector, is shaped by the
+     * control point {@code p1} and ends at {@code p2} and store the result in {@code dest}.
+     * <p>
+     * The curve passes through this vector at {@code t = 0} and through {@code p2} at
+     * {@code t = 1}; the control point {@code p1} pulls it towards itself but is generally not on
+     * the curve.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param p1 the storage holding the control point
+     * @param p1Offset the element index in {@code p1} at which the vector starts
+     * @param p2 the storage holding the end point of the curve
+     * @param p2Offset the element index in {@code p2} at which the vector starts
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return {@code dest}
+     */
+    public static double[] bezier2(double[] dest, int destOffset, double[] src, int srcOffset, double[] p1, int p1Offset, double[] p2, int p2Offset, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.bezier2(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, t);
+        return Double4OpsKernelsArray.bezier2_scalar(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, t);
+    }
+
+    /** {@link #bezier2(double[], int, double[], int, double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer bezier2(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer p1, int p1Offset, java.nio.DoubleBuffer p2, int p2Offset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && p1.isDirect() && p1.order() == java.nio.ByteOrder.nativeOrder() && p2.isDirect() && p2.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.bezier2_unsafe(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, t);
+        return Double4OpsKernelsTypedBuffer.bezier2_api(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, t);
+    }
+
+    /** {@link #bezier2(double[], int, double[], int, double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer bezier2(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && p1.isDirect() && p1.order() == java.nio.ByteOrder.nativeOrder() && p2.isDirect() && p2.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.bezier2_unsafe(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, t);
+        return Double4OpsKernelsByteBuffer.bezier2_api(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, t);
+    }
+
+    /** {@link #bezier2(double[], int, double[], int, double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment bezier2(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment p1, long p1Offset, java.lang.foreign.MemorySegment p2, long p2Offset, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.bezier2(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, t);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && p1.isNative() && p2.isNative()) return Double4OpsKernelsSegment.bezier2_unsafe(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, t);
+        return Double4OpsKernelsSegment.bezier2_api(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, t);
+    }
+
+    /** {@link #bezier2(double[], int, double[], int, double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long bezier2(long dest, long src, long p1, long p2, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.bezier2_unsafe(dest, src, p1, p2, t);
+        bezier2(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(p1, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(p2, 32L), 0L, t);
+        return dest;
+    }
+
+    /**
+     * Compute the tangent (the unnormalized first derivative) at the parameter {@code t} of the
+     * quadratic Bézier curve that starts at this vector, is shaped by the control point
+     * ({@code p1X}, {@code p1Y}, {@code p1Z}, {@code p1W}) and ends at ({@code p2X}, {@code p2Y},
+     * {@code p2Z}, {@code p2W}) and store the result in {@code dest}.
+     * <p>
+     * The curve passes through this vector at {@code t = 0} and through ({@code p2X}, {@code p2Y},
+     * {@code p2Z}, {@code p2W}) at {@code t = 1}; the control point ({@code p1X}, {@code p1Y},
+     * {@code p1Z}, {@code p1W}) pulls it towards itself but is generally not on the curve.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param p1X the {@code x} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p1Y the {@code y} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p1Z the {@code z} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p1W the {@code w} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p2X the {@code x} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p2Y the {@code y} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p2Z the {@code z} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p2W the {@code w} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return {@code dest}
+     */
+    public static double[] bezier2Tangent(double[] dest, int destOffset, double[] src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.bezier2Tangent(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+        return Double4OpsKernelsArray.bezier2Tangent_scalar(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+    }
+
+    /** {@link #bezier2Tangent(double[], int, double[], int, double, double, double, double, double, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer bezier2Tangent(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.bezier2Tangent_unsafe(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+        return Double4OpsKernelsTypedBuffer.bezier2Tangent_api(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+    }
+
+    /** {@link #bezier2Tangent(double[], int, double[], int, double, double, double, double, double, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer bezier2Tangent(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.bezier2Tangent_unsafe(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+        return Double4OpsKernelsByteBuffer.bezier2Tangent_api(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+    }
+
+    /** {@link #bezier2Tangent(double[], int, double[], int, double, double, double, double, double, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment bezier2Tangent(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.bezier2Tangent(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.bezier2Tangent_unsafe(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+        return Double4OpsKernelsSegment.bezier2Tangent_api(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+    }
+
+    /** {@link #bezier2Tangent(double[], int, double[], int, double, double, double, double, double, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long bezier2Tangent(long dest, long src, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.bezier2Tangent_unsafe(dest, src, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+        bezier2Tangent(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, t);
+        return dest;
+    }
+
+    /**
+     * Compute the tangent (the unnormalized first derivative) at the parameter {@code t} of the
+     * quadratic Bézier curve that starts at this vector, is shaped by the control point {@code p1}
+     * and ends at {@code p2} and store the result in {@code dest}.
+     * <p>
+     * The curve passes through this vector at {@code t = 0} and through {@code p2} at
+     * {@code t = 1}; the control point {@code p1} pulls it towards itself but is generally not on
+     * the curve.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param p1 the storage holding the control point
+     * @param p1Offset the element index in {@code p1} at which the vector starts
+     * @param p2 the storage holding the end point of the curve
+     * @param p2Offset the element index in {@code p2} at which the vector starts
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return {@code dest}
+     */
+    public static double[] bezier2Tangent(double[] dest, int destOffset, double[] src, int srcOffset, double[] p1, int p1Offset, double[] p2, int p2Offset, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.bezier2Tangent(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, t);
+        return Double4OpsKernelsArray.bezier2Tangent_scalar(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, t);
+    }
+
+    /** {@link #bezier2Tangent(double[], int, double[], int, double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer bezier2Tangent(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer p1, int p1Offset, java.nio.DoubleBuffer p2, int p2Offset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && p1.isDirect() && p1.order() == java.nio.ByteOrder.nativeOrder() && p2.isDirect() && p2.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.bezier2Tangent_unsafe(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, t);
+        return Double4OpsKernelsTypedBuffer.bezier2Tangent_api(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, t);
+    }
+
+    /** {@link #bezier2Tangent(double[], int, double[], int, double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer bezier2Tangent(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && p1.isDirect() && p1.order() == java.nio.ByteOrder.nativeOrder() && p2.isDirect() && p2.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.bezier2Tangent_unsafe(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, t);
+        return Double4OpsKernelsByteBuffer.bezier2Tangent_api(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, t);
+    }
+
+    /** {@link #bezier2Tangent(double[], int, double[], int, double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment bezier2Tangent(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment p1, long p1Offset, java.lang.foreign.MemorySegment p2, long p2Offset, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.bezier2Tangent(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, t);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && p1.isNative() && p2.isNative()) return Double4OpsKernelsSegment.bezier2Tangent_unsafe(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, t);
+        return Double4OpsKernelsSegment.bezier2Tangent_api(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, t);
+    }
+
+    /** {@link #bezier2Tangent(double[], int, double[], int, double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long bezier2Tangent(long dest, long src, long p1, long p2, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.bezier2Tangent_unsafe(dest, src, p1, p2, t);
+        bezier2Tangent(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(p1, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(p2, 32L), 0L, t);
+        return dest;
+    }
+
+    /**
+     * Compute the tangent (the unnormalized first derivative) at the parameter {@code t} of the
+     * cubic Bézier curve that starts at this vector, is shaped by the control points ({@code p1X},
+     * {@code p1Y}, {@code p1Z}, {@code p1W}) and ({@code p2X}, {@code p2Y}, {@code p2Z},
+     * {@code p2W}) and ends at ({@code p3X}, {@code p3Y}, {@code p3Z}, {@code p3W}) and store the
+     * result in {@code dest}.
+     * <p>
+     * The curve passes through this vector at {@code t = 0} and through ({@code p3X}, {@code p3Y},
+     * {@code p3Z}, {@code p3W}) at {@code t = 1}; the control points ({@code p1X}, {@code p1Y},
+     * {@code p1Z}, {@code p1W}) and ({@code p2X}, {@code p2Y}, {@code p2Z}, {@code p2W}) pull it
+     * towards themselves but are generally not on the curve.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param p1X the {@code x} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p1Y the {@code y} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p1Z the {@code z} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p1W the {@code w} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p2X the {@code x} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p2Y the {@code y} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p2Z the {@code z} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p2W the {@code w} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p3X the {@code x} component of the vector {@code (p3X, p3Y, p3Z, p3W)}
+     * @param p3Y the {@code y} component of the vector {@code (p3X, p3Y, p3Z, p3W)}
+     * @param p3Z the {@code z} component of the vector {@code (p3X, p3Y, p3Z, p3W)}
+     * @param p3W the {@code w} component of the vector {@code (p3X, p3Y, p3Z, p3W)}
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return {@code dest}
+     */
+    public static double[] bezierTangent(double[] dest, int destOffset, double[] src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.bezierTangent(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return Double4OpsKernelsArray.bezierTangent_scalar(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+    }
+
+    /** {@link #bezierTangent(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer bezierTangent(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.bezierTangent_unsafe(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return Double4OpsKernelsTypedBuffer.bezierTangent_api(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+    }
+
+    /** {@link #bezierTangent(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer bezierTangent(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.bezierTangent_unsafe(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return Double4OpsKernelsByteBuffer.bezierTangent_api(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+    }
+
+    /** {@link #bezierTangent(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment bezierTangent(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.bezierTangent(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.bezierTangent_unsafe(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return Double4OpsKernelsSegment.bezierTangent_api(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+    }
+
+    /** {@link #bezierTangent(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long bezierTangent(long dest, long src, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.bezierTangent_unsafe(dest, src, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        bezierTangent(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return dest;
+    }
+
+    /**
+     * Compute the tangent (the unnormalized first derivative) at the parameter {@code t} of the
+     * cubic Bézier curve that starts at this vector, is shaped by the control points {@code p1} and
+     * {@code p2} and ends at {@code p3} and store the result in {@code dest}.
+     * <p>
+     * The curve passes through this vector at {@code t = 0} and through {@code p3} at
+     * {@code t = 1}; the control points {@code p1} and {@code p2} pull it towards themselves but
+     * are generally not on the curve.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param p1 the storage holding the first control point
+     * @param p1Offset the element index in {@code p1} at which the vector starts
+     * @param p2 the storage holding the second control point
+     * @param p2Offset the element index in {@code p2} at which the vector starts
+     * @param p3 the storage holding the end point of the curve
+     * @param p3Offset the element index in {@code p3} at which the vector starts
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return {@code dest}
+     */
+    public static double[] bezierTangent(double[] dest, int destOffset, double[] src, int srcOffset, double[] p1, int p1Offset, double[] p2, int p2Offset, double[] p3, int p3Offset, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.bezierTangent(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        return Double4OpsKernelsArray.bezierTangent_scalar(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+    }
+
+    /** {@link #bezierTangent(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer bezierTangent(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer p1, int p1Offset, java.nio.DoubleBuffer p2, int p2Offset, java.nio.DoubleBuffer p3, int p3Offset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && p1.isDirect() && p1.order() == java.nio.ByteOrder.nativeOrder() && p2.isDirect() && p2.order() == java.nio.ByteOrder.nativeOrder() && p3.isDirect() && p3.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.bezierTangent_unsafe(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        return Double4OpsKernelsTypedBuffer.bezierTangent_api(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+    }
+
+    /** {@link #bezierTangent(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer bezierTangent(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, java.nio.ByteBuffer p3, int p3Offset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && p1.isDirect() && p1.order() == java.nio.ByteOrder.nativeOrder() && p2.isDirect() && p2.order() == java.nio.ByteOrder.nativeOrder() && p3.isDirect() && p3.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.bezierTangent_unsafe(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        return Double4OpsKernelsByteBuffer.bezierTangent_api(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+    }
+
+    /** {@link #bezierTangent(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment bezierTangent(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment p1, long p1Offset, java.lang.foreign.MemorySegment p2, long p2Offset, java.lang.foreign.MemorySegment p3, long p3Offset, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.bezierTangent(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && p1.isNative() && p2.isNative() && p3.isNative()) return Double4OpsKernelsSegment.bezierTangent_unsafe(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        return Double4OpsKernelsSegment.bezierTangent_api(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+    }
+
+    /** {@link #bezierTangent(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long bezierTangent(long dest, long src, long p1, long p2, long p3, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.bezierTangent_unsafe(dest, src, p1, p2, p3, t);
+        bezierTangent(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(p1, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(p2, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(p3, 32L), 0L, t);
+        return dest;
+    }
+
+    /**
+     * Interpolate along the Catmull-Rom spline segment from ({@code p1X}, {@code p1Y}, {@code p1Z},
+     * {@code p1W}) to ({@code p2X}, {@code p2Y}, {@code p2Z}, {@code p2W}), with this vector as the
+     * control point before the segment and ({@code p3X}, {@code p3Y}, {@code p3Z}, {@code p3W}) as
+     * the control point after it and store the result in {@code dest}.
+     * <p>
+     * The curve passes through ({@code p1X}, {@code p1Y}, {@code p1Z}, {@code p1W}) at
+     * {@code t = 0} and through ({@code p2X}, {@code p2Y}, {@code p2Z}, {@code p2W}) at
+     * {@code t = 1}. This vector and ({@code p3X}, {@code p3Y}, {@code p3Z}, {@code p3W}) are the
+     * spline's neighbouring points, i.e. the point before ({@code p1X}, {@code p1Y}, {@code p1Z},
+     * {@code p1W}) and the point after ({@code p2X}, {@code p2Y}, {@code p2Z}, {@code p2W}): they
+     * only shape the tangents at the segment's two end points and are not themselves on the
+     * segment. For a spline through the points {@code p[0..n]}, the segment from {@code p[i]} to
+     * {@code p[i+1]} is therefore interpolated with {@code p[i-1]} in the role of this vector and
+     * {@code p[i]}, {@code p[i+1]}, {@code p[i+2]} as the three given points.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param p1X the {@code x} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p1Y the {@code y} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p1Z the {@code z} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p1W the {@code w} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p2X the {@code x} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p2Y the {@code y} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p2Z the {@code z} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p2W the {@code w} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p3X the {@code x} component of the vector {@code (p3X, p3Y, p3Z, p3W)}
+     * @param p3Y the {@code y} component of the vector {@code (p3X, p3Y, p3Z, p3W)}
+     * @param p3Z the {@code z} component of the vector {@code (p3X, p3Y, p3Z, p3W)}
+     * @param p3W the {@code w} component of the vector {@code (p3X, p3Y, p3Z, p3W)}
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return {@code dest}
+     */
+    public static double[] catmullRom(double[] dest, int destOffset, double[] src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.catmullRom(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return Double4OpsKernelsArray.catmullRom_scalar(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+    }
+
+    /** {@link #catmullRom(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer catmullRom(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.catmullRom_unsafe(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return Double4OpsKernelsTypedBuffer.catmullRom_api(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+    }
+
+    /** {@link #catmullRom(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer catmullRom(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.catmullRom_unsafe(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return Double4OpsKernelsByteBuffer.catmullRom_api(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+    }
+
+    /** {@link #catmullRom(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment catmullRom(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.catmullRom(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.catmullRom_unsafe(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return Double4OpsKernelsSegment.catmullRom_api(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+    }
+
+    /** {@link #catmullRom(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long catmullRom(long dest, long src, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.catmullRom_unsafe(dest, src, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        catmullRom(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return dest;
+    }
+
+    /**
+     * Interpolate along the Catmull-Rom spline segment from {@code p1} to {@code p2}, with this
+     * vector as the control point before the segment and {@code p3} as the control point after it
+     * and store the result in {@code dest}.
+     * <p>
+     * The curve passes through {@code p1} at {@code t = 0} and through {@code p2} at {@code t = 1}.
+     * This vector and {@code p3} are the spline's neighbouring points, i.e. the point before
+     * {@code p1} and the point after {@code p2}: they only shape the tangents at the segment's two
+     * end points and are not themselves on the segment. For a spline through the points
+     * {@code p[0..n]}, the segment from {@code p[i]} to {@code p[i+1]} is therefore interpolated
+     * with {@code p[i-1]} in the role of this vector and {@code p[i]}, {@code p[i+1]},
+     * {@code p[i+2]} as the three given points.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param p1 the storage holding the start point of the interpolated segment
+     * @param p1Offset the element index in {@code p1} at which the vector starts
+     * @param p2 the storage holding the end point of the interpolated segment
+     * @param p2Offset the element index in {@code p2} at which the vector starts
+     * @param p3 the storage holding the control point after the segment, i.e. the spline point
+     *        following the given vector
+     * @param p3Offset the element index in {@code p3} at which the vector starts
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return {@code dest}
+     */
+    public static double[] catmullRom(double[] dest, int destOffset, double[] src, int srcOffset, double[] p1, int p1Offset, double[] p2, int p2Offset, double[] p3, int p3Offset, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.catmullRom(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        return Double4OpsKernelsArray.catmullRom_scalar(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+    }
+
+    /** {@link #catmullRom(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer catmullRom(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer p1, int p1Offset, java.nio.DoubleBuffer p2, int p2Offset, java.nio.DoubleBuffer p3, int p3Offset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && p1.isDirect() && p1.order() == java.nio.ByteOrder.nativeOrder() && p2.isDirect() && p2.order() == java.nio.ByteOrder.nativeOrder() && p3.isDirect() && p3.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.catmullRom_unsafe(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        return Double4OpsKernelsTypedBuffer.catmullRom_api(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+    }
+
+    /** {@link #catmullRom(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer catmullRom(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, java.nio.ByteBuffer p3, int p3Offset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && p1.isDirect() && p1.order() == java.nio.ByteOrder.nativeOrder() && p2.isDirect() && p2.order() == java.nio.ByteOrder.nativeOrder() && p3.isDirect() && p3.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.catmullRom_unsafe(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        return Double4OpsKernelsByteBuffer.catmullRom_api(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+    }
+
+    /** {@link #catmullRom(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment catmullRom(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment p1, long p1Offset, java.lang.foreign.MemorySegment p2, long p2Offset, java.lang.foreign.MemorySegment p3, long p3Offset, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.catmullRom(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && p1.isNative() && p2.isNative() && p3.isNative()) return Double4OpsKernelsSegment.catmullRom_unsafe(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        return Double4OpsKernelsSegment.catmullRom_api(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+    }
+
+    /** {@link #catmullRom(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long catmullRom(long dest, long src, long p1, long p2, long p3, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.catmullRom_unsafe(dest, src, p1, p2, p3, t);
+        catmullRom(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(p1, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(p2, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(p3, 32L), 0L, t);
+        return dest;
+    }
+
+    /**
+     * Compute the tangent (the unnormalized first derivative) at the parameter {@code t} of the
+     * Catmull-Rom spline segment from ({@code p1X}, {@code p1Y}, {@code p1Z}, {@code p1W}) to
+     * ({@code p2X}, {@code p2Y}, {@code p2Z}, {@code p2W}), with this vector as the control point
+     * before the segment and ({@code p3X}, {@code p3Y}, {@code p3Z}, {@code p3W}) as the control
+     * point after it and store the result in {@code dest}.
+     * <p>
+     * The curve passes through ({@code p1X}, {@code p1Y}, {@code p1Z}, {@code p1W}) at
+     * {@code t = 0} and through ({@code p2X}, {@code p2Y}, {@code p2Z}, {@code p2W}) at
+     * {@code t = 1}. This vector and ({@code p3X}, {@code p3Y}, {@code p3Z}, {@code p3W}) are the
+     * spline's neighbouring points, i.e. the point before ({@code p1X}, {@code p1Y}, {@code p1Z},
+     * {@code p1W}) and the point after ({@code p2X}, {@code p2Y}, {@code p2Z}, {@code p2W}): they
+     * only shape the tangents at the segment's two end points and are not themselves on the
+     * segment. For a spline through the points {@code p[0..n]}, the segment from {@code p[i]} to
+     * {@code p[i+1]} is therefore interpolated with {@code p[i-1]} in the role of this vector and
+     * {@code p[i]}, {@code p[i+1]}, {@code p[i+2]} as the three given points.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param p1X the {@code x} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p1Y the {@code y} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p1Z the {@code z} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p1W the {@code w} component of the vector {@code (p1X, p1Y, p1Z, p1W)}
+     * @param p2X the {@code x} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p2Y the {@code y} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p2Z the {@code z} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p2W the {@code w} component of the vector {@code (p2X, p2Y, p2Z, p2W)}
+     * @param p3X the {@code x} component of the vector {@code (p3X, p3Y, p3Z, p3W)}
+     * @param p3Y the {@code y} component of the vector {@code (p3X, p3Y, p3Z, p3W)}
+     * @param p3Z the {@code z} component of the vector {@code (p3X, p3Y, p3Z, p3W)}
+     * @param p3W the {@code w} component of the vector {@code (p3X, p3Y, p3Z, p3W)}
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return {@code dest}
+     */
+    public static double[] catmullRomTangent(double[] dest, int destOffset, double[] src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.catmullRomTangent(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return Double4OpsKernelsArray.catmullRomTangent_scalar(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+    }
+
+    /** {@link #catmullRomTangent(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer catmullRomTangent(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.catmullRomTangent_unsafe(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return Double4OpsKernelsTypedBuffer.catmullRomTangent_api(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+    }
+
+    /** {@link #catmullRomTangent(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer catmullRomTangent(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.catmullRomTangent_unsafe(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return Double4OpsKernelsByteBuffer.catmullRomTangent_api(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+    }
+
+    /** {@link #catmullRomTangent(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment catmullRomTangent(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.catmullRomTangent(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.catmullRomTangent_unsafe(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return Double4OpsKernelsSegment.catmullRomTangent_api(dest, destOffset, src, srcOffset, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+    }
+
+    /** {@link #catmullRomTangent(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long catmullRomTangent(long dest, long src, double p1X, double p1Y, double p1Z, double p1W, double p2X, double p2Y, double p2Z, double p2W, double p3X, double p3Y, double p3Z, double p3W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.catmullRomTangent_unsafe(dest, src, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        catmullRomTangent(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, p1X, p1Y, p1Z, p1W, p2X, p2Y, p2Z, p2W, p3X, p3Y, p3Z, p3W, t);
+        return dest;
+    }
+
+    /**
+     * Compute the tangent (the unnormalized first derivative) at the parameter {@code t} of the
+     * Catmull-Rom spline segment from {@code p1} to {@code p2}, with this vector as the control
+     * point before the segment and {@code p3} as the control point after it and store the result in
+     * {@code dest}.
+     * <p>
+     * The curve passes through {@code p1} at {@code t = 0} and through {@code p2} at {@code t = 1}.
+     * This vector and {@code p3} are the spline's neighbouring points, i.e. the point before
+     * {@code p1} and the point after {@code p2}: they only shape the tangents at the segment's two
+     * end points and are not themselves on the segment. For a spline through the points
+     * {@code p[0..n]}, the segment from {@code p[i]} to {@code p[i+1]} is therefore interpolated
+     * with {@code p[i-1]} in the role of this vector and {@code p[i]}, {@code p[i+1]},
+     * {@code p[i+2]} as the three given points.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param p1 the storage holding the start point of the interpolated segment
+     * @param p1Offset the element index in {@code p1} at which the vector starts
+     * @param p2 the storage holding the end point of the interpolated segment
+     * @param p2Offset the element index in {@code p2} at which the vector starts
+     * @param p3 the storage holding the control point after the segment, i.e. the spline point
+     *        following the given vector
+     * @param p3Offset the element index in {@code p3} at which the vector starts
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return {@code dest}
+     */
+    public static double[] catmullRomTangent(double[] dest, int destOffset, double[] src, int srcOffset, double[] p1, int p1Offset, double[] p2, int p2Offset, double[] p3, int p3Offset, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.catmullRomTangent(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        return Double4OpsKernelsArray.catmullRomTangent_scalar(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+    }
+
+    /** {@link #catmullRomTangent(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer catmullRomTangent(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer p1, int p1Offset, java.nio.DoubleBuffer p2, int p2Offset, java.nio.DoubleBuffer p3, int p3Offset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && p1.isDirect() && p1.order() == java.nio.ByteOrder.nativeOrder() && p2.isDirect() && p2.order() == java.nio.ByteOrder.nativeOrder() && p3.isDirect() && p3.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.catmullRomTangent_unsafe(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        return Double4OpsKernelsTypedBuffer.catmullRomTangent_api(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+    }
+
+    /** {@link #catmullRomTangent(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer catmullRomTangent(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer p1, int p1Offset, java.nio.ByteBuffer p2, int p2Offset, java.nio.ByteBuffer p3, int p3Offset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && p1.isDirect() && p1.order() == java.nio.ByteOrder.nativeOrder() && p2.isDirect() && p2.order() == java.nio.ByteOrder.nativeOrder() && p3.isDirect() && p3.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.catmullRomTangent_unsafe(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        return Double4OpsKernelsByteBuffer.catmullRomTangent_api(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+    }
+
+    /** {@link #catmullRomTangent(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment catmullRomTangent(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment p1, long p1Offset, java.lang.foreign.MemorySegment p2, long p2Offset, java.lang.foreign.MemorySegment p3, long p3Offset, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.catmullRomTangent(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && p1.isNative() && p2.isNative() && p3.isNative()) return Double4OpsKernelsSegment.catmullRomTangent_unsafe(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+        return Double4OpsKernelsSegment.catmullRomTangent_api(dest, destOffset, src, srcOffset, p1, p1Offset, p2, p2Offset, p3, p3Offset, t);
+    }
+
+    /** {@link #catmullRomTangent(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long catmullRomTangent(long dest, long src, long p1, long p2, long p3, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.catmullRomTangent_unsafe(dest, src, p1, p2, p3, t);
+        catmullRomTangent(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(p1, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(p2, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(p3, 32L), 0L, t);
+        return dest;
+    }
+
+    /**
+     * Interpolate along the cubic Hermite curve that starts at this vector with the tangent
+     * ({@code t0X}, {@code t0Y}, {@code t0Z}, {@code t0W}) and ends at ({@code v1X}, {@code v1Y},
+     * {@code v1Z}, {@code v1W}) with the tangent ({@code t1X}, {@code t1Y}, {@code t1Z},
+     * {@code t1W}) and store the result in {@code dest}.
+     * <p>
+     * The curve passes through this vector at {@code t = 0} and through ({@code v1X}, {@code v1Y},
+     * {@code v1Z}, {@code v1W}) at {@code t = 1}; the two tangents set its direction and speed at
+     * those end points.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param t0X the {@code x} component of the vector {@code (t0X, t0Y, t0Z, t0W)}
+     * @param t0Y the {@code y} component of the vector {@code (t0X, t0Y, t0Z, t0W)}
+     * @param t0Z the {@code z} component of the vector {@code (t0X, t0Y, t0Z, t0W)}
+     * @param t0W the {@code w} component of the vector {@code (t0X, t0Y, t0Z, t0W)}
+     * @param v1X the {@code x} component of the vector {@code (v1X, v1Y, v1Z, v1W)}
+     * @param v1Y the {@code y} component of the vector {@code (v1X, v1Y, v1Z, v1W)}
+     * @param v1Z the {@code z} component of the vector {@code (v1X, v1Y, v1Z, v1W)}
+     * @param v1W the {@code w} component of the vector {@code (v1X, v1Y, v1Z, v1W)}
+     * @param t1X the {@code x} component of the vector {@code (t1X, t1Y, t1Z, t1W)}
+     * @param t1Y the {@code y} component of the vector {@code (t1X, t1Y, t1Z, t1W)}
+     * @param t1Z the {@code z} component of the vector {@code (t1X, t1Y, t1Z, t1W)}
+     * @param t1W the {@code w} component of the vector {@code (t1X, t1Y, t1Z, t1W)}
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return {@code dest}
+     */
+    public static double[] hermite(double[] dest, int destOffset, double[] src, int srcOffset, double t0X, double t0Y, double t0Z, double t0W, double v1X, double v1Y, double v1Z, double v1W, double t1X, double t1Y, double t1Z, double t1W, double t) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _t0 = t * t;
+        double _t2 = t * _t0;
+        double _t5 = t * Math.fma(t, t, -t);
+        double _t7 = Math.fma(t - 2.0, _t0, t);
+        double _t9 = Math.fma(3.0, _t0, -(_t2 + _t2));
+        double _t10 = Math.fma(2.0, _t2, Math.fma(-3.0, _t0, 1.0));
+        dest[destOffset + 0] = Math.fma(_selfx, _t10, t0X * _t7) + Math.fma(t1X, _t5, v1X * _t9);
+        dest[destOffset + 1] = Math.fma(_selfy, _t10, t0Y * _t7) + Math.fma(t1Y, _t5, v1Y * _t9);
+        dest[destOffset + 2] = Math.fma(_selfz, _t10, t0Z * _t7) + Math.fma(t1Z, _t5, v1Z * _t9);
+        dest[destOffset + 3] = Math.fma(_selfw, _t10, t0W * _t7) + Math.fma(t1W, _t5, v1W * _t9);
+        return dest;
+    }
+
+    /** {@link #hermite(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer hermite(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double t0X, double t0Y, double t0Z, double t0W, double v1X, double v1Y, double v1Z, double v1W, double t1X, double t1Y, double t1Z, double t1W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.hermite_unsafe(dest, destOffset, src, srcOffset, t0X, t0Y, t0Z, t0W, v1X, v1Y, v1Z, v1W, t1X, t1Y, t1Z, t1W, t);
+        return Double4OpsKernelsTypedBuffer.hermite_api(dest, destOffset, src, srcOffset, t0X, t0Y, t0Z, t0W, v1X, v1Y, v1Z, v1W, t1X, t1Y, t1Z, t1W, t);
+    }
+
+    /** {@link #hermite(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer hermite(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double t0X, double t0Y, double t0Z, double t0W, double v1X, double v1Y, double v1Z, double v1W, double t1X, double t1Y, double t1Z, double t1W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.hermite_unsafe(dest, destOffset, src, srcOffset, t0X, t0Y, t0Z, t0W, v1X, v1Y, v1Z, v1W, t1X, t1Y, t1Z, t1W, t);
+        return Double4OpsKernelsByteBuffer.hermite_api(dest, destOffset, src, srcOffset, t0X, t0Y, t0Z, t0W, v1X, v1Y, v1Z, v1W, t1X, t1Y, t1Z, t1W, t);
+    }
+
+    /** {@link #hermite(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment hermite(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double t0X, double t0Y, double t0Z, double t0W, double v1X, double v1Y, double v1Z, double v1W, double t1X, double t1Y, double t1Z, double t1W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.hermite_unsafe(dest, destOffset, src, srcOffset, t0X, t0Y, t0Z, t0W, v1X, v1Y, v1Z, v1W, t1X, t1Y, t1Z, t1W, t);
+        return Double4OpsKernelsSegment.hermite_api(dest, destOffset, src, srcOffset, t0X, t0Y, t0Z, t0W, v1X, v1Y, v1Z, v1W, t1X, t1Y, t1Z, t1W, t);
+    }
+
+    /** {@link #hermite(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long hermite(long dest, long src, double t0X, double t0Y, double t0Z, double t0W, double v1X, double v1Y, double v1Z, double v1W, double t1X, double t1Y, double t1Z, double t1W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.hermite_unsafe(dest, src, t0X, t0Y, t0Z, t0W, v1X, v1Y, v1Z, v1W, t1X, t1Y, t1Z, t1W, t);
+        hermite(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, t0X, t0Y, t0Z, t0W, v1X, v1Y, v1Z, v1W, t1X, t1Y, t1Z, t1W, t);
+        return dest;
+    }
+
+    /**
+     * Interpolate along the cubic Hermite curve that starts at this vector with the tangent
+     * {@code t0} and ends at {@code v1} with the tangent {@code t1} and store the result in
+     * {@code dest}.
+     * <p>
+     * The curve passes through this vector at {@code t = 0} and through {@code v1} at
+     * {@code t = 1}; the two tangents set its direction and speed at those end points.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param t0 the storage holding the tangent at the start point, i.e. at this vector
+     * @param t0Offset the element index in {@code t0} at which the vector starts
+     * @param v1 the storage holding the end point of the curve
+     * @param v1Offset the element index in {@code v1} at which the vector starts
+     * @param t1 the storage holding the tangent at the end point the given vector
+     * @param t1Offset the element index in {@code t1} at which the vector starts
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return {@code dest}
+     */
+    public static double[] hermite(double[] dest, int destOffset, double[] src, int srcOffset, double[] t0, int t0Offset, double[] v1, int v1Offset, double[] t1, int t1Offset, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.hermite(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+        return Double4OpsKernelsArray.hermite_scalar(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+    }
+
+    /** {@link #hermite(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer hermite(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer t0, int t0Offset, java.nio.DoubleBuffer v1, int v1Offset, java.nio.DoubleBuffer t1, int t1Offset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && t0.isDirect() && t0.order() == java.nio.ByteOrder.nativeOrder() && v1.isDirect() && v1.order() == java.nio.ByteOrder.nativeOrder() && t1.isDirect() && t1.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.hermite_unsafe(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+        return Double4OpsKernelsTypedBuffer.hermite_api(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+    }
+
+    /** {@link #hermite(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer hermite(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer t0, int t0Offset, java.nio.ByteBuffer v1, int v1Offset, java.nio.ByteBuffer t1, int t1Offset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && t0.isDirect() && t0.order() == java.nio.ByteOrder.nativeOrder() && v1.isDirect() && v1.order() == java.nio.ByteOrder.nativeOrder() && t1.isDirect() && t1.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.hermite_unsafe(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+        return Double4OpsKernelsByteBuffer.hermite_api(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+    }
+
+    /** {@link #hermite(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment hermite(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment t0, long t0Offset, java.lang.foreign.MemorySegment v1, long v1Offset, java.lang.foreign.MemorySegment t1, long t1Offset, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.hermite(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && t0.isNative() && v1.isNative() && t1.isNative()) return Double4OpsKernelsSegment.hermite_unsafe(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+        return Double4OpsKernelsSegment.hermite_api(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+    }
+
+    /** {@link #hermite(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long hermite(long dest, long src, long t0, long v1, long t1, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.hermite_unsafe(dest, src, t0, v1, t1, t);
+        hermite(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(t0, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(v1, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(t1, 32L), 0L, t);
+        return dest;
+    }
+
+    /**
+     * Compute the tangent (the unnormalized first derivative) at the parameter {@code t} of the
+     * cubic Hermite curve that starts at this vector with the tangent ({@code t0X}, {@code t0Y},
+     * {@code t0Z}, {@code t0W}) and ends at ({@code v1X}, {@code v1Y}, {@code v1Z}, {@code v1W})
+     * with the tangent ({@code t1X}, {@code t1Y}, {@code t1Z}, {@code t1W}) and store the result in
+     * {@code dest}.
+     * <p>
+     * The curve passes through this vector at {@code t = 0} and through ({@code v1X}, {@code v1Y},
+     * {@code v1Z}, {@code v1W}) at {@code t = 1}; the two tangents set its direction and speed at
+     * those end points.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param t0X the {@code x} component of the vector {@code (t0X, t0Y, t0Z, t0W)}
+     * @param t0Y the {@code y} component of the vector {@code (t0X, t0Y, t0Z, t0W)}
+     * @param t0Z the {@code z} component of the vector {@code (t0X, t0Y, t0Z, t0W)}
+     * @param t0W the {@code w} component of the vector {@code (t0X, t0Y, t0Z, t0W)}
+     * @param v1X the {@code x} component of the vector {@code (v1X, v1Y, v1Z, v1W)}
+     * @param v1Y the {@code y} component of the vector {@code (v1X, v1Y, v1Z, v1W)}
+     * @param v1Z the {@code z} component of the vector {@code (v1X, v1Y, v1Z, v1W)}
+     * @param v1W the {@code w} component of the vector {@code (v1X, v1Y, v1Z, v1W)}
+     * @param t1X the {@code x} component of the vector {@code (t1X, t1Y, t1Z, t1W)}
+     * @param t1Y the {@code y} component of the vector {@code (t1X, t1Y, t1Z, t1W)}
+     * @param t1Z the {@code z} component of the vector {@code (t1X, t1Y, t1Z, t1W)}
+     * @param t1W the {@code w} component of the vector {@code (t1X, t1Y, t1Z, t1W)}
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return {@code dest}
+     */
+    public static double[] hermiteTangent(double[] dest, int destOffset, double[] src, int srcOffset, double t0X, double t0Y, double t0Z, double t0W, double v1X, double v1Y, double v1Z, double v1W, double t1X, double t1Y, double t1Z, double t1W, double t) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _t0 = t * t;
+        double _t6 = 6.0 * Math.fma(t, t, -t);
+        double _t7 = 6.0 * Math.fma(-t, t, t);
+        double _t8 = Math.fma(3.0, _t0, -(t + t));
+        double _t9 = Math.fma(3.0, _t0, Math.fma(-4.0, t, 1.0));
+        dest[destOffset + 0] = Math.fma(_selfx, _t6, t0X * _t9) + Math.fma(t1X, _t8, v1X * _t7);
+        dest[destOffset + 1] = Math.fma(_selfy, _t6, t0Y * _t9) + Math.fma(t1Y, _t8, v1Y * _t7);
+        dest[destOffset + 2] = Math.fma(_selfz, _t6, t0Z * _t9) + Math.fma(t1Z, _t8, v1Z * _t7);
+        dest[destOffset + 3] = Math.fma(_selfw, _t6, t0W * _t9) + Math.fma(t1W, _t8, v1W * _t7);
+        return dest;
+    }
+
+    /** {@link #hermiteTangent(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer hermiteTangent(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double t0X, double t0Y, double t0Z, double t0W, double v1X, double v1Y, double v1Z, double v1W, double t1X, double t1Y, double t1Z, double t1W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.hermiteTangent_unsafe(dest, destOffset, src, srcOffset, t0X, t0Y, t0Z, t0W, v1X, v1Y, v1Z, v1W, t1X, t1Y, t1Z, t1W, t);
+        return Double4OpsKernelsTypedBuffer.hermiteTangent_api(dest, destOffset, src, srcOffset, t0X, t0Y, t0Z, t0W, v1X, v1Y, v1Z, v1W, t1X, t1Y, t1Z, t1W, t);
+    }
+
+    /** {@link #hermiteTangent(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer hermiteTangent(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double t0X, double t0Y, double t0Z, double t0W, double v1X, double v1Y, double v1Z, double v1W, double t1X, double t1Y, double t1Z, double t1W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.hermiteTangent_unsafe(dest, destOffset, src, srcOffset, t0X, t0Y, t0Z, t0W, v1X, v1Y, v1Z, v1W, t1X, t1Y, t1Z, t1W, t);
+        return Double4OpsKernelsByteBuffer.hermiteTangent_api(dest, destOffset, src, srcOffset, t0X, t0Y, t0Z, t0W, v1X, v1Y, v1Z, v1W, t1X, t1Y, t1Z, t1W, t);
+    }
+
+    /** {@link #hermiteTangent(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment hermiteTangent(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double t0X, double t0Y, double t0Z, double t0W, double v1X, double v1Y, double v1Z, double v1W, double t1X, double t1Y, double t1Z, double t1W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.hermiteTangent_unsafe(dest, destOffset, src, srcOffset, t0X, t0Y, t0Z, t0W, v1X, v1Y, v1Z, v1W, t1X, t1Y, t1Z, t1W, t);
+        return Double4OpsKernelsSegment.hermiteTangent_api(dest, destOffset, src, srcOffset, t0X, t0Y, t0Z, t0W, v1X, v1Y, v1Z, v1W, t1X, t1Y, t1Z, t1W, t);
+    }
+
+    /** {@link #hermiteTangent(double[], int, double[], int, double, double, double, double, double, double, double, double, double, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long hermiteTangent(long dest, long src, double t0X, double t0Y, double t0Z, double t0W, double v1X, double v1Y, double v1Z, double v1W, double t1X, double t1Y, double t1Z, double t1W, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.hermiteTangent_unsafe(dest, src, t0X, t0Y, t0Z, t0W, v1X, v1Y, v1Z, v1W, t1X, t1Y, t1Z, t1W, t);
+        hermiteTangent(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, t0X, t0Y, t0Z, t0W, v1X, v1Y, v1Z, v1W, t1X, t1Y, t1Z, t1W, t);
+        return dest;
+    }
+
+    /**
+     * Compute the tangent (the unnormalized first derivative) at the parameter {@code t} of the
+     * cubic Hermite curve that starts at this vector with the tangent {@code t0} and ends at
+     * {@code v1} with the tangent {@code t1} and store the result in {@code dest}.
+     * <p>
+     * The curve passes through this vector at {@code t = 0} and through {@code v1} at
+     * {@code t = 1}; the two tangents set its direction and speed at those end points.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param t0 the storage holding the tangent at the start point, i.e. at this vector
+     * @param t0Offset the element index in {@code t0} at which the vector starts
+     * @param v1 the storage holding the end point of the curve
+     * @param v1Offset the element index in {@code v1} at which the vector starts
+     * @param t1 the storage holding the tangent at the end point the given vector
+     * @param t1Offset the element index in {@code t1} at which the vector starts
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return {@code dest}
+     */
+    public static double[] hermiteTangent(double[] dest, int destOffset, double[] src, int srcOffset, double[] t0, int t0Offset, double[] v1, int v1Offset, double[] t1, int t1Offset, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.hermiteTangent(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+        return Double4OpsKernelsArray.hermiteTangent_scalar(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+    }
+
+    /** {@link #hermiteTangent(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer hermiteTangent(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer t0, int t0Offset, java.nio.DoubleBuffer v1, int v1Offset, java.nio.DoubleBuffer t1, int t1Offset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && t0.isDirect() && t0.order() == java.nio.ByteOrder.nativeOrder() && v1.isDirect() && v1.order() == java.nio.ByteOrder.nativeOrder() && t1.isDirect() && t1.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.hermiteTangent_unsafe(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+        return Double4OpsKernelsTypedBuffer.hermiteTangent_api(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+    }
+
+    /** {@link #hermiteTangent(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer hermiteTangent(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer t0, int t0Offset, java.nio.ByteBuffer v1, int v1Offset, java.nio.ByteBuffer t1, int t1Offset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && t0.isDirect() && t0.order() == java.nio.ByteOrder.nativeOrder() && v1.isDirect() && v1.order() == java.nio.ByteOrder.nativeOrder() && t1.isDirect() && t1.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.hermiteTangent_unsafe(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+        return Double4OpsKernelsByteBuffer.hermiteTangent_api(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+    }
+
+    /** {@link #hermiteTangent(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment hermiteTangent(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment t0, long t0Offset, java.lang.foreign.MemorySegment v1, long v1Offset, java.lang.foreign.MemorySegment t1, long t1Offset, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.hermiteTangent(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && t0.isNative() && v1.isNative() && t1.isNative()) return Double4OpsKernelsSegment.hermiteTangent_unsafe(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+        return Double4OpsKernelsSegment.hermiteTangent_api(dest, destOffset, src, srcOffset, t0, t0Offset, v1, v1Offset, t1, t1Offset, t);
+    }
+
+    /** {@link #hermiteTangent(double[], int, double[], int, double[], int, double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long hermiteTangent(long dest, long src, long t0, long v1, long t1, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.hermiteTangent_unsafe(dest, src, t0, v1, t1, t);
+        hermiteTangent(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(t0, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(v1, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(t1, 32L), 0L, t);
+        return dest;
+    }
+
+    /**
+     * Linearly interpolate between this vector and ({@code otherX}, {@code otherY}, {@code otherZ},
+     * {@code otherW}) using the interpolation factor {@code t} and store the result in
+     * {@code dest}.
+     * <p>
+     * The interpolation starts at this vector (interpolation factor {@code 0}) and ends at
+     * ({@code otherX}, {@code otherY}, {@code otherZ}, {@code otherW}) (interpolation factor
+     * {@code 1}). Each linearly interpolated component is {@code this + (other - this) * t}, as in
+     * JOML and glMatrix: monotone in {@code t} and exact at {@code 0}, but at {@code 1} exact only
+     * up to the rounding of {@code other - this}, which shows when this component is much larger in
+     * magnitude than the other one (in {@code float}, 1e8 towards 1 ends at 0).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param otherX the {@code x} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return {@code dest}
+     */
+    public static double[] lerp(double[] dest, int destOffset, double[] src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.lerp(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        return Double4OpsKernelsArray.lerp_scalar(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+    }
+
+    /** {@link #lerp(double[], int, double[], int, double, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer lerp(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.lerp_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        return Double4OpsKernelsTypedBuffer.lerp_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+    }
+
+    /** {@link #lerp(double[], int, double[], int, double, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer lerp(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.lerp_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        return Double4OpsKernelsByteBuffer.lerp_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+    }
+
+    /** {@link #lerp(double[], int, double[], int, double, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment lerp(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double otherX, double otherY, double otherZ, double otherW, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.lerp(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.lerp_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        return Double4OpsKernelsSegment.lerp_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+    }
+
+    /** {@link #lerp(double[], int, double[], int, double, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long lerp(long dest, long src, double otherX, double otherY, double otherZ, double otherW, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.lerp_unsafe(dest, src, otherX, otherY, otherZ, otherW, t);
+        lerp(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, otherX, otherY, otherZ, otherW, t);
+        return dest;
+    }
+
+    /**
+     * Linearly interpolate between this vector and {@code other} using the interpolation factor
+     * {@code t} and store the result in {@code dest}.
+     * <p>
+     * The interpolation starts at this vector (interpolation factor {@code 0}) and ends at
+     * {@code other} (interpolation factor {@code 1}). Each linearly interpolated component is
+     * {@code this + (other - this) * t}, as in JOML and glMatrix: monotone in {@code t} and exact
+     * at {@code 0}, but at {@code 1} exact only up to the rounding of {@code other - this}, which
+     * shows when this component is much larger in magnitude than the other one (in {@code float},
+     * 1e8 towards 1 ends at 0).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param other the storage holding the vector to interpolate towards
+     * @param otherOffset the element index in {@code other} at which the vector starts
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return {@code dest}
+     */
+    public static double[] lerp(double[] dest, int destOffset, double[] src, int srcOffset, double[] other, int otherOffset, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.lerp(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        return Double4OpsKernelsArray.lerp_scalar(dest, destOffset, src, srcOffset, other, otherOffset, t);
+    }
+
+    /** {@link #lerp(double[], int, double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer lerp(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer other, int otherOffset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.lerp_unsafe(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        return Double4OpsKernelsTypedBuffer.lerp_api(dest, destOffset, src, srcOffset, other, otherOffset, t);
+    }
+
+    /** {@link #lerp(double[], int, double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer lerp(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.lerp_unsafe(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        return Double4OpsKernelsByteBuffer.lerp_api(dest, destOffset, src, srcOffset, other, otherOffset, t);
+    }
+
+    /** {@link #lerp(double[], int, double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment lerp(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment other, long otherOffset, double t) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.lerp(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && other.isNative()) return Double4OpsKernelsSegment.lerp_unsafe(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        return Double4OpsKernelsSegment.lerp_api(dest, destOffset, src, srcOffset, other, otherOffset, t);
+    }
+
+    /** {@link #lerp(double[], int, double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long lerp(long dest, long src, long other, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.lerp_unsafe(dest, src, other, t);
+        lerp(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(other, 32L), 0L, t);
+        return dest;
+    }
+
+    /**
+     * Linearly interpolate between this vector and ({@code otherX}, {@code otherY}, {@code otherZ},
+     * {@code otherW}) using the interpolation factor ({@code tX}, {@code tY}, {@code tZ},
+     * {@code tW}) and store the result in {@code dest}.
+     * <p>
+     * The interpolation starts at this vector (interpolation factor {@code 0}) and ends at
+     * ({@code otherX}, {@code otherY}, {@code otherZ}, {@code otherW}) (interpolation factor
+     * {@code 1}). Each linearly interpolated component is {@code this + (other - this) * t}, as in
+     * JOML and glMatrix: monotone in {@code t} and exact at {@code 0}, but at {@code 1} exact only
+     * up to the rounding of {@code other - this}, which shows when this component is much larger in
+     * magnitude than the other one (in {@code float}, 1e8 towards 1 ends at 0).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param otherX the {@code x} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param tX the {@code x} component of the vector {@code (tX, tY, tZ, tW)}
+     * @param tY the {@code y} component of the vector {@code (tX, tY, tZ, tW)}
+     * @param tZ the {@code z} component of the vector {@code (tX, tY, tZ, tW)}
+     * @param tW the {@code w} component of the vector {@code (tX, tY, tZ, tW)}
+     * @return {@code dest}
+     */
+    public static double[] lerp(double[] dest, int destOffset, double[] src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double tX, double tY, double tZ, double tW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.fma(tX, otherX - _selfx, _selfx);
+        dest[destOffset + 1] = Math.fma(tY, otherY - _selfy, _selfy);
+        dest[destOffset + 2] = Math.fma(tZ, otherZ - _selfz, _selfz);
+        dest[destOffset + 3] = Math.fma(tW, otherW - _selfw, _selfw);
+        return dest;
+    }
+
+    /** {@link #lerp(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer lerp(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double tX, double tY, double tZ, double tW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.lerp_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, tX, tY, tZ, tW);
+        return Double4OpsKernelsTypedBuffer.lerp_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, tX, tY, tZ, tW);
+    }
+
+    /** {@link #lerp(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer lerp(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double tX, double tY, double tZ, double tW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.lerp_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, tX, tY, tZ, tW);
+        return Double4OpsKernelsByteBuffer.lerp_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, tX, tY, tZ, tW);
+    }
+
+    /** {@link #lerp(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment lerp(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double otherX, double otherY, double otherZ, double otherW, double tX, double tY, double tZ, double tW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.lerp_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, tX, tY, tZ, tW);
+        return Double4OpsKernelsSegment.lerp_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, tX, tY, tZ, tW);
+    }
+
+    /** {@link #lerp(double[], int, double[], int, double, double, double, double, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long lerp(long dest, long src, double otherX, double otherY, double otherZ, double otherW, double tX, double tY, double tZ, double tW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.lerp_unsafe(dest, src, otherX, otherY, otherZ, otherW, tX, tY, tZ, tW);
+        lerp(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, otherX, otherY, otherZ, otherW, tX, tY, tZ, tW);
+        return dest;
+    }
+
+    /**
+     * Linearly interpolate between this vector and {@code other} using the interpolation factor
+     * {@code t} and store the result in {@code dest}.
+     * <p>
+     * The interpolation starts at this vector (interpolation factor {@code 0}) and ends at
+     * {@code other} (interpolation factor {@code 1}). Each linearly interpolated component is
+     * {@code this + (other - this) * t}, as in JOML and glMatrix: monotone in {@code t} and exact
+     * at {@code 0}, but at {@code 1} exact only up to the rounding of {@code other - this}, which
+     * shows when this component is much larger in magnitude than the other one (in {@code float},
+     * 1e8 towards 1 ends at 0).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param other the storage holding the vector to interpolate towards
+     * @param otherOffset the element index in {@code other} at which the vector starts
+     * @param t the storage holding the per-component interpolation factors, typically within
+     *        {@code [0, 1]}
+     * @param tOffset the element index in {@code t} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] lerp(double[] dest, int destOffset, double[] src, int srcOffset, double[] other, int otherOffset, double[] t, int tOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.lerp(dest, destOffset, src, srcOffset, other, otherOffset, t, tOffset);
+        return Double4OpsKernelsArray.lerp_scalar(dest, destOffset, src, srcOffset, other, otherOffset, t, tOffset);
+    }
+
+    /** {@link #lerp(double[], int, double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer lerp(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer other, int otherOffset, java.nio.DoubleBuffer t, int tOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder() && t.isDirect() && t.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.lerp_unsafe(dest, destOffset, src, srcOffset, other, otherOffset, t, tOffset);
+        return Double4OpsKernelsTypedBuffer.lerp_api(dest, destOffset, src, srcOffset, other, otherOffset, t, tOffset);
+    }
+
+    /** {@link #lerp(double[], int, double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer lerp(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, java.nio.ByteBuffer t, int tOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder() && t.isDirect() && t.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.lerp_unsafe(dest, destOffset, src, srcOffset, other, otherOffset, t, tOffset);
+        return Double4OpsKernelsByteBuffer.lerp_api(dest, destOffset, src, srcOffset, other, otherOffset, t, tOffset);
+    }
+
+    /** {@link #lerp(double[], int, double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment lerp(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment other, long otherOffset, java.lang.foreign.MemorySegment t, long tOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.lerp(dest, destOffset, src, srcOffset, other, otherOffset, t, tOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && other.isNative() && t.isNative()) return Double4OpsKernelsSegment.lerp_unsafe(dest, destOffset, src, srcOffset, other, otherOffset, t, tOffset);
+        return Double4OpsKernelsSegment.lerp_api(dest, destOffset, src, srcOffset, other, otherOffset, t, tOffset);
+    }
+
+    /** {@link #lerp(double[], int, double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long lerp(long dest, long src, long other, long t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.lerp_unsafe(dest, src, other, t);
+        lerp(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(other, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(t, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Spherically interpolate between this vector and ({@code otherX}, {@code otherY},
+     * {@code otherZ}, {@code otherW}) using the interpolation factor {@code t}: the direction turns
+     * at a constant rate along the shorter arc between the two directions, and the length changes
+     * linearly between the two lengths and store the result in {@code dest}.
+     * <p>
+     * For unit vectors this is the usual {@code slerp} of directions. A zero vector has no
+     * direction, so the result is then the linear interpolation; for two vectors pointing in
+     * opposite directions, whose arc lies in no particular plane, the direction turns through the
+     * perpendicular {@code (-y, x, -w, z)} of this vector. The angle is computed with
+     * {@code atan2}, and vectors of any finite length are handled: when their squared lengths leave
+     * the {@code double} range, they are first scaled exactly by powers of two.
+     * <p>
+     * The interpolation starts at this vector (interpolation factor {@code 0}) and ends at
+     * ({@code otherX}, {@code otherY}, {@code otherZ}, {@code otherW}) (interpolation factor
+     * {@code 1}).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param otherX the {@code x} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return {@code dest}
+     */
+    public static double[] slerp(double[] dest, int destOffset, double[] src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _t9 = Math.fma(_selfw, _selfw, Math.fma(_selfz, _selfz, Math.fma(_selfx, _selfx, _selfy * _selfy)));
+        if (!(_t9 > 2.2250738585072014E-308 && _t9 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsArray.slerp_degenerate(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        double _t10 = Math.fma(otherW, otherW, Math.fma(otherZ, otherZ, Math.fma(otherX, otherX, otherY * otherY)));
+        if (!(_t10 > 2.2250738585072014E-308 && _t10 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsArray.slerp_degenerate(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        double _t11 = (1.0 / Math.sqrt(_t9));
+        double _t14 = (1.0 / Math.sqrt(_t10));
+        double _t16 = _selfx * _t11;
+        double _t19 = _selfw * _t11;
+        double _t21 = _selfz * _t11;
+        double _t24 = _selfy * _t11;
+        double _t31 = Math.fma(otherW * _t14, _t19, Math.fma(otherZ * _t14, _t21, Math.fma(otherX * _t14, _t16, otherY * _t14 * _t24)));
+        return slerp_s55926b08_1(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t, _t14, _t16, _t19, _t21, _t24, t * Math.sqrt(_t10) + (1.0 - t) * Math.sqrt(_t9), _t31, Math.fma(otherW, _t14, -(_t31 * _t19)));
+    }
+
+    /** Piece 2 of {@code slerp}, split to fit the inline budget; reached only through it. */
+    private static double[] slerp_s55926b08_1(double[] dest, int destOffset, double[] src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t, double _t14, double _t16, double _t19, double _t21, double _t24, double _t28, double _t31, double _t40) {
+        double _t41 = Math.fma(otherZ, _t14, -(_t31 * _t21));
+        double _t42 = Math.fma(otherX, _t14, -(_t31 * _t16));
+        double _t43 = Math.fma(otherY, _t14, -(_t31 * _t24));
+        double _t48 = -Math.fma(_t40, _t19, Math.fma(_t41, _t21, Math.fma(_t42, _t16, _t43 * _t24)));
+        double _t49 = Math.fma(_t48, _t19, _t40);
+        double _t50 = Math.fma(_t48, _t21, _t41);
+        double _t51 = Math.fma(_t48, _t16, _t42);
+        double _t52 = Math.fma(_t48, _t24, _t43);
+        double _t57 = Math.fma(_t49, _t49, Math.fma(_t50, _t50, Math.fma(_t51, _t51, _t52 * _t52)));
+        if (!(_t57 > 5.048709793414476E-29 && _t57 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsArray.slerp_degenerate(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        double _t61 = t * Math.atan2(Math.sqrt(_t57), _t31);
+        double _sp0 = _t28 * Math.sin(_t61) * (1.0 / Math.sqrt(_t57));
+        double _t66 = _t28 * Math.cos(_t61);
+        dest[destOffset + 0] = Math.fma(_t16, _t66, _sp0 * _t51);
+        dest[destOffset + 1] = Math.fma(_t24, _t66, _sp0 * _t52);
+        dest[destOffset + 2] = Math.fma(_t21, _t66, _sp0 * _t50);
+        dest[destOffset + 3] = Math.fma(_t19, _t66, _sp0 * _t49);
+        return dest;
+    }
+
+    /** {@link #slerp(double[], int, double[], int, double, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer slerp(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.slerp_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        return Double4OpsKernelsTypedBuffer.slerp_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+    }
+
+    /** {@link #slerp(double[], int, double[], int, double, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer slerp(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.slerp_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        return Double4OpsKernelsByteBuffer.slerp_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+    }
+
+    /** {@link #slerp(double[], int, double[], int, double, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment slerp(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double otherX, double otherY, double otherZ, double otherW, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.slerp_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+        return Double4OpsKernelsSegment.slerp_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW, t);
+    }
+
+    /** {@link #slerp(double[], int, double[], int, double, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long slerp(long dest, long src, double otherX, double otherY, double otherZ, double otherW, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.slerp_unsafe(dest, src, otherX, otherY, otherZ, otherW, t);
+        slerp(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, otherX, otherY, otherZ, otherW, t);
+        return dest;
+    }
+
+    /**
+     * Spherically interpolate between this vector and {@code other} using the interpolation factor
+     * {@code t}: the direction turns at a constant rate along the shorter arc between the two
+     * directions, and the length changes linearly between the two lengths and store the result in
+     * {@code dest}.
+     * <p>
+     * For unit vectors this is the usual {@code slerp} of directions. A zero vector has no
+     * direction, so the result is then the linear interpolation; for two vectors pointing in
+     * opposite directions, whose arc lies in no particular plane, the direction turns through the
+     * perpendicular {@code (-y, x, -w, z)} of this vector. The angle is computed with
+     * {@code atan2}, and vectors of any finite length are handled: when their squared lengths leave
+     * the {@code double} range, they are first scaled exactly by powers of two.
+     * <p>
+     * The interpolation starts at this vector (interpolation factor {@code 0}) and ends at
+     * {@code other} (interpolation factor {@code 1}).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param other the storage holding the vector to interpolate towards
+     * @param otherOffset the element index in {@code other} at which the vector starts
+     * @param t the interpolation factor, typically within {@code [0, 1]}
+     * @return {@code dest}
+     */
+    public static double[] slerp(double[] dest, int destOffset, double[] src, int srcOffset, double[] other, int otherOffset, double t) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _otherx = other[otherOffset + 0];
+        double _othery = other[otherOffset + 1];
+        double _otherz = other[otherOffset + 2];
+        double _otherw = other[otherOffset + 3];
+        double _t9 = Math.fma(_selfw, _selfw, Math.fma(_selfz, _selfz, Math.fma(_selfx, _selfx, _selfy * _selfy)));
+        if (!(_t9 > 2.2250738585072014E-308 && _t9 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsArray.slerp_degenerate(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        double _t10 = Math.fma(_otherw, _otherw, Math.fma(_otherz, _otherz, Math.fma(_otherx, _otherx, _othery * _othery)));
+        if (!(_t10 > 2.2250738585072014E-308 && _t10 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsArray.slerp_degenerate(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        double _t11 = (1.0 / Math.sqrt(_t9));
+        return slerp_sfd63dc4f_1(dest, destOffset, src, srcOffset, other, otherOffset, t, _otherx, _othery, _otherz, _otherw, (1.0 / Math.sqrt(_t10)), _selfx * _t11, _selfw * _t11, _selfz * _t11, _selfy * _t11, t * Math.sqrt(_t10) + (1.0 - t) * Math.sqrt(_t9));
+    }
+
+    /** Piece 2 of {@code slerp}, split to fit the inline budget; reached only through it. */
+    private static double[] slerp_sfd63dc4f_1(double[] dest, int destOffset, double[] src, int srcOffset, double[] other, int otherOffset, double t, double _otherx, double _othery, double _otherz, double _otherw, double _t14, double _t16, double _t19, double _t21, double _t24, double _t28) {
+        double _t31 = Math.fma(_otherw * _t14, _t19, Math.fma(_otherz * _t14, _t21, Math.fma(_otherx * _t14, _t16, _othery * _t14 * _t24)));
+        double _t40 = Math.fma(_otherw, _t14, -(_t31 * _t19));
+        double _t41 = Math.fma(_otherz, _t14, -(_t31 * _t21));
+        double _t42 = Math.fma(_otherx, _t14, -(_t31 * _t16));
+        double _t43 = Math.fma(_othery, _t14, -(_t31 * _t24));
+        double _t48 = -Math.fma(_t40, _t19, Math.fma(_t41, _t21, Math.fma(_t42, _t16, _t43 * _t24)));
+        double _t49 = Math.fma(_t48, _t19, _t40);
+        double _t50 = Math.fma(_t48, _t21, _t41);
+        double _t51 = Math.fma(_t48, _t16, _t42);
+        double _t52 = Math.fma(_t48, _t24, _t43);
+        double _t57 = Math.fma(_t49, _t49, Math.fma(_t50, _t50, Math.fma(_t51, _t51, _t52 * _t52)));
+        if (!(_t57 > 5.048709793414476E-29 && _t57 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsArray.slerp_degenerate(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        double _t61 = t * Math.atan2(Math.sqrt(_t57), _t31);
+        return slerp_sfd63dc4f_2(dest, destOffset, _t16, _t19, _t21, _t24, _t49, _t50, _t51, _t52, _t28 * Math.sin(_t61) * (1.0 / Math.sqrt(_t57)), _t28 * Math.cos(_t61));
+    }
+
+    /** Piece 3 of {@code slerp}, split to fit the inline budget; reached only through it. */
+    private static double[] slerp_sfd63dc4f_2(double[] dest, int destOffset, double _t16, double _t19, double _t21, double _t24, double _t49, double _t50, double _t51, double _t52, double _sp0, double _t66) {
+        dest[destOffset + 0] = Math.fma(_t16, _t66, _sp0 * _t51);
+        dest[destOffset + 1] = Math.fma(_t24, _t66, _sp0 * _t52);
+        dest[destOffset + 2] = Math.fma(_t21, _t66, _sp0 * _t50);
+        dest[destOffset + 3] = Math.fma(_t19, _t66, _sp0 * _t49);
+        return dest;
+    }
+
+    /** {@link #slerp(double[], int, double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer slerp(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer other, int otherOffset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.slerp_unsafe(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        return Double4OpsKernelsTypedBuffer.slerp_api(dest, destOffset, src, srcOffset, other, otherOffset, t);
+    }
+
+    /** {@link #slerp(double[], int, double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer slerp(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.slerp_unsafe(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        return Double4OpsKernelsByteBuffer.slerp_api(dest, destOffset, src, srcOffset, other, otherOffset, t);
+    }
+
+    /** {@link #slerp(double[], int, double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment slerp(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment other, long otherOffset, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && other.isNative()) return Double4OpsKernelsSegment.slerp_unsafe(dest, destOffset, src, srcOffset, other, otherOffset, t);
+        return Double4OpsKernelsSegment.slerp_api(dest, destOffset, src, srcOffset, other, otherOffset, t);
+    }
+
+    /** {@link #slerp(double[], int, double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long slerp(long dest, long src, long other, double t) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.slerp_unsafe(dest, src, other, t);
+        slerp(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(other, 32L), 0L, t);
+        return dest;
+    }
+
+    /**
+     * Compute the absolute value of each component of this vector and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] absolute(double[] dest, int destOffset, double[] src, int srcOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.absolute(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsArray.absolute_scalar(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #absolute(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer absolute(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.absolute_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.absolute_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #absolute(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer absolute(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.absolute_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.absolute_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #absolute(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment absolute(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.absolute(dest, destOffset, src, srcOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.absolute_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.absolute_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #absolute(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long absolute(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.absolute_unsafe(dest, src);
+        absolute(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the arc cosine of each component of this vector and store the result in {@code dest}.
+     * <p>
+     * Valid input: each component of this vector must lie in {@code [-1, 1]}.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] acos(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.acos(_selfx);
+        dest[destOffset + 1] = Math.acos(_selfy);
+        dest[destOffset + 2] = Math.acos(_selfz);
+        dest[destOffset + 3] = Math.acos(_selfw);
+        return dest;
+    }
+
+    /** {@link #acos(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer acos(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.acos_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.acos_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #acos(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer acos(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.acos_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.acos_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #acos(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment acos(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.acos_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.acos_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #acos(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long acos(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.acos_unsafe(dest, src);
+        acos(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Add ({@code bX}, {@code bY}, {@code bZ}, {@code bW}) scaled by {@code scalar} to this vector
+     * and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param bX the {@code x} component of the vector {@code (bX, bY, bZ, bW)}
+     * @param bY the {@code y} component of the vector {@code (bX, bY, bZ, bW)}
+     * @param bZ the {@code z} component of the vector {@code (bX, bY, bZ, bW)}
+     * @param bW the {@code w} component of the vector {@code (bX, bY, bZ, bW)}
+     * @param scalar the factor to scale ({@code bX}, {@code bY}, {@code bZ}, {@code bW}) by before
+     *        adding
+     * @return {@code dest}
+     */
+    public static double[] addScaled(double[] dest, int destOffset, double[] src, int srcOffset, double bX, double bY, double bZ, double bW, double scalar) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.fma(scalar, bX, _selfx);
+        dest[destOffset + 1] = Math.fma(scalar, bY, _selfy);
+        dest[destOffset + 2] = Math.fma(scalar, bZ, _selfz);
+        dest[destOffset + 3] = Math.fma(scalar, bW, _selfw);
+        return dest;
+    }
+
+    /** {@link #addScaled(double[], int, double[], int, double, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer addScaled(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double bX, double bY, double bZ, double bW, double scalar) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.addScaled_unsafe(dest, destOffset, src, srcOffset, bX, bY, bZ, bW, scalar);
+        return Double4OpsKernelsTypedBuffer.addScaled_api(dest, destOffset, src, srcOffset, bX, bY, bZ, bW, scalar);
+    }
+
+    /** {@link #addScaled(double[], int, double[], int, double, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer addScaled(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double bX, double bY, double bZ, double bW, double scalar) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.addScaled_unsafe(dest, destOffset, src, srcOffset, bX, bY, bZ, bW, scalar);
+        return Double4OpsKernelsByteBuffer.addScaled_api(dest, destOffset, src, srcOffset, bX, bY, bZ, bW, scalar);
+    }
+
+    /** {@link #addScaled(double[], int, double[], int, double, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment addScaled(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double bX, double bY, double bZ, double bW, double scalar) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.addScaled_unsafe(dest, destOffset, src, srcOffset, bX, bY, bZ, bW, scalar);
+        return Double4OpsKernelsSegment.addScaled_api(dest, destOffset, src, srcOffset, bX, bY, bZ, bW, scalar);
+    }
+
+    /** {@link #addScaled(double[], int, double[], int, double, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long addScaled(long dest, long src, double bX, double bY, double bZ, double bW, double scalar) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.addScaled_unsafe(dest, src, bX, bY, bZ, bW, scalar);
+        addScaled(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, bX, bY, bZ, bW, scalar);
+        return dest;
+    }
+
+    /**
+     * Add {@code b} scaled by {@code scalar} to this vector and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param b the storage holding the vector to scale and add
+     * @param bOffset the element index in {@code b} at which the vector starts
+     * @param scalar the factor to scale the given vector by before adding
+     * @return {@code dest}
+     */
+    public static double[] addScaled(double[] dest, int destOffset, double[] src, int srcOffset, double[] b, int bOffset, double scalar) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.addScaled(dest, destOffset, src, srcOffset, b, bOffset, scalar);
+        return Double4OpsKernelsArray.addScaled_scalar(dest, destOffset, src, srcOffset, b, bOffset, scalar);
+    }
+
+    /** {@link #addScaled(double[], int, double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer addScaled(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer b, int bOffset, double scalar) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && b.isDirect() && b.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.addScaled_unsafe(dest, destOffset, src, srcOffset, b, bOffset, scalar);
+        return Double4OpsKernelsTypedBuffer.addScaled_api(dest, destOffset, src, srcOffset, b, bOffset, scalar);
+    }
+
+    /** {@link #addScaled(double[], int, double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer addScaled(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer b, int bOffset, double scalar) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && b.isDirect() && b.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.addScaled_unsafe(dest, destOffset, src, srcOffset, b, bOffset, scalar);
+        return Double4OpsKernelsByteBuffer.addScaled_api(dest, destOffset, src, srcOffset, b, bOffset, scalar);
+    }
+
+    /** {@link #addScaled(double[], int, double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment addScaled(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment b, long bOffset, double scalar) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.addScaled(dest, destOffset, src, srcOffset, b, bOffset, scalar);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && b.isNative()) return Double4OpsKernelsSegment.addScaled_unsafe(dest, destOffset, src, srcOffset, b, bOffset, scalar);
+        return Double4OpsKernelsSegment.addScaled_api(dest, destOffset, src, srcOffset, b, bOffset, scalar);
+    }
+
+    /** {@link #addScaled(double[], int, double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long addScaled(long dest, long src, long b, double scalar) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.addScaled_unsafe(dest, src, b, scalar);
+        addScaled(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(b, 32L), 0L, scalar);
+        return dest;
+    }
+
+    /**
+     * Add ({@code bX}, {@code bY}, {@code bZ}, {@code bW}) scaled by ({@code cX}, {@code cY},
+     * {@code cZ}, {@code cW}) to this vector and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param bX the {@code x} component of the vector {@code (bX, bY, bZ, bW)}
+     * @param bY the {@code y} component of the vector {@code (bX, bY, bZ, bW)}
+     * @param bZ the {@code z} component of the vector {@code (bX, bY, bZ, bW)}
+     * @param bW the {@code w} component of the vector {@code (bX, bY, bZ, bW)}
+     * @param cX the {@code x} component of the vector {@code (cX, cY, cZ, cW)}
+     * @param cY the {@code y} component of the vector {@code (cX, cY, cZ, cW)}
+     * @param cZ the {@code z} component of the vector {@code (cX, cY, cZ, cW)}
+     * @param cW the {@code w} component of the vector {@code (cX, cY, cZ, cW)}
+     * @return {@code dest}
+     */
+    public static double[] addScaled(double[] dest, int destOffset, double[] src, int srcOffset, double bX, double bY, double bZ, double bW, double cX, double cY, double cZ, double cW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.fma(bX, cX, _selfx);
+        dest[destOffset + 1] = Math.fma(bY, cY, _selfy);
+        dest[destOffset + 2] = Math.fma(bZ, cZ, _selfz);
+        dest[destOffset + 3] = Math.fma(bW, cW, _selfw);
+        return dest;
+    }
+
+    /** {@link #addScaled(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer addScaled(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double bX, double bY, double bZ, double bW, double cX, double cY, double cZ, double cW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.addScaled_unsafe(dest, destOffset, src, srcOffset, bX, bY, bZ, bW, cX, cY, cZ, cW);
+        return Double4OpsKernelsTypedBuffer.addScaled_api(dest, destOffset, src, srcOffset, bX, bY, bZ, bW, cX, cY, cZ, cW);
+    }
+
+    /** {@link #addScaled(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer addScaled(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double bX, double bY, double bZ, double bW, double cX, double cY, double cZ, double cW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.addScaled_unsafe(dest, destOffset, src, srcOffset, bX, bY, bZ, bW, cX, cY, cZ, cW);
+        return Double4OpsKernelsByteBuffer.addScaled_api(dest, destOffset, src, srcOffset, bX, bY, bZ, bW, cX, cY, cZ, cW);
+    }
+
+    /** {@link #addScaled(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment addScaled(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double bX, double bY, double bZ, double bW, double cX, double cY, double cZ, double cW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.addScaled_unsafe(dest, destOffset, src, srcOffset, bX, bY, bZ, bW, cX, cY, cZ, cW);
+        return Double4OpsKernelsSegment.addScaled_api(dest, destOffset, src, srcOffset, bX, bY, bZ, bW, cX, cY, cZ, cW);
+    }
+
+    /** {@link #addScaled(double[], int, double[], int, double, double, double, double, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long addScaled(long dest, long src, double bX, double bY, double bZ, double bW, double cX, double cY, double cZ, double cW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.addScaled_unsafe(dest, src, bX, bY, bZ, bW, cX, cY, cZ, cW);
+        addScaled(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, bX, bY, bZ, bW, cX, cY, cZ, cW);
+        return dest;
+    }
+
+    /**
+     * Add {@code b} scaled by {@code c} to this vector and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param b the storage holding the vector to scale and add
+     * @param bOffset the element index in {@code b} at which the vector starts
+     * @param c the storage holding the per-component factors to scale the given vector by before
+     *        adding
+     * @param cOffset the element index in {@code c} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] addScaled(double[] dest, int destOffset, double[] src, int srcOffset, double[] b, int bOffset, double[] c, int cOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.addScaled(dest, destOffset, src, srcOffset, b, bOffset, c, cOffset);
+        return Double4OpsKernelsArray.addScaled_scalar(dest, destOffset, src, srcOffset, b, bOffset, c, cOffset);
+    }
+
+    /** {@link #addScaled(double[], int, double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer addScaled(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer b, int bOffset, java.nio.DoubleBuffer c, int cOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && b.isDirect() && b.order() == java.nio.ByteOrder.nativeOrder() && c.isDirect() && c.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.addScaled_unsafe(dest, destOffset, src, srcOffset, b, bOffset, c, cOffset);
+        return Double4OpsKernelsTypedBuffer.addScaled_api(dest, destOffset, src, srcOffset, b, bOffset, c, cOffset);
+    }
+
+    /** {@link #addScaled(double[], int, double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer addScaled(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer b, int bOffset, java.nio.ByteBuffer c, int cOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && b.isDirect() && b.order() == java.nio.ByteOrder.nativeOrder() && c.isDirect() && c.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.addScaled_unsafe(dest, destOffset, src, srcOffset, b, bOffset, c, cOffset);
+        return Double4OpsKernelsByteBuffer.addScaled_api(dest, destOffset, src, srcOffset, b, bOffset, c, cOffset);
+    }
+
+    /** {@link #addScaled(double[], int, double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment addScaled(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment b, long bOffset, java.lang.foreign.MemorySegment c, long cOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.addScaled(dest, destOffset, src, srcOffset, b, bOffset, c, cOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && b.isNative() && c.isNative()) return Double4OpsKernelsSegment.addScaled_unsafe(dest, destOffset, src, srcOffset, b, bOffset, c, cOffset);
+        return Double4OpsKernelsSegment.addScaled_api(dest, destOffset, src, srcOffset, b, bOffset, c, cOffset);
+    }
+
+    /** {@link #addScaled(double[], int, double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long addScaled(long dest, long src, long b, long c) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.addScaled_unsafe(dest, src, b, c);
+        addScaled(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(b, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(c, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the angle in radians between this vector and ({@code otherX}, {@code otherY},
+     * {@code otherZ}, {@code otherW}).
+     * <p>
+     * The angle is computed with {@code atan2}, so it keeps full {@code double} resolution all the
+     * way down to 0 (an {@code acos}-based form loses precision for small angles). It holds for
+     * vectors of any finite length: when the squared length of their cross product would leave the
+     * {@code double} range, the vectors are first scaled exactly by powers of two.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param otherX the {@code x} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @return the angle in radians between this vector and {@code other}
+     */
+    public static double angleBetween(double[] src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _t12 = Math.fma(otherW, _selfz, -(otherZ * _selfw));
+        double _t13 = Math.fma(otherW, _selfy, -(otherY * _selfw));
+        double _t14 = Math.fma(otherZ, _selfy, -(otherY * _selfz));
+        double _t15 = Math.fma(otherW, _selfx, -(otherX * _selfw));
+        double _t16 = Math.fma(otherY, _selfx, -(otherX * _selfy));
+        double _t17 = Math.fma(otherZ, _selfx, -(otherX * _selfz));
+        double _ct0 = Math.fma(_t12, _t12, Math.fma(_t13, _t13, Math.fma(_t14, _t14, Math.fma(_t15, _t15, Math.fma(_t16, _t16, _t17 * _t17)))));
+        if (!(_ct0 > 2.2250738585072014E-308 && _ct0 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsArray.angleBetween_degenerate(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Math.atan2(Math.sqrt(_ct0), Math.fma(otherW, _selfw, Math.fma(otherZ, _selfz, Math.fma(otherX, _selfx, otherY * _selfy))));
+    }
+
+    /** {@link #angleBetween(double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static double angleBetween(java.nio.DoubleBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.angleBetween_unsafe(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsTypedBuffer.angleBetween_api(src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #angleBetween(double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double angleBetween(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.angleBetween_unsafe(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsByteBuffer.angleBetween_api(src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #angleBetween(double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double angleBetween(java.lang.foreign.MemorySegment src, long srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isNative()) return Double4OpsKernelsSegment.angleBetween_unsafe(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsSegment.angleBetween_api(src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #angleBetween(double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static double angleBetween(long src, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.angleBetween_unsafe(src, otherX, otherY, otherZ, otherW);
+        return angleBetween(VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, otherX, otherY, otherZ, otherW);
+    }
+
+    /**
+     * Compute the angle in radians between this vector and {@code other}.
+     * <p>
+     * The angle is computed with {@code atan2}, so it keeps full {@code double} resolution all the
+     * way down to 0 (an {@code acos}-based form loses precision for small angles). It holds for
+     * vectors of any finite length: when the squared length of their cross product would leave the
+     * {@code double} range, the vectors are first scaled exactly by powers of two.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param other the storage holding the vector to measure the angle to
+     * @param otherOffset the element index in {@code other} at which the vector starts
+     * @return the angle in radians between this vector and {@code other}
+     */
+    public static double angleBetween(double[] src, int srcOffset, double[] other, int otherOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _otherx = other[otherOffset + 0];
+        double _othery = other[otherOffset + 1];
+        double _otherz = other[otherOffset + 2];
+        double _otherw = other[otherOffset + 3];
+        double _t12 = Math.fma(_otherw, _selfz, -(_otherz * _selfw));
+        double _t13 = Math.fma(_otherw, _selfy, -(_othery * _selfw));
+        double _t14 = Math.fma(_otherz, _selfy, -(_othery * _selfz));
+        double _t15 = Math.fma(_otherw, _selfx, -(_otherx * _selfw));
+        double _t16 = Math.fma(_othery, _selfx, -(_otherx * _selfy));
+        double _t17 = Math.fma(_otherz, _selfx, -(_otherx * _selfz));
+        double _ct0 = Math.fma(_t12, _t12, Math.fma(_t13, _t13, Math.fma(_t14, _t14, Math.fma(_t15, _t15, Math.fma(_t16, _t16, _t17 * _t17)))));
+        if (!(_ct0 > 2.2250738585072014E-308 && _ct0 < Double.POSITIVE_INFINITY)) return Double4OpsKernelsArray.angleBetween_degenerate(src, srcOffset, other, otherOffset);
+        return Math.atan2(Math.sqrt(_ct0), Math.fma(_otherw, _selfw, Math.fma(_otherz, _selfz, Math.fma(_otherx, _selfx, _othery * _selfy))));
+    }
+
+    /** {@link #angleBetween(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static double angleBetween(java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.angleBetween_unsafe(src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsTypedBuffer.angleBetween_api(src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #angleBetween(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double angleBetween(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.angleBetween_unsafe(src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsByteBuffer.angleBetween_api(src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #angleBetween(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double angleBetween(java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment other, long otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isNative() && other.isNative()) return Double4OpsKernelsSegment.angleBetween_unsafe(src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsSegment.angleBetween_api(src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #angleBetween(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static double angleBetween(long src, long other) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.angleBetween_unsafe(src, other);
+        return angleBetween(VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(other, 32L), 0L);
+    }
+
+    /**
+     * Compute the arc sine of each component of this vector and store the result in {@code dest}.
+     * <p>
+     * Valid input: each component of this vector must lie in {@code [-1, 1]}.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] asin(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.asin(_selfx);
+        dest[destOffset + 1] = Math.asin(_selfy);
+        dest[destOffset + 2] = Math.asin(_selfz);
+        dest[destOffset + 3] = Math.asin(_selfw);
+        return dest;
+    }
+
+    /** {@link #asin(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer asin(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.asin_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.asin_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #asin(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer asin(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.asin_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.asin_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #asin(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment asin(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.asin_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.asin_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #asin(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long asin(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.asin_unsafe(dest, src);
+        asin(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the arc tangent of each component of this vector and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] atan(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.atan(_selfx);
+        dest[destOffset + 1] = Math.atan(_selfy);
+        dest[destOffset + 2] = Math.atan(_selfz);
+        dest[destOffset + 3] = Math.atan(_selfw);
+        return dest;
+    }
+
+    /** {@link #atan(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer atan(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.atan_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.atan_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #atan(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer atan(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.atan_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.atan_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #atan(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment atan(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.atan_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.atan_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #atan(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long atan(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.atan_unsafe(dest, src);
+        atan(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the component-wise arc tangent {@code atan2(a, b)} with {@code a} each component of
+     * this vector (the numerator) and {@code b} {@code x} (the denominator) and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param x the value to take the arc tangent over (the denominator)
+     * @return {@code dest}
+     */
+    public static double[] atan2(double[] dest, int destOffset, double[] src, int srcOffset, double x) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.atan2(_selfx, x);
+        dest[destOffset + 1] = Math.atan2(_selfy, x);
+        dest[destOffset + 2] = Math.atan2(_selfz, x);
+        dest[destOffset + 3] = Math.atan2(_selfw, x);
+        return dest;
+    }
+
+    /** {@link #atan2(double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer atan2(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double x) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.atan2_unsafe(dest, destOffset, src, srcOffset, x);
+        return Double4OpsKernelsTypedBuffer.atan2_api(dest, destOffset, src, srcOffset, x);
+    }
+
+    /** {@link #atan2(double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer atan2(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double x) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.atan2_unsafe(dest, destOffset, src, srcOffset, x);
+        return Double4OpsKernelsByteBuffer.atan2_api(dest, destOffset, src, srcOffset, x);
+    }
+
+    /** {@link #atan2(double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment atan2(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double x) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.atan2_unsafe(dest, destOffset, src, srcOffset, x);
+        return Double4OpsKernelsSegment.atan2_api(dest, destOffset, src, srcOffset, x);
+    }
+
+    /** {@link #atan2(double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long atan2(long dest, long src, double x) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.atan2_unsafe(dest, src, x);
+        atan2(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, x);
+        return dest;
+    }
+
+    /**
+     * Compute the component-wise arc tangent {@code atan2(a, b)} with {@code a} each component of
+     * this vector (the numerator) and {@code b} the corresponding component of ({@code xX},
+     * {@code xY}, {@code xZ}, {@code xW}) (the denominator) and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param xX the {@code x} component of the vector {@code (xX, xY, xZ, xW)}
+     * @param xY the {@code y} component of the vector {@code (xX, xY, xZ, xW)}
+     * @param xZ the {@code z} component of the vector {@code (xX, xY, xZ, xW)}
+     * @param xW the {@code w} component of the vector {@code (xX, xY, xZ, xW)}
+     * @return {@code dest}
+     */
+    public static double[] atan2(double[] dest, int destOffset, double[] src, int srcOffset, double xX, double xY, double xZ, double xW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.atan2(_selfx, xX);
+        dest[destOffset + 1] = Math.atan2(_selfy, xY);
+        dest[destOffset + 2] = Math.atan2(_selfz, xZ);
+        dest[destOffset + 3] = Math.atan2(_selfw, xW);
+        return dest;
+    }
+
+    /** {@link #atan2(double[], int, double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer atan2(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double xX, double xY, double xZ, double xW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.atan2_unsafe(dest, destOffset, src, srcOffset, xX, xY, xZ, xW);
+        return Double4OpsKernelsTypedBuffer.atan2_api(dest, destOffset, src, srcOffset, xX, xY, xZ, xW);
+    }
+
+    /** {@link #atan2(double[], int, double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer atan2(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double xX, double xY, double xZ, double xW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.atan2_unsafe(dest, destOffset, src, srcOffset, xX, xY, xZ, xW);
+        return Double4OpsKernelsByteBuffer.atan2_api(dest, destOffset, src, srcOffset, xX, xY, xZ, xW);
+    }
+
+    /** {@link #atan2(double[], int, double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment atan2(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double xX, double xY, double xZ, double xW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.atan2_unsafe(dest, destOffset, src, srcOffset, xX, xY, xZ, xW);
+        return Double4OpsKernelsSegment.atan2_api(dest, destOffset, src, srcOffset, xX, xY, xZ, xW);
+    }
+
+    /** {@link #atan2(double[], int, double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long atan2(long dest, long src, double xX, double xY, double xZ, double xW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.atan2_unsafe(dest, src, xX, xY, xZ, xW);
+        atan2(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, xX, xY, xZ, xW);
+        return dest;
+    }
+
+    /**
+     * Compute the component-wise arc tangent {@code atan2(a, b)} with {@code a} each component of
+     * this vector (the numerator) and {@code b} the corresponding component of {@code x} (the
+     * denominator) and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param x the storage holding the vector of denominators, one per component
+     * @param xOffset the element index in {@code x} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] atan2(double[] dest, int destOffset, double[] src, int srcOffset, double[] x, int xOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _xx = x[xOffset + 0];
+        double _xy = x[xOffset + 1];
+        double _xz = x[xOffset + 2];
+        double _xw = x[xOffset + 3];
+        dest[destOffset + 0] = Math.atan2(_selfx, _xx);
+        dest[destOffset + 1] = Math.atan2(_selfy, _xy);
+        dest[destOffset + 2] = Math.atan2(_selfz, _xz);
+        dest[destOffset + 3] = Math.atan2(_selfw, _xw);
+        return dest;
+    }
+
+    /** {@link #atan2(double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer atan2(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer x, int xOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && x.isDirect() && x.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.atan2_unsafe(dest, destOffset, src, srcOffset, x, xOffset);
+        return Double4OpsKernelsTypedBuffer.atan2_api(dest, destOffset, src, srcOffset, x, xOffset);
+    }
+
+    /** {@link #atan2(double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer atan2(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer x, int xOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && x.isDirect() && x.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.atan2_unsafe(dest, destOffset, src, srcOffset, x, xOffset);
+        return Double4OpsKernelsByteBuffer.atan2_api(dest, destOffset, src, srcOffset, x, xOffset);
+    }
+
+    /** {@link #atan2(double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment atan2(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment x, long xOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && x.isNative()) return Double4OpsKernelsSegment.atan2_unsafe(dest, destOffset, src, srcOffset, x, xOffset);
+        return Double4OpsKernelsSegment.atan2_api(dest, destOffset, src, srcOffset, x, xOffset);
+    }
+
+    /** {@link #atan2(double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long atan2(long dest, long src, long x) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.atan2_unsafe(dest, src, x);
+        atan2(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(x, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the cube root of each component of this vector and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] cbrt(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.cbrt(_selfx);
+        dest[destOffset + 1] = Math.cbrt(_selfy);
+        dest[destOffset + 2] = Math.cbrt(_selfz);
+        dest[destOffset + 3] = Math.cbrt(_selfw);
+        return dest;
+    }
+
+    /** {@link #cbrt(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer cbrt(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.cbrt_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.cbrt_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #cbrt(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer cbrt(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.cbrt_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.cbrt_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #cbrt(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment cbrt(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.cbrt_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.cbrt_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #cbrt(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long cbrt(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.cbrt_unsafe(dest, src);
+        cbrt(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the ceiling of each component of this vector and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] ceil(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.ceil(_selfx);
+        dest[destOffset + 1] = Math.ceil(_selfy);
+        dest[destOffset + 2] = Math.ceil(_selfz);
+        dest[destOffset + 3] = Math.ceil(_selfw);
+        return dest;
+    }
+
+    /** {@link #ceil(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer ceil(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.ceil_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.ceil_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #ceil(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer ceil(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.ceil_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.ceil_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #ceil(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment ceil(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.ceil_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.ceil_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #ceil(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long ceil(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.ceil_unsafe(dest, src);
+        ceil(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Clamp each component of this vector between {@code min} and {@code max} and store the result
+     * in {@code dest}.
+     * <p>
+     * Valid input: {@code min} must not exceed {@code max} in any component.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param min the lower bound
+     * @param max the upper bound
+     * @return {@code dest}
+     */
+    public static double[] clamp(double[] dest, int destOffset, double[] src, int srcOffset, double min, double max) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.clamp(dest, destOffset, src, srcOffset, min, max);
+        return Double4OpsKernelsArray.clamp_scalar(dest, destOffset, src, srcOffset, min, max);
+    }
+
+    /** {@link #clamp(double[], int, double[], int, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer clamp(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double min, double max) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.clamp_unsafe(dest, destOffset, src, srcOffset, min, max);
+        return Double4OpsKernelsTypedBuffer.clamp_api(dest, destOffset, src, srcOffset, min, max);
+    }
+
+    /** {@link #clamp(double[], int, double[], int, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer clamp(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double min, double max) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.clamp_unsafe(dest, destOffset, src, srcOffset, min, max);
+        return Double4OpsKernelsByteBuffer.clamp_api(dest, destOffset, src, srcOffset, min, max);
+    }
+
+    /** {@link #clamp(double[], int, double[], int, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment clamp(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double min, double max) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.clamp(dest, destOffset, src, srcOffset, min, max);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.clamp_unsafe(dest, destOffset, src, srcOffset, min, max);
+        return Double4OpsKernelsSegment.clamp_api(dest, destOffset, src, srcOffset, min, max);
+    }
+
+    /** {@link #clamp(double[], int, double[], int, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long clamp(long dest, long src, double min, double max) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.clamp_unsafe(dest, src, min, max);
+        clamp(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, min, max);
+        return dest;
+    }
+
+    /**
+     * Clamp each component of this vector between ({@code minX}, {@code minY}, {@code minZ},
+     * {@code minW}) and ({@code maxX}, {@code maxY}, {@code maxZ}, {@code maxW}) and store the
+     * result in {@code dest}.
+     * <p>
+     * Valid input: {@code (minX, minY, minZ, minW)} must not exceed
+     * {@code (maxX, maxY, maxZ, maxW)} in any component.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param minX the {@code x} component of the vector {@code (minX, minY, minZ, minW)}
+     * @param minY the {@code y} component of the vector {@code (minX, minY, minZ, minW)}
+     * @param minZ the {@code z} component of the vector {@code (minX, minY, minZ, minW)}
+     * @param minW the {@code w} component of the vector {@code (minX, minY, minZ, minW)}
+     * @param maxX the {@code x} component of the vector {@code (maxX, maxY, maxZ, maxW)}
+     * @param maxY the {@code y} component of the vector {@code (maxX, maxY, maxZ, maxW)}
+     * @param maxZ the {@code z} component of the vector {@code (maxX, maxY, maxZ, maxW)}
+     * @param maxW the {@code w} component of the vector {@code (maxX, maxY, maxZ, maxW)}
+     * @return {@code dest}
+     */
+    public static double[] clamp(double[] dest, int destOffset, double[] src, int srcOffset, double minX, double minY, double minZ, double minW, double maxX, double maxY, double maxZ, double maxW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.min(Math.max(_selfx, minX), maxX);
+        dest[destOffset + 1] = Math.min(Math.max(_selfy, minY), maxY);
+        dest[destOffset + 2] = Math.min(Math.max(_selfz, minZ), maxZ);
+        dest[destOffset + 3] = Math.min(Math.max(_selfw, minW), maxW);
+        return dest;
+    }
+
+    /** {@link #clamp(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer clamp(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double minX, double minY, double minZ, double minW, double maxX, double maxY, double maxZ, double maxW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.clamp_unsafe(dest, destOffset, src, srcOffset, minX, minY, minZ, minW, maxX, maxY, maxZ, maxW);
+        return Double4OpsKernelsTypedBuffer.clamp_api(dest, destOffset, src, srcOffset, minX, minY, minZ, minW, maxX, maxY, maxZ, maxW);
+    }
+
+    /** {@link #clamp(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer clamp(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double minX, double minY, double minZ, double minW, double maxX, double maxY, double maxZ, double maxW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.clamp_unsafe(dest, destOffset, src, srcOffset, minX, minY, minZ, minW, maxX, maxY, maxZ, maxW);
+        return Double4OpsKernelsByteBuffer.clamp_api(dest, destOffset, src, srcOffset, minX, minY, minZ, minW, maxX, maxY, maxZ, maxW);
+    }
+
+    /** {@link #clamp(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment clamp(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double minX, double minY, double minZ, double minW, double maxX, double maxY, double maxZ, double maxW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.clamp_unsafe(dest, destOffset, src, srcOffset, minX, minY, minZ, minW, maxX, maxY, maxZ, maxW);
+        return Double4OpsKernelsSegment.clamp_api(dest, destOffset, src, srcOffset, minX, minY, minZ, minW, maxX, maxY, maxZ, maxW);
+    }
+
+    /** {@link #clamp(double[], int, double[], int, double, double, double, double, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long clamp(long dest, long src, double minX, double minY, double minZ, double minW, double maxX, double maxY, double maxZ, double maxW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.clamp_unsafe(dest, src, minX, minY, minZ, minW, maxX, maxY, maxZ, maxW);
+        clamp(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, minX, minY, minZ, minW, maxX, maxY, maxZ, maxW);
+        return dest;
+    }
+
+    /**
+     * Clamp each component of this vector between {@code min} and {@code max} and store the result
+     * in {@code dest}.
+     * <p>
+     * Valid input: {@code min} must not exceed {@code max} in any component.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param min the storage holding the per-component lower bounds
+     * @param minOffset the element index in {@code min} at which the vector starts
+     * @param max the storage holding the per-component upper bounds
+     * @param maxOffset the element index in {@code max} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] clamp(double[] dest, int destOffset, double[] src, int srcOffset, double[] min, int minOffset, double[] max, int maxOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.clamp(dest, destOffset, src, srcOffset, min, minOffset, max, maxOffset);
+        return Double4OpsKernelsArray.clamp_scalar(dest, destOffset, src, srcOffset, min, minOffset, max, maxOffset);
+    }
+
+    /** {@link #clamp(double[], int, double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer clamp(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer min, int minOffset, java.nio.DoubleBuffer max, int maxOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && min.isDirect() && min.order() == java.nio.ByteOrder.nativeOrder() && max.isDirect() && max.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.clamp_unsafe(dest, destOffset, src, srcOffset, min, minOffset, max, maxOffset);
+        return Double4OpsKernelsTypedBuffer.clamp_api(dest, destOffset, src, srcOffset, min, minOffset, max, maxOffset);
+    }
+
+    /** {@link #clamp(double[], int, double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer clamp(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer min, int minOffset, java.nio.ByteBuffer max, int maxOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && min.isDirect() && min.order() == java.nio.ByteOrder.nativeOrder() && max.isDirect() && max.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.clamp_unsafe(dest, destOffset, src, srcOffset, min, minOffset, max, maxOffset);
+        return Double4OpsKernelsByteBuffer.clamp_api(dest, destOffset, src, srcOffset, min, minOffset, max, maxOffset);
+    }
+
+    /** {@link #clamp(double[], int, double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment clamp(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment min, long minOffset, java.lang.foreign.MemorySegment max, long maxOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.clamp(dest, destOffset, src, srcOffset, min, minOffset, max, maxOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && min.isNative() && max.isNative()) return Double4OpsKernelsSegment.clamp_unsafe(dest, destOffset, src, srcOffset, min, minOffset, max, maxOffset);
+        return Double4OpsKernelsSegment.clamp_api(dest, destOffset, src, srcOffset, min, minOffset, max, maxOffset);
+    }
+
+    /** {@link #clamp(double[], int, double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long clamp(long dest, long src, long min, long max) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.clamp_unsafe(dest, src, min, max);
+        clamp(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(min, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(max, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the sum of all components of this vector.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return the sum of all components of this vector
+     */
+    public static double compAdd(double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        return _selfw + (_selfz + (_selfx + _selfy));
+    }
+
+    /** {@link #compAdd(double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static double compAdd(java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.compAdd_unsafe(src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.compAdd_api(src, srcOffset);
+    }
+
+    /** {@link #compAdd(double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double compAdd(java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.compAdd_unsafe(src, srcOffset);
+        return Double4OpsKernelsByteBuffer.compAdd_api(src, srcOffset);
+    }
+
+    /** {@link #compAdd(double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double compAdd(java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isNative()) return Double4OpsKernelsSegment.compAdd_unsafe(src, srcOffset);
+        return Double4OpsKernelsSegment.compAdd_api(src, srcOffset);
+    }
+
+    /** {@link #compAdd(double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static double compAdd(long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.compAdd_unsafe(src);
+        return compAdd(VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+    }
+
+    /**
+     * Compute the largest component of this vector.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return the largest component of this vector
+     */
+    public static double compMax(double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        return Math.max(Math.max(Math.max(_selfx, _selfy), _selfz), _selfw);
+    }
+
+    /** {@link #compMax(double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static double compMax(java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.compMax_unsafe(src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.compMax_api(src, srcOffset);
+    }
+
+    /** {@link #compMax(double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double compMax(java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.compMax_unsafe(src, srcOffset);
+        return Double4OpsKernelsByteBuffer.compMax_api(src, srcOffset);
+    }
+
+    /** {@link #compMax(double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double compMax(java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isNative()) return Double4OpsKernelsSegment.compMax_unsafe(src, srcOffset);
+        return Double4OpsKernelsSegment.compMax_api(src, srcOffset);
+    }
+
+    /** {@link #compMax(double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static double compMax(long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.compMax_unsafe(src);
+        return compMax(VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+    }
+
+    /**
+     * Compute the smallest component of this vector.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return the smallest component of this vector
+     */
+    public static double compMin(double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        return Math.min(Math.min(Math.min(_selfx, _selfy), _selfz), _selfw);
+    }
+
+    /** {@link #compMin(double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static double compMin(java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.compMin_unsafe(src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.compMin_api(src, srcOffset);
+    }
+
+    /** {@link #compMin(double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double compMin(java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.compMin_unsafe(src, srcOffset);
+        return Double4OpsKernelsByteBuffer.compMin_api(src, srcOffset);
+    }
+
+    /** {@link #compMin(double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double compMin(java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isNative()) return Double4OpsKernelsSegment.compMin_unsafe(src, srcOffset);
+        return Double4OpsKernelsSegment.compMin_api(src, srcOffset);
+    }
+
+    /** {@link #compMin(double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static double compMin(long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.compMin_unsafe(src);
+        return compMin(VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+    }
+
+    /**
+     * Compute the product of all components of this vector.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return the product of all components of this vector
+     */
+    public static double compMul(double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        return _selfw * _selfz * _selfx * _selfy;
+    }
+
+    /** {@link #compMul(double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static double compMul(java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.compMul_unsafe(src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.compMul_api(src, srcOffset);
+    }
+
+    /** {@link #compMul(double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double compMul(java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.compMul_unsafe(src, srcOffset);
+        return Double4OpsKernelsByteBuffer.compMul_api(src, srcOffset);
+    }
+
+    /** {@link #compMul(double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double compMul(java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isNative()) return Double4OpsKernelsSegment.compMul_unsafe(src, srcOffset);
+        return Double4OpsKernelsSegment.compMul_api(src, srcOffset);
+    }
+
+    /** {@link #compMul(double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static double compMul(long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.compMul_unsafe(src);
+        return compMul(VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+    }
+
+    /**
+     * Copy the sign of {@code sign} onto each component of this vector and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param sign the value whose sign is copied
+     * @return {@code dest}
+     */
+    public static double[] copySign(double[] dest, int destOffset, double[] src, int srcOffset, double sign) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.copySign(_selfx, sign);
+        dest[destOffset + 1] = Math.copySign(_selfy, sign);
+        dest[destOffset + 2] = Math.copySign(_selfz, sign);
+        dest[destOffset + 3] = Math.copySign(_selfw, sign);
+        return dest;
+    }
+
+    /** {@link #copySign(double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer copySign(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double sign) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.copySign_unsafe(dest, destOffset, src, srcOffset, sign);
+        return Double4OpsKernelsTypedBuffer.copySign_api(dest, destOffset, src, srcOffset, sign);
+    }
+
+    /** {@link #copySign(double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer copySign(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double sign) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.copySign_unsafe(dest, destOffset, src, srcOffset, sign);
+        return Double4OpsKernelsByteBuffer.copySign_api(dest, destOffset, src, srcOffset, sign);
+    }
+
+    /** {@link #copySign(double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment copySign(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double sign) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.copySign_unsafe(dest, destOffset, src, srcOffset, sign);
+        return Double4OpsKernelsSegment.copySign_api(dest, destOffset, src, srcOffset, sign);
+    }
+
+    /** {@link #copySign(double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long copySign(long dest, long src, double sign) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.copySign_unsafe(dest, src, sign);
+        copySign(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, sign);
+        return dest;
+    }
+
+    /**
+     * Copy the sign of each component of ({@code signX}, {@code signY}, {@code signZ},
+     * {@code signW}) onto the corresponding component of this vector and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param signX the {@code x} component of the vector {@code (signX, signY, signZ, signW)}
+     * @param signY the {@code y} component of the vector {@code (signX, signY, signZ, signW)}
+     * @param signZ the {@code z} component of the vector {@code (signX, signY, signZ, signW)}
+     * @param signW the {@code w} component of the vector {@code (signX, signY, signZ, signW)}
+     * @return {@code dest}
+     */
+    public static double[] copySign(double[] dest, int destOffset, double[] src, int srcOffset, double signX, double signY, double signZ, double signW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.copySign(_selfx, signX);
+        dest[destOffset + 1] = Math.copySign(_selfy, signY);
+        dest[destOffset + 2] = Math.copySign(_selfz, signZ);
+        dest[destOffset + 3] = Math.copySign(_selfw, signW);
+        return dest;
+    }
+
+    /** {@link #copySign(double[], int, double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer copySign(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double signX, double signY, double signZ, double signW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.copySign_unsafe(dest, destOffset, src, srcOffset, signX, signY, signZ, signW);
+        return Double4OpsKernelsTypedBuffer.copySign_api(dest, destOffset, src, srcOffset, signX, signY, signZ, signW);
+    }
+
+    /** {@link #copySign(double[], int, double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer copySign(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double signX, double signY, double signZ, double signW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.copySign_unsafe(dest, destOffset, src, srcOffset, signX, signY, signZ, signW);
+        return Double4OpsKernelsByteBuffer.copySign_api(dest, destOffset, src, srcOffset, signX, signY, signZ, signW);
+    }
+
+    /** {@link #copySign(double[], int, double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment copySign(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double signX, double signY, double signZ, double signW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.copySign_unsafe(dest, destOffset, src, srcOffset, signX, signY, signZ, signW);
+        return Double4OpsKernelsSegment.copySign_api(dest, destOffset, src, srcOffset, signX, signY, signZ, signW);
+    }
+
+    /** {@link #copySign(double[], int, double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long copySign(long dest, long src, double signX, double signY, double signZ, double signW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.copySign_unsafe(dest, src, signX, signY, signZ, signW);
+        copySign(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, signX, signY, signZ, signW);
+        return dest;
+    }
+
+    /**
+     * Copy the sign of each component of {@code sign} onto the corresponding component of this
+     * vector and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param sign the storage holding the value whose sign is copied
+     * @param signOffset the element index in {@code sign} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] copySign(double[] dest, int destOffset, double[] src, int srcOffset, double[] sign, int signOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _signx = sign[signOffset + 0];
+        double _signy = sign[signOffset + 1];
+        double _signz = sign[signOffset + 2];
+        double _signw = sign[signOffset + 3];
+        dest[destOffset + 0] = Math.copySign(_selfx, _signx);
+        dest[destOffset + 1] = Math.copySign(_selfy, _signy);
+        dest[destOffset + 2] = Math.copySign(_selfz, _signz);
+        dest[destOffset + 3] = Math.copySign(_selfw, _signw);
+        return dest;
+    }
+
+    /** {@link #copySign(double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer copySign(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer sign, int signOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && sign.isDirect() && sign.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.copySign_unsafe(dest, destOffset, src, srcOffset, sign, signOffset);
+        return Double4OpsKernelsTypedBuffer.copySign_api(dest, destOffset, src, srcOffset, sign, signOffset);
+    }
+
+    /** {@link #copySign(double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer copySign(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer sign, int signOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && sign.isDirect() && sign.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.copySign_unsafe(dest, destOffset, src, srcOffset, sign, signOffset);
+        return Double4OpsKernelsByteBuffer.copySign_api(dest, destOffset, src, srcOffset, sign, signOffset);
+    }
+
+    /** {@link #copySign(double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment copySign(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment sign, long signOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && sign.isNative()) return Double4OpsKernelsSegment.copySign_unsafe(dest, destOffset, src, srcOffset, sign, signOffset);
+        return Double4OpsKernelsSegment.copySign_api(dest, destOffset, src, srcOffset, sign, signOffset);
+    }
+
+    /** {@link #copySign(double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long copySign(long dest, long src, long sign) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.copySign_unsafe(dest, src, sign);
+        copySign(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(sign, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the cosine of each component of this vector and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] cos(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.cos(_selfx);
+        dest[destOffset + 1] = Math.cos(_selfy);
+        dest[destOffset + 2] = Math.cos(_selfz);
+        dest[destOffset + 3] = Math.cos(_selfw);
+        return dest;
+    }
+
+    /** {@link #cos(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer cos(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.cos_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.cos_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #cos(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer cos(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.cos_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.cos_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #cos(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment cos(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.cos_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.cos_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #cos(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long cos(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.cos_unsafe(dest, src);
+        cos(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the hyperbolic cosine of each component of this vector and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] cosh(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.cosh(_selfx);
+        dest[destOffset + 1] = Math.cosh(_selfy);
+        dest[destOffset + 2] = Math.cosh(_selfz);
+        dest[destOffset + 3] = Math.cosh(_selfw);
+        return dest;
+    }
+
+    /** {@link #cosh(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer cosh(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.cosh_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.cosh_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #cosh(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer cosh(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.cosh_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.cosh_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #cosh(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment cosh(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.cosh_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.cosh_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #cosh(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long cosh(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.cosh_unsafe(dest, src);
+        cosh(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the four-dimensional cross product of this vector, ({@code vX}, {@code vY},
+     * {@code vZ}, {@code vW}) and ({@code wX}, {@code wY}, {@code wZ}, {@code wW}), in that order:
+     * the vector orthogonal to all three whose dot product with any vector {@code x} is the
+     * determinant of the matrix with the rows {@code x}, this vector, ({@code vX}, {@code vY},
+     * {@code vZ}, {@code vW}) and ({@code wX}, {@code wY}, {@code wZ}, {@code wW}) (the zero vector
+     * when the three are linearly dependent) and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param vX the {@code x} component of the second operand of the cross product
+     *        {@code (vX, vY, vZ, vW)}
+     * @param vY the {@code y} component of the second operand of the cross product
+     *        {@code (vX, vY, vZ, vW)}
+     * @param vZ the {@code z} component of the second operand of the cross product
+     *        {@code (vX, vY, vZ, vW)}
+     * @param vW the {@code w} component of the second operand of the cross product
+     *        {@code (vX, vY, vZ, vW)}
+     * @param wX the {@code x} component of the third operand of the cross product
+     *        {@code (wX, wY, wZ, wW)}
+     * @param wY the {@code y} component of the third operand of the cross product
+     *        {@code (wX, wY, wZ, wW)}
+     * @param wZ the {@code z} component of the third operand of the cross product
+     *        {@code (wX, wY, wZ, wW)}
+     * @param wW the {@code w} component of the third operand of the cross product
+     *        {@code (wX, wY, wZ, wW)}
+     * @return {@code dest}
+     */
+    public static double[] cross(double[] dest, int destOffset, double[] src, int srcOffset, double vX, double vY, double vZ, double vW, double wX, double wY, double wZ, double wW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _t12 = Math.fma(vY, wZ, -(vZ * wY));
+        double _t13 = Math.fma(vZ, wW, -(vW * wZ));
+        double _t14 = Math.fma(vY, wW, -(vW * wY));
+        double _t15 = Math.fma(vX, wZ, -(vZ * wX));
+        double _t16 = Math.fma(vX, wW, -(vW * wX));
+        double _t17 = Math.fma(vX, wY, -(vY * wX));
+        dest[destOffset + 0] = Math.fma(_selfw, _t12, Math.fma(_selfy, _t13, -(_selfz * _t14)));
+        dest[destOffset + 1] = Math.fma(-_selfw, _t15, Math.fma(_selfz, _t16, -(_selfx * _t13)));
+        dest[destOffset + 2] = Math.fma(_selfw, _t17, Math.fma(_selfx, _t14, -(_selfy * _t16)));
+        dest[destOffset + 3] = Math.fma(-_selfz, _t17, Math.fma(_selfy, _t15, -(_selfx * _t12)));
+        return dest;
+    }
+
+    /** {@link #cross(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer cross(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double vX, double vY, double vZ, double vW, double wX, double wY, double wZ, double wW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.cross_unsafe(dest, destOffset, src, srcOffset, vX, vY, vZ, vW, wX, wY, wZ, wW);
+        return Double4OpsKernelsTypedBuffer.cross_api(dest, destOffset, src, srcOffset, vX, vY, vZ, vW, wX, wY, wZ, wW);
+    }
+
+    /** {@link #cross(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer cross(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double vX, double vY, double vZ, double vW, double wX, double wY, double wZ, double wW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.cross_unsafe(dest, destOffset, src, srcOffset, vX, vY, vZ, vW, wX, wY, wZ, wW);
+        return Double4OpsKernelsByteBuffer.cross_api(dest, destOffset, src, srcOffset, vX, vY, vZ, vW, wX, wY, wZ, wW);
+    }
+
+    /** {@link #cross(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment cross(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double vX, double vY, double vZ, double vW, double wX, double wY, double wZ, double wW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.cross_unsafe(dest, destOffset, src, srcOffset, vX, vY, vZ, vW, wX, wY, wZ, wW);
+        return Double4OpsKernelsSegment.cross_api(dest, destOffset, src, srcOffset, vX, vY, vZ, vW, wX, wY, wZ, wW);
+    }
+
+    /** {@link #cross(double[], int, double[], int, double, double, double, double, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long cross(long dest, long src, double vX, double vY, double vZ, double vW, double wX, double wY, double wZ, double wW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.cross_unsafe(dest, src, vX, vY, vZ, vW, wX, wY, wZ, wW);
+        cross(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, vX, vY, vZ, vW, wX, wY, wZ, wW);
+        return dest;
+    }
+
+    /**
+     * Compute the four-dimensional cross product of this vector, {@code v} and {@code w}, in that
+     * order: the vector orthogonal to all three whose dot product with any vector {@code x} is the
+     * determinant of the matrix with the rows {@code x}, this vector, {@code v} and {@code w} (the
+     * zero vector when the three are linearly dependent) and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param v the storage holding the second operand of the cross product
+     * @param vOffset the element index in {@code v} at which the vector starts
+     * @param w the storage holding the third operand of the cross product
+     * @param wOffset the element index in {@code w} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] cross(double[] dest, int destOffset, double[] src, int srcOffset, double[] v, int vOffset, double[] w, int wOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _vx = v[vOffset + 0];
+        double _vy = v[vOffset + 1];
+        double _vz = v[vOffset + 2];
+        double _vw = v[vOffset + 3];
+        double _wx = w[wOffset + 0];
+        double _wy = w[wOffset + 1];
+        double _wz = w[wOffset + 2];
+        double _ww = w[wOffset + 3];
+        double _t12 = Math.fma(_vy, _wz, -(_vz * _wy));
+        double _t13 = Math.fma(_vz, _ww, -(_vw * _wz));
+        double _t14 = Math.fma(_vy, _ww, -(_vw * _wy));
+        double _t15 = Math.fma(_vx, _wz, -(_vz * _wx));
+        double _t16 = Math.fma(_vx, _ww, -(_vw * _wx));
+        double _t17 = Math.fma(_vx, _wy, -(_vy * _wx));
+        dest[destOffset + 0] = Math.fma(_selfw, _t12, Math.fma(_selfy, _t13, -(_selfz * _t14)));
+        dest[destOffset + 1] = Math.fma(-_selfw, _t15, Math.fma(_selfz, _t16, -(_selfx * _t13)));
+        dest[destOffset + 2] = Math.fma(_selfw, _t17, Math.fma(_selfx, _t14, -(_selfy * _t16)));
+        dest[destOffset + 3] = Math.fma(-_selfz, _t17, Math.fma(_selfy, _t15, -(_selfx * _t12)));
+        return dest;
+    }
+
+    /** {@link #cross(double[], int, double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer cross(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer v, int vOffset, java.nio.DoubleBuffer w, int wOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && v.isDirect() && v.order() == java.nio.ByteOrder.nativeOrder() && w.isDirect() && w.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.cross_unsafe(dest, destOffset, src, srcOffset, v, vOffset, w, wOffset);
+        return Double4OpsKernelsTypedBuffer.cross_api(dest, destOffset, src, srcOffset, v, vOffset, w, wOffset);
+    }
+
+    /** {@link #cross(double[], int, double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer cross(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer v, int vOffset, java.nio.ByteBuffer w, int wOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && v.isDirect() && v.order() == java.nio.ByteOrder.nativeOrder() && w.isDirect() && w.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.cross_unsafe(dest, destOffset, src, srcOffset, v, vOffset, w, wOffset);
+        return Double4OpsKernelsByteBuffer.cross_api(dest, destOffset, src, srcOffset, v, vOffset, w, wOffset);
+    }
+
+    /** {@link #cross(double[], int, double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment cross(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment v, long vOffset, java.lang.foreign.MemorySegment w, long wOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && v.isNative() && w.isNative()) return Double4OpsKernelsSegment.cross_unsafe(dest, destOffset, src, srcOffset, v, vOffset, w, wOffset);
+        return Double4OpsKernelsSegment.cross_api(dest, destOffset, src, srcOffset, v, vOffset, w, wOffset);
+    }
+
+    /** {@link #cross(double[], int, double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long cross(long dest, long src, long v, long w) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.cross_unsafe(dest, src, v, w);
+        cross(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(v, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(w, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the value converted from radians to degrees of each component of this vector and
+     * store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] degrees(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.toDegrees(_selfx);
+        dest[destOffset + 1] = Math.toDegrees(_selfy);
+        dest[destOffset + 2] = Math.toDegrees(_selfz);
+        dest[destOffset + 3] = Math.toDegrees(_selfw);
+        return dest;
+    }
+
+    /** {@link #degrees(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer degrees(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.degrees_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.degrees_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #degrees(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer degrees(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.degrees_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.degrees_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #degrees(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment degrees(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.degrees_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.degrees_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #degrees(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long degrees(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.degrees_unsafe(dest, src);
+        degrees(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the distance between this vector and ({@code otherX}, {@code otherY}, {@code otherZ},
+     * {@code otherW}).
+     * <p>
+     * Valid input: nonzero magnitudes must lie between {@code 1.5e-154} and {@code 3.8e153}.
+     *
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param otherX the {@code x} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @return the distance between this vector and {@code other}
+     */
+    public static double distance(double[] src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _t0 = _selfw - otherW;
+        double _t1 = _selfz - otherZ;
+        double _t2 = _selfx - otherX;
+        double _t3 = _selfy - otherY;
+        return Math.sqrt(Math.fma(_t0, _t0, Math.fma(_t1, _t1, Math.fma(_t2, _t2, _t3 * _t3))));
+    }
+
+    /** {@link #distance(double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static double distance(java.nio.DoubleBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.distance_unsafe(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsTypedBuffer.distance_api(src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #distance(double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double distance(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.distance_unsafe(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsByteBuffer.distance_api(src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #distance(double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double distance(java.lang.foreign.MemorySegment src, long srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isNative()) return Double4OpsKernelsSegment.distance_unsafe(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsSegment.distance_api(src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #distance(double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static double distance(long src, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.distance_unsafe(src, otherX, otherY, otherZ, otherW);
+        return distance(VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, otherX, otherY, otherZ, otherW);
+    }
+
+    /**
+     * Compute the distance between this vector and {@code other}.
+     * <p>
+     * Valid input: nonzero magnitudes must lie between {@code 1.5e-154} and {@code 3.8e153}.
+     *
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param other the storage holding the vector to measure the distance to
+     * @param otherOffset the element index in {@code other} at which the vector starts
+     * @return the distance between this vector and {@code other}
+     */
+    public static double distance(double[] src, int srcOffset, double[] other, int otherOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _otherx = other[otherOffset + 0];
+        double _othery = other[otherOffset + 1];
+        double _otherz = other[otherOffset + 2];
+        double _otherw = other[otherOffset + 3];
+        double _t0 = _selfw - _otherw;
+        double _t1 = _selfz - _otherz;
+        double _t2 = _selfx - _otherx;
+        double _t3 = _selfy - _othery;
+        return Math.sqrt(Math.fma(_t0, _t0, Math.fma(_t1, _t1, Math.fma(_t2, _t2, _t3 * _t3))));
+    }
+
+    /** {@link #distance(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static double distance(java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.distance_unsafe(src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsTypedBuffer.distance_api(src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #distance(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double distance(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.distance_unsafe(src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsByteBuffer.distance_api(src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #distance(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double distance(java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment other, long otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isNative() && other.isNative()) return Double4OpsKernelsSegment.distance_unsafe(src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsSegment.distance_api(src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #distance(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static double distance(long src, long other) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.distance_unsafe(src, other);
+        return distance(VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(other, 32L), 0L);
+    }
+
+    /**
+     * Compute the squared distance between this vector and ({@code otherX}, {@code otherY},
+     * {@code otherZ}, {@code otherW}).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param otherX the {@code x} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @return the squared distance between this vector and {@code other}
+     */
+    public static double distanceSquared(double[] src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _t0 = _selfw - otherW;
+        double _t1 = _selfz - otherZ;
+        double _t2 = _selfx - otherX;
+        double _t3 = _selfy - otherY;
+        return Math.fma(_t0, _t0, Math.fma(_t1, _t1, Math.fma(_t2, _t2, _t3 * _t3)));
+    }
+
+    /** {@link #distanceSquared(double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static double distanceSquared(java.nio.DoubleBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.distanceSquared_unsafe(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsTypedBuffer.distanceSquared_api(src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #distanceSquared(double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double distanceSquared(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.distanceSquared_unsafe(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsByteBuffer.distanceSquared_api(src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #distanceSquared(double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double distanceSquared(java.lang.foreign.MemorySegment src, long srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isNative()) return Double4OpsKernelsSegment.distanceSquared_unsafe(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsSegment.distanceSquared_api(src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #distanceSquared(double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static double distanceSquared(long src, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.distanceSquared_unsafe(src, otherX, otherY, otherZ, otherW);
+        return distanceSquared(VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, otherX, otherY, otherZ, otherW);
+    }
+
+    /**
+     * Compute the squared distance between this vector and {@code other}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param other the storage holding the vector to measure the distance to
+     * @param otherOffset the element index in {@code other} at which the vector starts
+     * @return the squared distance between this vector and {@code other}
+     */
+    public static double distanceSquared(double[] src, int srcOffset, double[] other, int otherOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _otherx = other[otherOffset + 0];
+        double _othery = other[otherOffset + 1];
+        double _otherz = other[otherOffset + 2];
+        double _otherw = other[otherOffset + 3];
+        double _t0 = _selfw - _otherw;
+        double _t1 = _selfz - _otherz;
+        double _t2 = _selfx - _otherx;
+        double _t3 = _selfy - _othery;
+        return Math.fma(_t0, _t0, Math.fma(_t1, _t1, Math.fma(_t2, _t2, _t3 * _t3)));
+    }
+
+    /** {@link #distanceSquared(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static double distanceSquared(java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.distanceSquared_unsafe(src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsTypedBuffer.distanceSquared_api(src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #distanceSquared(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double distanceSquared(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.distanceSquared_unsafe(src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsByteBuffer.distanceSquared_api(src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #distanceSquared(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double distanceSquared(java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment other, long otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isNative() && other.isNative()) return Double4OpsKernelsSegment.distanceSquared_unsafe(src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsSegment.distanceSquared_api(src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #distanceSquared(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static double distanceSquared(long src, long other) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.distanceSquared_unsafe(src, other);
+        return distanceSquared(VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(other, 32L), 0L);
+    }
+
+    /**
+     * Compute the dot product of this vector and ({@code otherX}, {@code otherY}, {@code otherZ},
+     * {@code otherW}).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param otherX the {@code x} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @return the dot product of this vector and {@code other}
+     */
+    public static double dot(double[] src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        return Math.fma(otherW, _selfw, Math.fma(otherZ, _selfz, Math.fma(otherX, _selfx, otherY * _selfy)));
+    }
+
+    /** {@link #dot(double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static double dot(java.nio.DoubleBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.dot_unsafe(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsTypedBuffer.dot_api(src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #dot(double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double dot(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.dot_unsafe(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsByteBuffer.dot_api(src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #dot(double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double dot(java.lang.foreign.MemorySegment src, long srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isNative()) return Double4OpsKernelsSegment.dot_unsafe(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsSegment.dot_api(src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #dot(double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static double dot(long src, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.dot_unsafe(src, otherX, otherY, otherZ, otherW);
+        return dot(VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, otherX, otherY, otherZ, otherW);
+    }
+
+    /**
+     * Compute the dot product of this vector and {@code other}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param other the storage holding the other operand of the dot product
+     * @param otherOffset the element index in {@code other} at which the vector starts
+     * @return the dot product of this vector and {@code other}
+     */
+    public static double dot(double[] src, int srcOffset, double[] other, int otherOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _otherx = other[otherOffset + 0];
+        double _othery = other[otherOffset + 1];
+        double _otherz = other[otherOffset + 2];
+        double _otherw = other[otherOffset + 3];
+        return Math.fma(_otherw, _selfw, Math.fma(_otherz, _selfz, Math.fma(_otherx, _selfx, _othery * _selfy)));
+    }
+
+    /** {@link #dot(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static double dot(java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.dot_unsafe(src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsTypedBuffer.dot_api(src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #dot(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double dot(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.dot_unsafe(src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsByteBuffer.dot_api(src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #dot(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double dot(java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment other, long otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isNative() && other.isNative()) return Double4OpsKernelsSegment.dot_unsafe(src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsSegment.dot_api(src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #dot(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static double dot(long src, long other) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.dot_unsafe(src, other);
+        return dot(VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(other, 32L), 0L);
+    }
+
+    /**
+     * Compute the base-e exponential of each component of this vector and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] exp(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.exp(_selfx);
+        dest[destOffset + 1] = Math.exp(_selfy);
+        dest[destOffset + 2] = Math.exp(_selfz);
+        dest[destOffset + 3] = Math.exp(_selfw);
+        return dest;
+    }
+
+    /** {@link #exp(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer exp(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.exp_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.exp_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #exp(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer exp(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.exp_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.exp_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #exp(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment exp(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.exp_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.exp_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #exp(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long exp(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.exp_unsafe(dest, src);
+        exp(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the base-2 exponential of each component of this vector and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] exp2(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.pow(2.0, _selfx);
+        dest[destOffset + 1] = Math.pow(2.0, _selfy);
+        dest[destOffset + 2] = Math.pow(2.0, _selfz);
+        dest[destOffset + 3] = Math.pow(2.0, _selfw);
+        return dest;
+    }
+
+    /** {@link #exp2(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer exp2(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.exp2_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.exp2_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #exp2(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer exp2(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.exp2_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.exp2_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #exp2(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment exp2(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.exp2_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.exp2_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #exp2(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long exp2(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.exp2_unsafe(dest, src);
+        exp2(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the base-e exponential minus one of each component of this vector and store the
+     * result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] expm1(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.expm1(_selfx);
+        dest[destOffset + 1] = Math.expm1(_selfy);
+        dest[destOffset + 2] = Math.expm1(_selfz);
+        dest[destOffset + 3] = Math.expm1(_selfw);
+        return dest;
+    }
+
+    /** {@link #expm1(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer expm1(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.expm1_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.expm1_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #expm1(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer expm1(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.expm1_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.expm1_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #expm1(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment expm1(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.expm1_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.expm1_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #expm1(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long expm1(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.expm1_unsafe(dest, src);
+        expm1(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Return this vector unchanged when {@code dot((NrefX, NrefY, NrefZ, NrefW), (IX, IY, IZ, IW))}
+     * is negative, and negated otherwise - orienting it against the incident direction ({@code IX},
+     * {@code IY}, {@code IZ}, {@code IW}) as judged by the reference vector ({@code NrefX},
+     * {@code NrefY}, {@code NrefZ}, {@code NrefW}) and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param IX the {@code x} component of the vector {@code (IX, IY, IZ, IW)}
+     * @param IY the {@code y} component of the vector {@code (IX, IY, IZ, IW)}
+     * @param IZ the {@code z} component of the vector {@code (IX, IY, IZ, IW)}
+     * @param IW the {@code w} component of the vector {@code (IX, IY, IZ, IW)}
+     * @param NrefX the {@code x} component of the vector {@code (NrefX, NrefY, NrefZ, NrefW)}
+     * @param NrefY the {@code y} component of the vector {@code (NrefX, NrefY, NrefZ, NrefW)}
+     * @param NrefZ the {@code z} component of the vector {@code (NrefX, NrefY, NrefZ, NrefW)}
+     * @param NrefW the {@code w} component of the vector {@code (NrefX, NrefY, NrefZ, NrefW)}
+     * @return {@code dest}
+     */
+    public static double[] faceforward(double[] dest, int destOffset, double[] src, int srcOffset, double IX, double IY, double IZ, double IW, double NrefX, double NrefY, double NrefZ, double NrefW) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.faceforward(dest, destOffset, src, srcOffset, IX, IY, IZ, IW, NrefX, NrefY, NrefZ, NrefW);
+        return Double4OpsKernelsArray.faceforward_scalar(dest, destOffset, src, srcOffset, IX, IY, IZ, IW, NrefX, NrefY, NrefZ, NrefW);
+    }
+
+    /** {@link #faceforward(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer faceforward(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double IX, double IY, double IZ, double IW, double NrefX, double NrefY, double NrefZ, double NrefW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.faceforward_unsafe(dest, destOffset, src, srcOffset, IX, IY, IZ, IW, NrefX, NrefY, NrefZ, NrefW);
+        return Double4OpsKernelsTypedBuffer.faceforward_api(dest, destOffset, src, srcOffset, IX, IY, IZ, IW, NrefX, NrefY, NrefZ, NrefW);
+    }
+
+    /** {@link #faceforward(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer faceforward(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double IX, double IY, double IZ, double IW, double NrefX, double NrefY, double NrefZ, double NrefW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.faceforward_unsafe(dest, destOffset, src, srcOffset, IX, IY, IZ, IW, NrefX, NrefY, NrefZ, NrefW);
+        return Double4OpsKernelsByteBuffer.faceforward_api(dest, destOffset, src, srcOffset, IX, IY, IZ, IW, NrefX, NrefY, NrefZ, NrefW);
+    }
+
+    /** {@link #faceforward(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment faceforward(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double IX, double IY, double IZ, double IW, double NrefX, double NrefY, double NrefZ, double NrefW) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.faceforward(dest, destOffset, src, srcOffset, IX, IY, IZ, IW, NrefX, NrefY, NrefZ, NrefW);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.faceforward_unsafe(dest, destOffset, src, srcOffset, IX, IY, IZ, IW, NrefX, NrefY, NrefZ, NrefW);
+        return Double4OpsKernelsSegment.faceforward_api(dest, destOffset, src, srcOffset, IX, IY, IZ, IW, NrefX, NrefY, NrefZ, NrefW);
+    }
+
+    /** {@link #faceforward(double[], int, double[], int, double, double, double, double, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long faceforward(long dest, long src, double IX, double IY, double IZ, double IW, double NrefX, double NrefY, double NrefZ, double NrefW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.faceforward_unsafe(dest, src, IX, IY, IZ, IW, NrefX, NrefY, NrefZ, NrefW);
+        faceforward(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, IX, IY, IZ, IW, NrefX, NrefY, NrefZ, NrefW);
+        return dest;
+    }
+
+    /**
+     * Return this vector unchanged when {@code dot(Nref, I)} is negative, and negated otherwise -
+     * orienting it against the incident direction {@code I} as judged by the reference vector
+     * {@code Nref} and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param I the storage holding the incident direction
+     * @param IOffset the element index in {@code I} at which the vector starts
+     * @param Nref the storage holding the reference vector the incident direction is tested against
+     * @param NrefOffset the element index in {@code Nref} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] faceforward(double[] dest, int destOffset, double[] src, int srcOffset, double[] I, int IOffset, double[] Nref, int NrefOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.faceforward(dest, destOffset, src, srcOffset, I, IOffset, Nref, NrefOffset);
+        return Double4OpsKernelsArray.faceforward_scalar(dest, destOffset, src, srcOffset, I, IOffset, Nref, NrefOffset);
+    }
+
+    /** {@link #faceforward(double[], int, double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer faceforward(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer I, int IOffset, java.nio.DoubleBuffer Nref, int NrefOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && I.isDirect() && I.order() == java.nio.ByteOrder.nativeOrder() && Nref.isDirect() && Nref.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.faceforward_unsafe(dest, destOffset, src, srcOffset, I, IOffset, Nref, NrefOffset);
+        return Double4OpsKernelsTypedBuffer.faceforward_api(dest, destOffset, src, srcOffset, I, IOffset, Nref, NrefOffset);
+    }
+
+    /** {@link #faceforward(double[], int, double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer faceforward(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer I, int IOffset, java.nio.ByteBuffer Nref, int NrefOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && I.isDirect() && I.order() == java.nio.ByteOrder.nativeOrder() && Nref.isDirect() && Nref.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.faceforward_unsafe(dest, destOffset, src, srcOffset, I, IOffset, Nref, NrefOffset);
+        return Double4OpsKernelsByteBuffer.faceforward_api(dest, destOffset, src, srcOffset, I, IOffset, Nref, NrefOffset);
+    }
+
+    /** {@link #faceforward(double[], int, double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment faceforward(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment I, long IOffset, java.lang.foreign.MemorySegment Nref, long NrefOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.faceforward(dest, destOffset, src, srcOffset, I, IOffset, Nref, NrefOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && I.isNative() && Nref.isNative()) return Double4OpsKernelsSegment.faceforward_unsafe(dest, destOffset, src, srcOffset, I, IOffset, Nref, NrefOffset);
+        return Double4OpsKernelsSegment.faceforward_api(dest, destOffset, src, srcOffset, I, IOffset, Nref, NrefOffset);
+    }
+
+    /** {@link #faceforward(double[], int, double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long faceforward(long dest, long src, long I, long Nref) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.faceforward_unsafe(dest, src, I, Nref);
+        faceforward(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(I, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(Nref, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the floor of each component of this vector and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] floor(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.floor(_selfx);
+        dest[destOffset + 1] = Math.floor(_selfy);
+        dest[destOffset + 2] = Math.floor(_selfz);
+        dest[destOffset + 3] = Math.floor(_selfw);
+        return dest;
+    }
+
+    /** {@link #floor(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer floor(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.floor_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.floor_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #floor(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer floor(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.floor_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.floor_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #floor(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment floor(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.floor_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.floor_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #floor(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long floor(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.floor_unsafe(dest, src);
+        floor(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the fractional part of each component of this vector and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] fract(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.min(_selfx - Math.floor(_selfx), 0.9999999999999999);
+        dest[destOffset + 1] = Math.min(_selfy - Math.floor(_selfy), 0.9999999999999999);
+        dest[destOffset + 2] = Math.min(_selfz - Math.floor(_selfz), 0.9999999999999999);
+        dest[destOffset + 3] = Math.min(_selfw - Math.floor(_selfw), 0.9999999999999999);
+        return dest;
+    }
+
+    /** {@link #fract(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer fract(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.fract_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.fract_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #fract(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer fract(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.fract_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.fract_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #fract(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment fract(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.fract_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.fract_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #fract(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long fract(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.fract_unsafe(dest, src);
+        fract(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the component-wise Euclidean norm {@code sqrt(a² + b²)} with {@code a} each component
+     * of this vector and {@code b} {@code y} and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param y the other operand
+     * @return {@code dest}
+     */
+    public static double[] hypot(double[] dest, int destOffset, double[] src, int srcOffset, double y) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.hypot(_selfx, y);
+        dest[destOffset + 1] = Math.hypot(_selfy, y);
+        dest[destOffset + 2] = Math.hypot(_selfz, y);
+        dest[destOffset + 3] = Math.hypot(_selfw, y);
+        return dest;
+    }
+
+    /** {@link #hypot(double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer hypot(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double y) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.hypot_unsafe(dest, destOffset, src, srcOffset, y);
+        return Double4OpsKernelsTypedBuffer.hypot_api(dest, destOffset, src, srcOffset, y);
+    }
+
+    /** {@link #hypot(double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer hypot(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double y) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.hypot_unsafe(dest, destOffset, src, srcOffset, y);
+        return Double4OpsKernelsByteBuffer.hypot_api(dest, destOffset, src, srcOffset, y);
+    }
+
+    /** {@link #hypot(double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment hypot(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double y) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.hypot_unsafe(dest, destOffset, src, srcOffset, y);
+        return Double4OpsKernelsSegment.hypot_api(dest, destOffset, src, srcOffset, y);
+    }
+
+    /** {@link #hypot(double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long hypot(long dest, long src, double y) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.hypot_unsafe(dest, src, y);
+        hypot(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, y);
+        return dest;
+    }
+
+    /**
+     * Compute the component-wise Euclidean norm {@code sqrt(a² + b²)} with {@code a} each component
+     * of this vector and {@code b} the corresponding component of ({@code yX}, {@code yY},
+     * {@code yZ}, {@code yW}) and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param yX the {@code x} component of the vector {@code (yX, yY, yZ, yW)}
+     * @param yY the {@code y} component of the vector {@code (yX, yY, yZ, yW)}
+     * @param yZ the {@code z} component of the vector {@code (yX, yY, yZ, yW)}
+     * @param yW the {@code w} component of the vector {@code (yX, yY, yZ, yW)}
+     * @return {@code dest}
+     */
+    public static double[] hypot(double[] dest, int destOffset, double[] src, int srcOffset, double yX, double yY, double yZ, double yW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.hypot(_selfx, yX);
+        dest[destOffset + 1] = Math.hypot(_selfy, yY);
+        dest[destOffset + 2] = Math.hypot(_selfz, yZ);
+        dest[destOffset + 3] = Math.hypot(_selfw, yW);
+        return dest;
+    }
+
+    /** {@link #hypot(double[], int, double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer hypot(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double yX, double yY, double yZ, double yW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.hypot_unsafe(dest, destOffset, src, srcOffset, yX, yY, yZ, yW);
+        return Double4OpsKernelsTypedBuffer.hypot_api(dest, destOffset, src, srcOffset, yX, yY, yZ, yW);
+    }
+
+    /** {@link #hypot(double[], int, double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer hypot(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double yX, double yY, double yZ, double yW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.hypot_unsafe(dest, destOffset, src, srcOffset, yX, yY, yZ, yW);
+        return Double4OpsKernelsByteBuffer.hypot_api(dest, destOffset, src, srcOffset, yX, yY, yZ, yW);
+    }
+
+    /** {@link #hypot(double[], int, double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment hypot(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double yX, double yY, double yZ, double yW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.hypot_unsafe(dest, destOffset, src, srcOffset, yX, yY, yZ, yW);
+        return Double4OpsKernelsSegment.hypot_api(dest, destOffset, src, srcOffset, yX, yY, yZ, yW);
+    }
+
+    /** {@link #hypot(double[], int, double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long hypot(long dest, long src, double yX, double yY, double yZ, double yW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.hypot_unsafe(dest, src, yX, yY, yZ, yW);
+        hypot(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, yX, yY, yZ, yW);
+        return dest;
+    }
+
+    /**
+     * Compute the component-wise Euclidean norm {@code sqrt(a² + b²)} with {@code a} each component
+     * of this vector and {@code b} the corresponding component of {@code y} and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param y the storage holding the vector of other operands, one per component
+     * @param yOffset the element index in {@code y} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] hypot(double[] dest, int destOffset, double[] src, int srcOffset, double[] y, int yOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _yx = y[yOffset + 0];
+        double _yy = y[yOffset + 1];
+        double _yz = y[yOffset + 2];
+        double _yw = y[yOffset + 3];
+        dest[destOffset + 0] = Math.hypot(_selfx, _yx);
+        dest[destOffset + 1] = Math.hypot(_selfy, _yy);
+        dest[destOffset + 2] = Math.hypot(_selfz, _yz);
+        dest[destOffset + 3] = Math.hypot(_selfw, _yw);
+        return dest;
+    }
+
+    /** {@link #hypot(double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer hypot(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer y, int yOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && y.isDirect() && y.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.hypot_unsafe(dest, destOffset, src, srcOffset, y, yOffset);
+        return Double4OpsKernelsTypedBuffer.hypot_api(dest, destOffset, src, srcOffset, y, yOffset);
+    }
+
+    /** {@link #hypot(double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer hypot(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer y, int yOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && y.isDirect() && y.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.hypot_unsafe(dest, destOffset, src, srcOffset, y, yOffset);
+        return Double4OpsKernelsByteBuffer.hypot_api(dest, destOffset, src, srcOffset, y, yOffset);
+    }
+
+    /** {@link #hypot(double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment hypot(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment y, long yOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && y.isNative()) return Double4OpsKernelsSegment.hypot_unsafe(dest, destOffset, src, srcOffset, y, yOffset);
+        return Double4OpsKernelsSegment.hypot_api(dest, destOffset, src, srcOffset, y, yOffset);
+    }
+
+    /** {@link #hypot(double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long hypot(long dest, long src, long y) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.hypot_unsafe(dest, src, y);
+        hypot(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(y, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the reciprocal {@code 1 / x} of each component of this vector and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: each component of this vector must be non-zero.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] inverse(double[] dest, int destOffset, double[] src, int srcOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.inverse(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsArray.inverse_scalar(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #inverse(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer inverse(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.inverse_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.inverse_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #inverse(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer inverse(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.inverse_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.inverse_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #inverse(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment inverse(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.inverse(dest, destOffset, src, srcOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.inverse_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.inverse_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #inverse(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long inverse(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.inverse_unsafe(dest, src);
+        inverse(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the inverse square root of each component of this vector and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: each component of this vector must be positive.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] inverseSqrt(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = (1.0 / Math.sqrt(_selfx));
+        dest[destOffset + 1] = (1.0 / Math.sqrt(_selfy));
+        dest[destOffset + 2] = (1.0 / Math.sqrt(_selfz));
+        dest[destOffset + 3] = (1.0 / Math.sqrt(_selfw));
+        return dest;
+    }
+
+    /** {@link #inverseSqrt(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer inverseSqrt(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.inverseSqrt_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.inverseSqrt_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #inverseSqrt(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer inverseSqrt(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.inverseSqrt_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.inverseSqrt_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #inverseSqrt(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment inverseSqrt(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.inverseSqrt_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.inverseSqrt_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #inverseSqrt(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long inverseSqrt(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.inverseSqrt_unsafe(dest, src);
+        inverseSqrt(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the length of this vector.
+     * <p>
+     * Valid input: nonzero magnitudes must lie between {@code 1.5e-154} and {@code 3.8e153}.
+     *
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return the length of this vector
+     */
+    public static double length(double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        return Math.sqrt(Math.fma(_selfw, _selfw, Math.fma(_selfz, _selfz, Math.fma(_selfx, _selfx, _selfy * _selfy))));
+    }
+
+    /** {@link #length(double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static double length(java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.length_unsafe(src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.length_api(src, srcOffset);
+    }
+
+    /** {@link #length(double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double length(java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.length_unsafe(src, srcOffset);
+        return Double4OpsKernelsByteBuffer.length_api(src, srcOffset);
+    }
+
+    /** {@link #length(double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double length(java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isNative()) return Double4OpsKernelsSegment.length_unsafe(src, srcOffset);
+        return Double4OpsKernelsSegment.length_api(src, srcOffset);
+    }
+
+    /** {@link #length(double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static double length(long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.length_unsafe(src);
+        return length(VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+    }
+
+    /**
+     * Compute the squared length of this vector.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return the squared length of this vector
+     */
+    public static double lengthSquared(double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        return Math.fma(_selfw, _selfw, Math.fma(_selfz, _selfz, Math.fma(_selfx, _selfx, _selfy * _selfy)));
+    }
+
+    /** {@link #lengthSquared(double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static double lengthSquared(java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.lengthSquared_unsafe(src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.lengthSquared_api(src, srcOffset);
+    }
+
+    /** {@link #lengthSquared(double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double lengthSquared(java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.lengthSquared_unsafe(src, srcOffset);
+        return Double4OpsKernelsByteBuffer.lengthSquared_api(src, srcOffset);
+    }
+
+    /** {@link #lengthSquared(double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double lengthSquared(java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isNative()) return Double4OpsKernelsSegment.lengthSquared_unsafe(src, srcOffset);
+        return Double4OpsKernelsSegment.lengthSquared_api(src, srcOffset);
+    }
+
+    /** {@link #lengthSquared(double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static double lengthSquared(long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.lengthSquared_unsafe(src);
+        return lengthSquared(VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+    }
+
+    /**
+     * Compute the natural logarithm of each component of this vector and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: each component of this vector must be positive.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] log(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.log(_selfx);
+        dest[destOffset + 1] = Math.log(_selfy);
+        dest[destOffset + 2] = Math.log(_selfz);
+        dest[destOffset + 3] = Math.log(_selfw);
+        return dest;
+    }
+
+    /** {@link #log(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer log(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.log_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.log_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #log(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer log(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.log_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.log_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #log(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment log(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.log_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.log_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #log(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long log(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.log_unsafe(dest, src);
+        log(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the base-10 logarithm of each component of this vector and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: each component of this vector must be positive.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] log10(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.log10(_selfx);
+        dest[destOffset + 1] = Math.log10(_selfy);
+        dest[destOffset + 2] = Math.log10(_selfz);
+        dest[destOffset + 3] = Math.log10(_selfw);
+        return dest;
+    }
+
+    /** {@link #log10(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer log10(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.log10_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.log10_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #log10(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer log10(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.log10_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.log10_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #log10(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment log10(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.log10_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.log10_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #log10(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long log10(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.log10_unsafe(dest, src);
+        log10(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the natural logarithm of one plus the value of each component of this vector and
+     * store the result in {@code dest}.
+     * <p>
+     * Valid input: each component of this vector must lie in {@code (-1, Infinity)}.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] log1p(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.log1p(_selfx);
+        dest[destOffset + 1] = Math.log1p(_selfy);
+        dest[destOffset + 2] = Math.log1p(_selfz);
+        dest[destOffset + 3] = Math.log1p(_selfw);
+        return dest;
+    }
+
+    /** {@link #log1p(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer log1p(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.log1p_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.log1p_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #log1p(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer log1p(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.log1p_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.log1p_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #log1p(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment log1p(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.log1p_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.log1p_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #log1p(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long log1p(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.log1p_unsafe(dest, src);
+        log1p(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the base-2 logarithm of each component of this vector and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: each component of this vector must be positive.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] log2(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.log2(_selfx);
+        dest[destOffset + 1] = Math.log2(_selfy);
+        dest[destOffset + 2] = Math.log2(_selfz);
+        dest[destOffset + 3] = Math.log2(_selfw);
+        return dest;
+    }
+
+    /** {@link #log2(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer log2(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.log2_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.log2_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #log2(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer log2(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.log2_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.log2_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #log2(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment log2(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.log2_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.log2_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #log2(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long log2(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.log2_unsafe(dest, src);
+        log2(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the Manhattan distance between this vector and ({@code otherX}, {@code otherY},
+     * {@code otherZ}, {@code otherW}).
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param otherX the {@code x} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @return the Manhattan distance between this vector and {@code other}
+     */
+    public static double manhattanDistance(double[] src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        return Math.abs(_selfx - otherX) + Math.abs(_selfy - otherY) + Math.abs(_selfz - otherZ) + Math.abs(_selfw - otherW);
+    }
+
+    /** {@link #manhattanDistance(double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static double manhattanDistance(java.nio.DoubleBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.manhattanDistance_unsafe(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsTypedBuffer.manhattanDistance_api(src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #manhattanDistance(double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double manhattanDistance(java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.manhattanDistance_unsafe(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsByteBuffer.manhattanDistance_api(src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #manhattanDistance(double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double manhattanDistance(java.lang.foreign.MemorySegment src, long srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isNative()) return Double4OpsKernelsSegment.manhattanDistance_unsafe(src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsSegment.manhattanDistance_api(src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #manhattanDistance(double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static double manhattanDistance(long src, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.manhattanDistance_unsafe(src, otherX, otherY, otherZ, otherW);
+        return manhattanDistance(VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, otherX, otherY, otherZ, otherW);
+    }
+
+    /**
+     * Compute the Manhattan distance between this vector and {@code other}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param other the storage holding the vector to measure the distance to
+     * @param otherOffset the element index in {@code other} at which the vector starts
+     * @return the Manhattan distance between this vector and {@code other}
+     */
+    public static double manhattanDistance(double[] src, int srcOffset, double[] other, int otherOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _otherx = other[otherOffset + 0];
+        double _othery = other[otherOffset + 1];
+        double _otherz = other[otherOffset + 2];
+        double _otherw = other[otherOffset + 3];
+        return Math.abs(_selfx - _otherx) + Math.abs(_selfy - _othery) + Math.abs(_selfz - _otherz) + Math.abs(_selfw - _otherw);
+    }
+
+    /** {@link #manhattanDistance(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static double manhattanDistance(java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.manhattanDistance_unsafe(src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsTypedBuffer.manhattanDistance_api(src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #manhattanDistance(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double manhattanDistance(java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.manhattanDistance_unsafe(src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsByteBuffer.manhattanDistance_api(src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #manhattanDistance(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double manhattanDistance(java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment other, long otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isNative() && other.isNative()) return Double4OpsKernelsSegment.manhattanDistance_unsafe(src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsSegment.manhattanDistance_api(src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #manhattanDistance(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static double manhattanDistance(long src, long other) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.manhattanDistance_unsafe(src, other);
+        return manhattanDistance(VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(other, 32L), 0L);
+    }
+
+    /**
+     * Compute the Manhattan length (sum of the absolute components) of this vector.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return the Manhattan length (sum of the absolute components) of this vector
+     */
+    public static double manhattanLength(double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        return Math.abs(_selfx) + Math.abs(_selfy) + Math.abs(_selfz) + Math.abs(_selfw);
+    }
+
+    /** {@link #manhattanLength(double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static double manhattanLength(java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.manhattanLength_unsafe(src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.manhattanLength_api(src, srcOffset);
+    }
+
+    /** {@link #manhattanLength(double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double manhattanLength(java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.manhattanLength_unsafe(src, srcOffset);
+        return Double4OpsKernelsByteBuffer.manhattanLength_api(src, srcOffset);
+    }
+
+    /** {@link #manhattanLength(double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static double manhattanLength(java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isNative()) return Double4OpsKernelsSegment.manhattanLength_unsafe(src, srcOffset);
+        return Double4OpsKernelsSegment.manhattanLength_api(src, srcOffset);
+    }
+
+    /** {@link #manhattanLength(double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static double manhattanLength(long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.manhattanLength_unsafe(src);
+        return manhattanLength(VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+    }
+
+    /**
+     * Set each component of this vector to the larger of itself and {@code scalar} and store the
+     * result in {@code dest}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param scalar the value to take the component-wise maximum with
+     * @return {@code dest}
+     */
+    public static double[] max(double[] dest, int destOffset, double[] src, int srcOffset, double scalar) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.max(dest, destOffset, src, srcOffset, scalar);
+        return Double4OpsKernelsArray.max_scalar(dest, destOffset, src, srcOffset, scalar);
+    }
+
+    /** {@link #max(double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer max(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double scalar) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.max_unsafe(dest, destOffset, src, srcOffset, scalar);
+        return Double4OpsKernelsTypedBuffer.max_api(dest, destOffset, src, srcOffset, scalar);
+    }
+
+    /** {@link #max(double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer max(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double scalar) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.max_unsafe(dest, destOffset, src, srcOffset, scalar);
+        return Double4OpsKernelsByteBuffer.max_api(dest, destOffset, src, srcOffset, scalar);
+    }
+
+    /** {@link #max(double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment max(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double scalar) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.max(dest, destOffset, src, srcOffset, scalar);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.max_unsafe(dest, destOffset, src, srcOffset, scalar);
+        return Double4OpsKernelsSegment.max_api(dest, destOffset, src, srcOffset, scalar);
+    }
+
+    /** {@link #max(double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long max(long dest, long src, double scalar) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.max_unsafe(dest, src, scalar);
+        max(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, scalar);
+        return dest;
+    }
+
+    /**
+     * Set each component of this vector to the larger of itself and the corresponding component of
+     * ({@code otherX}, {@code otherY}, {@code otherZ}, {@code otherW}) and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param otherX the {@code x} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @return {@code dest}
+     */
+    public static double[] max(double[] dest, int destOffset, double[] src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.max(_selfx, otherX);
+        dest[destOffset + 1] = Math.max(_selfy, otherY);
+        dest[destOffset + 2] = Math.max(_selfz, otherZ);
+        dest[destOffset + 3] = Math.max(_selfw, otherW);
+        return dest;
+    }
+
+    /** {@link #max(double[], int, double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer max(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.max_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsTypedBuffer.max_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #max(double[], int, double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer max(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.max_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsByteBuffer.max_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #max(double[], int, double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment max(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.max_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsSegment.max_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #max(double[], int, double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long max(long dest, long src, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.max_unsafe(dest, src, otherX, otherY, otherZ, otherW);
+        max(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, otherX, otherY, otherZ, otherW);
+        return dest;
+    }
+
+    /**
+     * Set each component of this vector to the larger of itself and the corresponding component of
+     * {@code other} and store the result in {@code dest}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param other the storage holding the vector to take the component-wise maximum with
+     * @param otherOffset the element index in {@code other} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] max(double[] dest, int destOffset, double[] src, int srcOffset, double[] other, int otherOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.max(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsArray.max_scalar(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #max(double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer max(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.max_unsafe(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsTypedBuffer.max_api(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #max(double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer max(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.max_unsafe(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsByteBuffer.max_api(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #max(double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment max(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment other, long otherOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.max(dest, destOffset, src, srcOffset, other, otherOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && other.isNative()) return Double4OpsKernelsSegment.max_unsafe(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsSegment.max_api(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #max(double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long max(long dest, long src, long other) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.max_unsafe(dest, src, other);
+        max(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(other, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Set each component of this vector to the smaller of itself and {@code scalar} and store the
+     * result in {@code dest}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param scalar the value to take the component-wise minimum with
+     * @return {@code dest}
+     */
+    public static double[] min(double[] dest, int destOffset, double[] src, int srcOffset, double scalar) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.min(dest, destOffset, src, srcOffset, scalar);
+        return Double4OpsKernelsArray.min_scalar(dest, destOffset, src, srcOffset, scalar);
+    }
+
+    /** {@link #min(double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer min(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double scalar) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.min_unsafe(dest, destOffset, src, srcOffset, scalar);
+        return Double4OpsKernelsTypedBuffer.min_api(dest, destOffset, src, srcOffset, scalar);
+    }
+
+    /** {@link #min(double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer min(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double scalar) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.min_unsafe(dest, destOffset, src, srcOffset, scalar);
+        return Double4OpsKernelsByteBuffer.min_api(dest, destOffset, src, srcOffset, scalar);
+    }
+
+    /** {@link #min(double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment min(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double scalar) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.min(dest, destOffset, src, srcOffset, scalar);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.min_unsafe(dest, destOffset, src, srcOffset, scalar);
+        return Double4OpsKernelsSegment.min_api(dest, destOffset, src, srcOffset, scalar);
+    }
+
+    /** {@link #min(double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long min(long dest, long src, double scalar) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.min_unsafe(dest, src, scalar);
+        min(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, scalar);
+        return dest;
+    }
+
+    /**
+     * Set each component of this vector to the smaller of itself and the corresponding component of
+     * ({@code otherX}, {@code otherY}, {@code otherZ}, {@code otherW}) and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param otherX the {@code x} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherY the {@code y} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherZ the {@code z} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @param otherW the {@code w} component of the vector {@code (otherX, otherY, otherZ, otherW)}
+     * @return {@code dest}
+     */
+    public static double[] min(double[] dest, int destOffset, double[] src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.min(_selfx, otherX);
+        dest[destOffset + 1] = Math.min(_selfy, otherY);
+        dest[destOffset + 2] = Math.min(_selfz, otherZ);
+        dest[destOffset + 3] = Math.min(_selfw, otherW);
+        return dest;
+    }
+
+    /** {@link #min(double[], int, double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer min(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.min_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsTypedBuffer.min_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #min(double[], int, double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer min(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.min_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsByteBuffer.min_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #min(double[], int, double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment min(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.min_unsafe(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+        return Double4OpsKernelsSegment.min_api(dest, destOffset, src, srcOffset, otherX, otherY, otherZ, otherW);
+    }
+
+    /** {@link #min(double[], int, double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long min(long dest, long src, double otherX, double otherY, double otherZ, double otherW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.min_unsafe(dest, src, otherX, otherY, otherZ, otherW);
+        min(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, otherX, otherY, otherZ, otherW);
+        return dest;
+    }
+
+    /**
+     * Set each component of this vector to the smaller of itself and the corresponding component of
+     * {@code other} and store the result in {@code dest}.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param other the storage holding the vector to take the component-wise minimum with
+     * @param otherOffset the element index in {@code other} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] min(double[] dest, int destOffset, double[] src, int srcOffset, double[] other, int otherOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.min(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsArray.min_scalar(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #min(double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer min(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.min_unsafe(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsTypedBuffer.min_api(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #min(double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer min(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer other, int otherOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && other.isDirect() && other.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.min_unsafe(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsByteBuffer.min_api(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #min(double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment min(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment other, long otherOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.min(dest, destOffset, src, srcOffset, other, otherOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && other.isNative()) return Double4OpsKernelsSegment.min_unsafe(dest, destOffset, src, srcOffset, other, otherOffset);
+        return Double4OpsKernelsSegment.min_api(dest, destOffset, src, srcOffset, other, otherOffset);
+    }
+
+    /** {@link #min(double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long min(long dest, long src, long other) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.min_unsafe(dest, src, other);
+        min(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(other, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the component-wise floored modulo of this vector divided by {@code y} ({@code x % y},
+     * plus {@code y} when that remainder is non-zero and its sign differs from {@code y}'s -
+     * exactly Kotlin's {@code mod}) and store the result in {@code dest}.
+     * <p>
+     * The result takes the sign of the divisor, unlike Java's {@code %} operator, which follows the
+     * dividend.
+     * <p>
+     * Valid input: {@code y} must be non-zero.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param y the divisor
+     * @return {@code dest}
+     */
+    public static double[] mod(double[] dest, int destOffset, double[] src, int srcOffset, double y) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = flooredMod(_selfx, y);
+        dest[destOffset + 1] = flooredMod(_selfy, y);
+        dest[destOffset + 2] = flooredMod(_selfz, y);
+        dest[destOffset + 3] = flooredMod(_selfw, y);
+        return dest;
+    }
+
+    /** {@link #mod(double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer mod(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double y) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.mod_unsafe(dest, destOffset, src, srcOffset, y);
+        return Double4OpsKernelsTypedBuffer.mod_api(dest, destOffset, src, srcOffset, y);
+    }
+
+    /** {@link #mod(double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer mod(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double y) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.mod_unsafe(dest, destOffset, src, srcOffset, y);
+        return Double4OpsKernelsByteBuffer.mod_api(dest, destOffset, src, srcOffset, y);
+    }
+
+    /** {@link #mod(double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment mod(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double y) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.mod_unsafe(dest, destOffset, src, srcOffset, y);
+        return Double4OpsKernelsSegment.mod_api(dest, destOffset, src, srcOffset, y);
+    }
+
+    /** {@link #mod(double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long mod(long dest, long src, double y) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.mod_unsafe(dest, src, y);
+        mod(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, y);
+        return dest;
+    }
+
+    /**
+     * Compute the component-wise floored modulo of this vector divided by ({@code yX}, {@code yY},
+     * {@code yZ}, {@code yW}) ({@code x % y}, plus {@code y} when that remainder is non-zero and
+     * its sign differs from {@code y}'s - exactly Kotlin's {@code mod}) and store the result in
+     * {@code dest}.
+     * <p>
+     * The result takes the sign of the divisor, unlike Java's {@code %} operator, which follows the
+     * dividend.
+     * <p>
+     * Valid input: each component of {@code (yX, yY, yZ, yW)} must be non-zero.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param yX the {@code x} component of the vector {@code (yX, yY, yZ, yW)}
+     * @param yY the {@code y} component of the vector {@code (yX, yY, yZ, yW)}
+     * @param yZ the {@code z} component of the vector {@code (yX, yY, yZ, yW)}
+     * @param yW the {@code w} component of the vector {@code (yX, yY, yZ, yW)}
+     * @return {@code dest}
+     */
+    public static double[] mod(double[] dest, int destOffset, double[] src, int srcOffset, double yX, double yY, double yZ, double yW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = flooredMod(_selfx, yX);
+        dest[destOffset + 1] = flooredMod(_selfy, yY);
+        dest[destOffset + 2] = flooredMod(_selfz, yZ);
+        dest[destOffset + 3] = flooredMod(_selfw, yW);
+        return dest;
+    }
+
+    /** {@link #mod(double[], int, double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer mod(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double yX, double yY, double yZ, double yW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.mod_unsafe(dest, destOffset, src, srcOffset, yX, yY, yZ, yW);
+        return Double4OpsKernelsTypedBuffer.mod_api(dest, destOffset, src, srcOffset, yX, yY, yZ, yW);
+    }
+
+    /** {@link #mod(double[], int, double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer mod(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double yX, double yY, double yZ, double yW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.mod_unsafe(dest, destOffset, src, srcOffset, yX, yY, yZ, yW);
+        return Double4OpsKernelsByteBuffer.mod_api(dest, destOffset, src, srcOffset, yX, yY, yZ, yW);
+    }
+
+    /** {@link #mod(double[], int, double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment mod(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double yX, double yY, double yZ, double yW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.mod_unsafe(dest, destOffset, src, srcOffset, yX, yY, yZ, yW);
+        return Double4OpsKernelsSegment.mod_api(dest, destOffset, src, srcOffset, yX, yY, yZ, yW);
+    }
+
+    /** {@link #mod(double[], int, double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long mod(long dest, long src, double yX, double yY, double yZ, double yW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.mod_unsafe(dest, src, yX, yY, yZ, yW);
+        mod(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, yX, yY, yZ, yW);
+        return dest;
+    }
+
+    /**
+     * Compute the component-wise floored modulo of this vector divided by {@code y} ({@code x % y},
+     * plus {@code y} when that remainder is non-zero and its sign differs from {@code y}'s -
+     * exactly Kotlin's {@code mod}) and store the result in {@code dest}.
+     * <p>
+     * The result takes the sign of the divisor, unlike Java's {@code %} operator, which follows the
+     * dividend.
+     * <p>
+     * Valid input: each component of {@code y} must be non-zero.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param y the storage holding the vector of divisors, one per component
+     * @param yOffset the element index in {@code y} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] mod(double[] dest, int destOffset, double[] src, int srcOffset, double[] y, int yOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _yx = y[yOffset + 0];
+        double _yy = y[yOffset + 1];
+        double _yz = y[yOffset + 2];
+        double _yw = y[yOffset + 3];
+        dest[destOffset + 0] = flooredMod(_selfx, _yx);
+        dest[destOffset + 1] = flooredMod(_selfy, _yy);
+        dest[destOffset + 2] = flooredMod(_selfz, _yz);
+        dest[destOffset + 3] = flooredMod(_selfw, _yw);
+        return dest;
+    }
+
+    /** {@link #mod(double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer mod(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer y, int yOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && y.isDirect() && y.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.mod_unsafe(dest, destOffset, src, srcOffset, y, yOffset);
+        return Double4OpsKernelsTypedBuffer.mod_api(dest, destOffset, src, srcOffset, y, yOffset);
+    }
+
+    /** {@link #mod(double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer mod(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer y, int yOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && y.isDirect() && y.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.mod_unsafe(dest, destOffset, src, srcOffset, y, yOffset);
+        return Double4OpsKernelsByteBuffer.mod_api(dest, destOffset, src, srcOffset, y, yOffset);
+    }
+
+    /** {@link #mod(double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment mod(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment y, long yOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && y.isNative()) return Double4OpsKernelsSegment.mod_unsafe(dest, destOffset, src, srcOffset, y, yOffset);
+        return Double4OpsKernelsSegment.mod_api(dest, destOffset, src, srcOffset, y, yOffset);
+    }
+
+    /** {@link #mod(double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long mod(long dest, long src, long y) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.mod_unsafe(dest, src, y);
+        mod(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(y, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the next representable value toward negative infinity of each component of this
+     * vector and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] nextDown(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.nextDown(_selfx);
+        dest[destOffset + 1] = Math.nextDown(_selfy);
+        dest[destOffset + 2] = Math.nextDown(_selfz);
+        dest[destOffset + 3] = Math.nextDown(_selfw);
+        return dest;
+    }
+
+    /** {@link #nextDown(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer nextDown(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.nextDown_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.nextDown_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #nextDown(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer nextDown(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.nextDown_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.nextDown_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #nextDown(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment nextDown(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.nextDown_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.nextDown_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #nextDown(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long nextDown(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.nextDown_unsafe(dest, src);
+        nextDown(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the next representable value toward positive infinity of each component of this
+     * vector and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] nextUp(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.nextUp(_selfx);
+        dest[destOffset + 1] = Math.nextUp(_selfy);
+        dest[destOffset + 2] = Math.nextUp(_selfz);
+        dest[destOffset + 3] = Math.nextUp(_selfw);
+        return dest;
+    }
+
+    /** {@link #nextUp(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer nextUp(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.nextUp_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.nextUp_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #nextUp(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer nextUp(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.nextUp_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.nextUp_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #nextUp(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment nextUp(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.nextUp_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.nextUp_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #nextUp(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long nextUp(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.nextUp_unsafe(dest, src);
+        nextUp(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Normalize this vector to unit length (the zero vector yields the zero vector) and store the
+     * result in {@code dest}.
+     * <p>
+     * Valid input: nonzero magnitudes must lie between {@code 1.5e-154} and {@code 3.8e153}.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] normalize(double[] dest, int destOffset, double[] src, int srcOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.normalize(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsArray.normalize_scalar(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #normalize(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer normalize(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.normalize_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.normalize_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #normalize(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer normalize(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.normalize_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.normalize_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #normalize(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment normalize(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.normalize(dest, destOffset, src, srcOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.normalize_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.normalize_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #normalize(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long normalize(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.normalize_unsafe(dest, src);
+        normalize(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Normalize this vector and multiply the result by {@code length}, i.e. rescale it to that
+     * length (the zero vector yields the zero vector) and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param length the length to rescale to
+     * @return {@code dest}
+     */
+    public static double[] normalizeMul(double[] dest, int destOffset, double[] src, int srcOffset, double length) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.normalizeMul(dest, destOffset, src, srcOffset, length);
+        return Double4OpsKernelsArray.normalizeMul_scalar(dest, destOffset, src, srcOffset, length);
+    }
+
+    /** {@link #normalizeMul(double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer normalizeMul(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double length) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.normalizeMul_unsafe(dest, destOffset, src, srcOffset, length);
+        return Double4OpsKernelsTypedBuffer.normalizeMul_api(dest, destOffset, src, srcOffset, length);
+    }
+
+    /** {@link #normalizeMul(double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer normalizeMul(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double length) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.normalizeMul_unsafe(dest, destOffset, src, srcOffset, length);
+        return Double4OpsKernelsByteBuffer.normalizeMul_api(dest, destOffset, src, srcOffset, length);
+    }
+
+    /** {@link #normalizeMul(double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment normalizeMul(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double length) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.normalizeMul(dest, destOffset, src, srcOffset, length);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.normalizeMul_unsafe(dest, destOffset, src, srcOffset, length);
+        return Double4OpsKernelsSegment.normalizeMul_api(dest, destOffset, src, srcOffset, length);
+    }
+
+    /** {@link #normalizeMul(double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long normalizeMul(long dest, long src, double length) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.normalizeMul_unsafe(dest, src, length);
+        normalizeMul(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, length);
+        return dest;
+    }
+
+    /**
+     * Compute the outer product of this vector and ({@code rowX}, {@code rowY}, {@code rowZ},
+     * {@code rowW}) and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the matrix starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param rowX the {@code x} component of the vector {@code (rowX, rowY, rowZ, rowW)}
+     * @param rowY the {@code y} component of the vector {@code (rowX, rowY, rowZ, rowW)}
+     * @param rowZ the {@code z} component of the vector {@code (rowX, rowY, rowZ, rowW)}
+     * @param rowW the {@code w} component of the vector {@code (rowX, rowY, rowZ, rowW)}
+     * @return {@code dest}
+     */
+    public static double[] outerProduct(double[] dest, int destOffset, double[] src, int srcOffset, double rowX, double rowY, double rowZ, double rowW) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.outerProduct(dest, destOffset, src, srcOffset, rowX, rowY, rowZ, rowW);
+        return Double4OpsKernelsArray.outerProduct_scalar(dest, destOffset, src, srcOffset, rowX, rowY, rowZ, rowW);
+    }
+
+    /** {@link #outerProduct(double[], int, double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer outerProduct(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double rowX, double rowY, double rowZ, double rowW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.outerProduct_unsafe(dest, destOffset, src, srcOffset, rowX, rowY, rowZ, rowW);
+        return Double4OpsKernelsTypedBuffer.outerProduct_api(dest, destOffset, src, srcOffset, rowX, rowY, rowZ, rowW);
+    }
+
+    /** {@link #outerProduct(double[], int, double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer outerProduct(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double rowX, double rowY, double rowZ, double rowW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.outerProduct_unsafe(dest, destOffset, src, srcOffset, rowX, rowY, rowZ, rowW);
+        return Double4OpsKernelsByteBuffer.outerProduct_api(dest, destOffset, src, srcOffset, rowX, rowY, rowZ, rowW);
+    }
+
+    /** {@link #outerProduct(double[], int, double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment outerProduct(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double rowX, double rowY, double rowZ, double rowW) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.outerProduct(dest, destOffset, src, srcOffset, rowX, rowY, rowZ, rowW);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.outerProduct_unsafe(dest, destOffset, src, srcOffset, rowX, rowY, rowZ, rowW);
+        return Double4OpsKernelsSegment.outerProduct_api(dest, destOffset, src, srcOffset, rowX, rowY, rowZ, rowW);
+    }
+
+    /** {@link #outerProduct(double[], int, double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long outerProduct(long dest, long src, double rowX, double rowY, double rowZ, double rowW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.outerProduct_unsafe(dest, src, rowX, rowY, rowZ, rowW);
+        outerProduct(VirtualMemoryHolder.virtualMemory().asSlice(dest, 128L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, rowX, rowY, rowZ, rowW);
+        return dest;
+    }
+
+    /**
+     * Compute the outer product of this vector and {@code row} and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the matrix starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param row the storage holding the row vector (right operand)
+     * @param rowOffset the element index in {@code row} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] outerProduct(double[] dest, int destOffset, double[] src, int srcOffset, double[] row, int rowOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.outerProduct(dest, destOffset, src, srcOffset, row, rowOffset);
+        return Double4OpsKernelsArray.outerProduct_scalar(dest, destOffset, src, srcOffset, row, rowOffset);
+    }
+
+    /** {@link #outerProduct(double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer outerProduct(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer row, int rowOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && row.isDirect() && row.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.outerProduct_unsafe(dest, destOffset, src, srcOffset, row, rowOffset);
+        return Double4OpsKernelsTypedBuffer.outerProduct_api(dest, destOffset, src, srcOffset, row, rowOffset);
+    }
+
+    /** {@link #outerProduct(double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer outerProduct(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer row, int rowOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && row.isDirect() && row.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.outerProduct_unsafe(dest, destOffset, src, srcOffset, row, rowOffset);
+        return Double4OpsKernelsByteBuffer.outerProduct_api(dest, destOffset, src, srcOffset, row, rowOffset);
+    }
+
+    /** {@link #outerProduct(double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment outerProduct(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment row, long rowOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.outerProduct(dest, destOffset, src, srcOffset, row, rowOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && row.isNative()) return Double4OpsKernelsSegment.outerProduct_unsafe(dest, destOffset, src, srcOffset, row, rowOffset);
+        return Double4OpsKernelsSegment.outerProduct_api(dest, destOffset, src, srcOffset, row, rowOffset);
+    }
+
+    /** {@link #outerProduct(double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long outerProduct(long dest, long src, long row) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.outerProduct_unsafe(dest, src, row);
+        outerProduct(VirtualMemoryHolder.virtualMemory().asSlice(dest, 128L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(row, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Raise each component of this vector to the power of {@code exponent} and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: each component of this vector must not be negative.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param exponent the exponent
+     * @return {@code dest}
+     */
+    public static double[] pow(double[] dest, int destOffset, double[] src, int srcOffset, double exponent) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.pow(_selfx, exponent);
+        dest[destOffset + 1] = Math.pow(_selfy, exponent);
+        dest[destOffset + 2] = Math.pow(_selfz, exponent);
+        dest[destOffset + 3] = Math.pow(_selfw, exponent);
+        return dest;
+    }
+
+    /** {@link #pow(double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer pow(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double exponent) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.pow_unsafe(dest, destOffset, src, srcOffset, exponent);
+        return Double4OpsKernelsTypedBuffer.pow_api(dest, destOffset, src, srcOffset, exponent);
+    }
+
+    /** {@link #pow(double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer pow(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double exponent) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.pow_unsafe(dest, destOffset, src, srcOffset, exponent);
+        return Double4OpsKernelsByteBuffer.pow_api(dest, destOffset, src, srcOffset, exponent);
+    }
+
+    /** {@link #pow(double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment pow(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double exponent) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.pow_unsafe(dest, destOffset, src, srcOffset, exponent);
+        return Double4OpsKernelsSegment.pow_api(dest, destOffset, src, srcOffset, exponent);
+    }
+
+    /** {@link #pow(double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long pow(long dest, long src, double exponent) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.pow_unsafe(dest, src, exponent);
+        pow(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, exponent);
+        return dest;
+    }
+
+    /**
+     * Raise each component of this vector to the power of ({@code exponentX}, {@code exponentY},
+     * {@code exponentZ}, {@code exponentW}) and store the result in {@code dest}.
+     * <p>
+     * Valid input: each component of this vector must not be negative.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param exponentX the {@code x} component of the vector
+     *        {@code (exponentX, exponentY, exponentZ, exponentW)}
+     * @param exponentY the {@code y} component of the vector
+     *        {@code (exponentX, exponentY, exponentZ, exponentW)}
+     * @param exponentZ the {@code z} component of the vector
+     *        {@code (exponentX, exponentY, exponentZ, exponentW)}
+     * @param exponentW the {@code w} component of the vector
+     *        {@code (exponentX, exponentY, exponentZ, exponentW)}
+     * @return {@code dest}
+     */
+    public static double[] pow(double[] dest, int destOffset, double[] src, int srcOffset, double exponentX, double exponentY, double exponentZ, double exponentW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.pow(_selfx, exponentX);
+        dest[destOffset + 1] = Math.pow(_selfy, exponentY);
+        dest[destOffset + 2] = Math.pow(_selfz, exponentZ);
+        dest[destOffset + 3] = Math.pow(_selfw, exponentW);
+        return dest;
+    }
+
+    /** {@link #pow(double[], int, double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer pow(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double exponentX, double exponentY, double exponentZ, double exponentW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.pow_unsafe(dest, destOffset, src, srcOffset, exponentX, exponentY, exponentZ, exponentW);
+        return Double4OpsKernelsTypedBuffer.pow_api(dest, destOffset, src, srcOffset, exponentX, exponentY, exponentZ, exponentW);
+    }
+
+    /** {@link #pow(double[], int, double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer pow(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double exponentX, double exponentY, double exponentZ, double exponentW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.pow_unsafe(dest, destOffset, src, srcOffset, exponentX, exponentY, exponentZ, exponentW);
+        return Double4OpsKernelsByteBuffer.pow_api(dest, destOffset, src, srcOffset, exponentX, exponentY, exponentZ, exponentW);
+    }
+
+    /** {@link #pow(double[], int, double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment pow(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double exponentX, double exponentY, double exponentZ, double exponentW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.pow_unsafe(dest, destOffset, src, srcOffset, exponentX, exponentY, exponentZ, exponentW);
+        return Double4OpsKernelsSegment.pow_api(dest, destOffset, src, srcOffset, exponentX, exponentY, exponentZ, exponentW);
+    }
+
+    /** {@link #pow(double[], int, double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long pow(long dest, long src, double exponentX, double exponentY, double exponentZ, double exponentW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.pow_unsafe(dest, src, exponentX, exponentY, exponentZ, exponentW);
+        pow(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, exponentX, exponentY, exponentZ, exponentW);
+        return dest;
+    }
+
+    /**
+     * Raise each component of this vector to the power of {@code exponent} and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: each component of this vector must not be negative.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param exponent the storage holding the exponent
+     * @param exponentOffset the element index in {@code exponent} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] pow(double[] dest, int destOffset, double[] src, int srcOffset, double[] exponent, int exponentOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _exponentx = exponent[exponentOffset + 0];
+        double _exponenty = exponent[exponentOffset + 1];
+        double _exponentz = exponent[exponentOffset + 2];
+        double _exponentw = exponent[exponentOffset + 3];
+        dest[destOffset + 0] = Math.pow(_selfx, _exponentx);
+        dest[destOffset + 1] = Math.pow(_selfy, _exponenty);
+        dest[destOffset + 2] = Math.pow(_selfz, _exponentz);
+        dest[destOffset + 3] = Math.pow(_selfw, _exponentw);
+        return dest;
+    }
+
+    /** {@link #pow(double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer pow(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer exponent, int exponentOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && exponent.isDirect() && exponent.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.pow_unsafe(dest, destOffset, src, srcOffset, exponent, exponentOffset);
+        return Double4OpsKernelsTypedBuffer.pow_api(dest, destOffset, src, srcOffset, exponent, exponentOffset);
+    }
+
+    /** {@link #pow(double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer pow(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer exponent, int exponentOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && exponent.isDirect() && exponent.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.pow_unsafe(dest, destOffset, src, srcOffset, exponent, exponentOffset);
+        return Double4OpsKernelsByteBuffer.pow_api(dest, destOffset, src, srcOffset, exponent, exponentOffset);
+    }
+
+    /** {@link #pow(double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment pow(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment exponent, long exponentOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && exponent.isNative()) return Double4OpsKernelsSegment.pow_unsafe(dest, destOffset, src, srcOffset, exponent, exponentOffset);
+        return Double4OpsKernelsSegment.pow_api(dest, destOffset, src, srcOffset, exponent, exponentOffset);
+    }
+
+    /** {@link #pow(double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long pow(long dest, long src, long exponent) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.pow_unsafe(dest, src, exponent);
+        pow(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(exponent, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Project this vector onto ({@code ontoX}, {@code ontoY}, {@code ontoZ}, {@code ontoW}) and
+     * store the result in {@code dest}.
+     * <p>
+     * Valid input: {@code (ontoX, ontoY, ontoZ, ontoW)} must be non-zero.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param ontoX the {@code x} component of the vector {@code (ontoX, ontoY, ontoZ, ontoW)}
+     * @param ontoY the {@code y} component of the vector {@code (ontoX, ontoY, ontoZ, ontoW)}
+     * @param ontoZ the {@code z} component of the vector {@code (ontoX, ontoY, ontoZ, ontoW)}
+     * @param ontoW the {@code w} component of the vector {@code (ontoX, ontoY, ontoZ, ontoW)}
+     * @return {@code dest}
+     */
+    public static double[] project(double[] dest, int destOffset, double[] src, int srcOffset, double ontoX, double ontoY, double ontoZ, double ontoW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _t9 = Math.fma(ontoW, _selfw, Math.fma(ontoZ, _selfz, Math.fma(ontoX, _selfx, ontoY * _selfy))) / Math.fma(ontoW, ontoW, Math.fma(ontoZ, ontoZ, Math.fma(ontoX, ontoX, ontoY * ontoY)));
+        dest[destOffset + 0] = ontoX * _t9;
+        dest[destOffset + 1] = ontoY * _t9;
+        dest[destOffset + 2] = ontoZ * _t9;
+        dest[destOffset + 3] = ontoW * _t9;
+        return dest;
+    }
+
+    /** {@link #project(double[], int, double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer project(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double ontoX, double ontoY, double ontoZ, double ontoW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.project_unsafe(dest, destOffset, src, srcOffset, ontoX, ontoY, ontoZ, ontoW);
+        return Double4OpsKernelsTypedBuffer.project_api(dest, destOffset, src, srcOffset, ontoX, ontoY, ontoZ, ontoW);
+    }
+
+    /** {@link #project(double[], int, double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer project(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double ontoX, double ontoY, double ontoZ, double ontoW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.project_unsafe(dest, destOffset, src, srcOffset, ontoX, ontoY, ontoZ, ontoW);
+        return Double4OpsKernelsByteBuffer.project_api(dest, destOffset, src, srcOffset, ontoX, ontoY, ontoZ, ontoW);
+    }
+
+    /** {@link #project(double[], int, double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment project(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double ontoX, double ontoY, double ontoZ, double ontoW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.project_unsafe(dest, destOffset, src, srcOffset, ontoX, ontoY, ontoZ, ontoW);
+        return Double4OpsKernelsSegment.project_api(dest, destOffset, src, srcOffset, ontoX, ontoY, ontoZ, ontoW);
+    }
+
+    /** {@link #project(double[], int, double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long project(long dest, long src, double ontoX, double ontoY, double ontoZ, double ontoW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.project_unsafe(dest, src, ontoX, ontoY, ontoZ, ontoW);
+        project(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, ontoX, ontoY, ontoZ, ontoW);
+        return dest;
+    }
+
+    /**
+     * Project this vector onto {@code onto} and store the result in {@code dest}.
+     * <p>
+     * Valid input: {@code onto} must be non-zero.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param onto the storage holding the vector to project onto
+     * @param ontoOffset the element index in {@code onto} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] project(double[] dest, int destOffset, double[] src, int srcOffset, double[] onto, int ontoOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.project(dest, destOffset, src, srcOffset, onto, ontoOffset);
+        return Double4OpsKernelsArray.project_scalar(dest, destOffset, src, srcOffset, onto, ontoOffset);
+    }
+
+    /** {@link #project(double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer project(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer onto, int ontoOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && onto.isDirect() && onto.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.project_unsafe(dest, destOffset, src, srcOffset, onto, ontoOffset);
+        return Double4OpsKernelsTypedBuffer.project_api(dest, destOffset, src, srcOffset, onto, ontoOffset);
+    }
+
+    /** {@link #project(double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer project(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer onto, int ontoOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && onto.isDirect() && onto.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.project_unsafe(dest, destOffset, src, srcOffset, onto, ontoOffset);
+        return Double4OpsKernelsByteBuffer.project_api(dest, destOffset, src, srcOffset, onto, ontoOffset);
+    }
+
+    /** {@link #project(double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment project(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment onto, long ontoOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.project(dest, destOffset, src, srcOffset, onto, ontoOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && onto.isNative()) return Double4OpsKernelsSegment.project_unsafe(dest, destOffset, src, srcOffset, onto, ontoOffset);
+        return Double4OpsKernelsSegment.project_api(dest, destOffset, src, srcOffset, onto, ontoOffset);
+    }
+
+    /** {@link #project(double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long project(long dest, long src, long onto) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.project_unsafe(dest, src, onto);
+        project(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(onto, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Project this vector onto the plane with the given normal and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: {@code (normalX, normalY, normalZ, normalW)} must have unit length.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param normalX the {@code x} component of the vector
+     *        {@code (normalX, normalY, normalZ, normalW)}
+     * @param normalY the {@code y} component of the vector
+     *        {@code (normalX, normalY, normalZ, normalW)}
+     * @param normalZ the {@code z} component of the vector
+     *        {@code (normalX, normalY, normalZ, normalW)}
+     * @param normalW the {@code w} component of the vector
+     *        {@code (normalX, normalY, normalZ, normalW)}
+     * @return {@code dest}
+     */
+    public static double[] projectOnPlane(double[] dest, int destOffset, double[] src, int srcOffset, double normalX, double normalY, double normalZ, double normalW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _t3 = Math.fma(normalW, _selfw, Math.fma(normalZ, _selfz, Math.fma(normalX, _selfx, normalY * _selfy)));
+        dest[destOffset + 0] = Math.fma(-normalX, _t3, _selfx);
+        dest[destOffset + 1] = Math.fma(-normalY, _t3, _selfy);
+        dest[destOffset + 2] = Math.fma(-normalZ, _t3, _selfz);
+        dest[destOffset + 3] = Math.fma(-normalW, _t3, _selfw);
+        return dest;
+    }
+
+    /** {@link #projectOnPlane(double[], int, double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer projectOnPlane(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double normalX, double normalY, double normalZ, double normalW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.projectOnPlane_unsafe(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW);
+        return Double4OpsKernelsTypedBuffer.projectOnPlane_api(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW);
+    }
+
+    /** {@link #projectOnPlane(double[], int, double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer projectOnPlane(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double normalX, double normalY, double normalZ, double normalW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.projectOnPlane_unsafe(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW);
+        return Double4OpsKernelsByteBuffer.projectOnPlane_api(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW);
+    }
+
+    /** {@link #projectOnPlane(double[], int, double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment projectOnPlane(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double normalX, double normalY, double normalZ, double normalW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.projectOnPlane_unsafe(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW);
+        return Double4OpsKernelsSegment.projectOnPlane_api(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW);
+    }
+
+    /** {@link #projectOnPlane(double[], int, double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long projectOnPlane(long dest, long src, double normalX, double normalY, double normalZ, double normalW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.projectOnPlane_unsafe(dest, src, normalX, normalY, normalZ, normalW);
+        projectOnPlane(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, normalX, normalY, normalZ, normalW);
+        return dest;
+    }
+
+    /**
+     * Project this vector onto the plane with the given normal and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: {@code normal} must have unit length.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param normal the storage holding the normal of the plane to project onto
+     * @param normalOffset the element index in {@code normal} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] projectOnPlane(double[] dest, int destOffset, double[] src, int srcOffset, double[] normal, int normalOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.projectOnPlane(dest, destOffset, src, srcOffset, normal, normalOffset);
+        return Double4OpsKernelsArray.projectOnPlane_scalar(dest, destOffset, src, srcOffset, normal, normalOffset);
+    }
+
+    /** {@link #projectOnPlane(double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer projectOnPlane(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer normal, int normalOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && normal.isDirect() && normal.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.projectOnPlane_unsafe(dest, destOffset, src, srcOffset, normal, normalOffset);
+        return Double4OpsKernelsTypedBuffer.projectOnPlane_api(dest, destOffset, src, srcOffset, normal, normalOffset);
+    }
+
+    /** {@link #projectOnPlane(double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer projectOnPlane(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer normal, int normalOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && normal.isDirect() && normal.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.projectOnPlane_unsafe(dest, destOffset, src, srcOffset, normal, normalOffset);
+        return Double4OpsKernelsByteBuffer.projectOnPlane_api(dest, destOffset, src, srcOffset, normal, normalOffset);
+    }
+
+    /** {@link #projectOnPlane(double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment projectOnPlane(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment normal, long normalOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.projectOnPlane(dest, destOffset, src, srcOffset, normal, normalOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && normal.isNative()) return Double4OpsKernelsSegment.projectOnPlane_unsafe(dest, destOffset, src, srcOffset, normal, normalOffset);
+        return Double4OpsKernelsSegment.projectOnPlane_api(dest, destOffset, src, srcOffset, normal, normalOffset);
+    }
+
+    /** {@link #projectOnPlane(double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long projectOnPlane(long dest, long src, long normal) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.projectOnPlane_unsafe(dest, src, normal);
+        projectOnPlane(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(normal, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the value converted from degrees to radians of each component of this vector and
+     * store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] radians(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.toRadians(_selfx);
+        dest[destOffset + 1] = Math.toRadians(_selfy);
+        dest[destOffset + 2] = Math.toRadians(_selfz);
+        dest[destOffset + 3] = Math.toRadians(_selfw);
+        return dest;
+    }
+
+    /** {@link #radians(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer radians(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.radians_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.radians_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #radians(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer radians(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.radians_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.radians_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #radians(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment radians(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.radians_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.radians_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #radians(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long radians(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.radians_unsafe(dest, src);
+        radians(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Reflect this vector about the given normal and store the result in {@code dest}.
+     * <p>
+     * Valid input: {@code (normalX, normalY, normalZ, normalW)} must have unit length.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param normalX the {@code x} component of the vector
+     *        {@code (normalX, normalY, normalZ, normalW)}
+     * @param normalY the {@code y} component of the vector
+     *        {@code (normalX, normalY, normalZ, normalW)}
+     * @param normalZ the {@code z} component of the vector
+     *        {@code (normalX, normalY, normalZ, normalW)}
+     * @param normalW the {@code w} component of the vector
+     *        {@code (normalX, normalY, normalZ, normalW)}
+     * @return {@code dest}
+     */
+    public static double[] reflect(double[] dest, int destOffset, double[] src, int srcOffset, double normalX, double normalY, double normalZ, double normalW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _t4 = 2.0 * Math.fma(normalW, _selfw, Math.fma(normalZ, _selfz, Math.fma(normalX, _selfx, normalY * _selfy)));
+        dest[destOffset + 0] = Math.fma(-normalX, _t4, _selfx);
+        dest[destOffset + 1] = Math.fma(-normalY, _t4, _selfy);
+        dest[destOffset + 2] = Math.fma(-normalZ, _t4, _selfz);
+        dest[destOffset + 3] = Math.fma(-normalW, _t4, _selfw);
+        return dest;
+    }
+
+    /** {@link #reflect(double[], int, double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer reflect(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double normalX, double normalY, double normalZ, double normalW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.reflect_unsafe(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW);
+        return Double4OpsKernelsTypedBuffer.reflect_api(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW);
+    }
+
+    /** {@link #reflect(double[], int, double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer reflect(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double normalX, double normalY, double normalZ, double normalW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.reflect_unsafe(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW);
+        return Double4OpsKernelsByteBuffer.reflect_api(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW);
+    }
+
+    /** {@link #reflect(double[], int, double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment reflect(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double normalX, double normalY, double normalZ, double normalW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.reflect_unsafe(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW);
+        return Double4OpsKernelsSegment.reflect_api(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW);
+    }
+
+    /** {@link #reflect(double[], int, double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long reflect(long dest, long src, double normalX, double normalY, double normalZ, double normalW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.reflect_unsafe(dest, src, normalX, normalY, normalZ, normalW);
+        reflect(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, normalX, normalY, normalZ, normalW);
+        return dest;
+    }
+
+    /**
+     * Reflect this vector about the given normal and store the result in {@code dest}.
+     * <p>
+     * Valid input: {@code normal} must have unit length.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param normal the storage holding the normal of the plane to reflect about
+     * @param normalOffset the element index in {@code normal} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] reflect(double[] dest, int destOffset, double[] src, int srcOffset, double[] normal, int normalOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.reflect(dest, destOffset, src, srcOffset, normal, normalOffset);
+        return Double4OpsKernelsArray.reflect_scalar(dest, destOffset, src, srcOffset, normal, normalOffset);
+    }
+
+    /** {@link #reflect(double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer reflect(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer normal, int normalOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && normal.isDirect() && normal.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.reflect_unsafe(dest, destOffset, src, srcOffset, normal, normalOffset);
+        return Double4OpsKernelsTypedBuffer.reflect_api(dest, destOffset, src, srcOffset, normal, normalOffset);
+    }
+
+    /** {@link #reflect(double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer reflect(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer normal, int normalOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && normal.isDirect() && normal.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.reflect_unsafe(dest, destOffset, src, srcOffset, normal, normalOffset);
+        return Double4OpsKernelsByteBuffer.reflect_api(dest, destOffset, src, srcOffset, normal, normalOffset);
+    }
+
+    /** {@link #reflect(double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment reflect(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment normal, long normalOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.reflect(dest, destOffset, src, srcOffset, normal, normalOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && normal.isNative()) return Double4OpsKernelsSegment.reflect_unsafe(dest, destOffset, src, srcOffset, normal, normalOffset);
+        return Double4OpsKernelsSegment.reflect_api(dest, destOffset, src, srcOffset, normal, normalOffset);
+    }
+
+    /** {@link #reflect(double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long reflect(long dest, long src, long normal) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.reflect_unsafe(dest, src, normal);
+        reflect(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(normal, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Refract this vector through the surface with the given normal, using the given ratio of
+     * indices of refraction (the zero vector is returned on total internal reflection), and store
+     * the result in {@code dest}.
+     * <p>
+     * As in GLSL, the normal must face against this vector ({@code dot(this, normal) <= 0}): a
+     * normal on the far side of the surface bends the vector the wrong way, and with a ratio of 1
+     * it comes back reversed. Negate the normal for a vector leaving through the surface.
+     * <p>
+     * Valid input: {@code (normalX, normalY, normalZ, normalW)} must have unit length; this vector
+     * must have unit length.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param normalX the {@code x} component of the vector
+     *        {@code (normalX, normalY, normalZ, normalW)}
+     * @param normalY the {@code y} component of the vector
+     *        {@code (normalX, normalY, normalZ, normalW)}
+     * @param normalZ the {@code z} component of the vector
+     *        {@code (normalX, normalY, normalZ, normalW)}
+     * @param normalW the {@code w} component of the vector
+     *        {@code (normalX, normalY, normalZ, normalW)}
+     * @param eta the ratio of indices of refraction, i.e. the source medium's divided by the
+     *        destination medium's
+     * @return {@code dest}
+     */
+    public static double[] refract(double[] dest, int destOffset, double[] src, int srcOffset, double normalX, double normalY, double normalZ, double normalW, double eta) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.refract(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW, eta);
+        return Double4OpsKernelsArray.refract_scalar(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW, eta);
+    }
+
+    /** {@link #refract(double[], int, double[], int, double, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer refract(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double normalX, double normalY, double normalZ, double normalW, double eta) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.refract_unsafe(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW, eta);
+        return Double4OpsKernelsTypedBuffer.refract_api(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW, eta);
+    }
+
+    /** {@link #refract(double[], int, double[], int, double, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer refract(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double normalX, double normalY, double normalZ, double normalW, double eta) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.refract_unsafe(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW, eta);
+        return Double4OpsKernelsByteBuffer.refract_api(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW, eta);
+    }
+
+    /** {@link #refract(double[], int, double[], int, double, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment refract(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double normalX, double normalY, double normalZ, double normalW, double eta) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.refract(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW, eta);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.refract_unsafe(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW, eta);
+        return Double4OpsKernelsSegment.refract_api(dest, destOffset, src, srcOffset, normalX, normalY, normalZ, normalW, eta);
+    }
+
+    /** {@link #refract(double[], int, double[], int, double, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long refract(long dest, long src, double normalX, double normalY, double normalZ, double normalW, double eta) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.refract_unsafe(dest, src, normalX, normalY, normalZ, normalW, eta);
+        refract(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, normalX, normalY, normalZ, normalW, eta);
+        return dest;
+    }
+
+    /**
+     * Refract this vector through the surface with the given normal, using the given ratio of
+     * indices of refraction (the zero vector is returned on total internal reflection), and store
+     * the result in {@code dest}.
+     * <p>
+     * As in GLSL, the normal must face against this vector ({@code dot(this, normal) <= 0}): a
+     * normal on the far side of the surface bends the vector the wrong way, and with a ratio of 1
+     * it comes back reversed. Negate the normal for a vector leaving through the surface.
+     * <p>
+     * Valid input: {@code normal} must have unit length; this vector must have unit length.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param normal the storage holding the normal of the refracting surface
+     * @param normalOffset the element index in {@code normal} at which the vector starts
+     * @param eta the ratio of indices of refraction, i.e. the source medium's divided by the
+     *        destination medium's
+     * @return {@code dest}
+     */
+    public static double[] refract(double[] dest, int destOffset, double[] src, int srcOffset, double[] normal, int normalOffset, double eta) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.refract(dest, destOffset, src, srcOffset, normal, normalOffset, eta);
+        return Double4OpsKernelsArray.refract_scalar(dest, destOffset, src, srcOffset, normal, normalOffset, eta);
+    }
+
+    /** {@link #refract(double[], int, double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer refract(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer normal, int normalOffset, double eta) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && normal.isDirect() && normal.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.refract_unsafe(dest, destOffset, src, srcOffset, normal, normalOffset, eta);
+        return Double4OpsKernelsTypedBuffer.refract_api(dest, destOffset, src, srcOffset, normal, normalOffset, eta);
+    }
+
+    /** {@link #refract(double[], int, double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer refract(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer normal, int normalOffset, double eta) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && normal.isDirect() && normal.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.refract_unsafe(dest, destOffset, src, srcOffset, normal, normalOffset, eta);
+        return Double4OpsKernelsByteBuffer.refract_api(dest, destOffset, src, srcOffset, normal, normalOffset, eta);
+    }
+
+    /** {@link #refract(double[], int, double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment refract(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment normal, long normalOffset, double eta) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.refract(dest, destOffset, src, srcOffset, normal, normalOffset, eta);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && normal.isNative()) return Double4OpsKernelsSegment.refract_unsafe(dest, destOffset, src, srcOffset, normal, normalOffset, eta);
+        return Double4OpsKernelsSegment.refract_api(dest, destOffset, src, srcOffset, normal, normalOffset, eta);
+    }
+
+    /** {@link #refract(double[], int, double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long refract(long dest, long src, long normal, double eta) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.refract_unsafe(dest, src, normal, eta);
+        refract(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(normal, 32L), 0L, eta);
+        return dest;
+    }
+
+    /**
+     * Compute the value rounded to the nearest integer, ties to even ({@code Math.rint}) of each
+     * component of this vector and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] round(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.rint(_selfx);
+        dest[destOffset + 1] = Math.rint(_selfy);
+        dest[destOffset + 2] = Math.rint(_selfz);
+        dest[destOffset + 3] = Math.rint(_selfw);
+        return dest;
+    }
+
+    /** {@link #round(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer round(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.round_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.round_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #round(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer round(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.round_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.round_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #round(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment round(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.round_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.round_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #round(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long round(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.round_unsafe(dest, src);
+        round(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the sign of each component of this vector and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] sign(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.signum(_selfx);
+        dest[destOffset + 1] = Math.signum(_selfy);
+        dest[destOffset + 2] = Math.signum(_selfz);
+        dest[destOffset + 3] = Math.signum(_selfw);
+        return dest;
+    }
+
+    /** {@link #sign(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer sign(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.sign_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.sign_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #sign(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer sign(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.sign_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.sign_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #sign(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment sign(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.sign_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.sign_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #sign(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long sign(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.sign_unsafe(dest, src);
+        sign(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the sine of each component of this vector and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] sin(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.sin(_selfx);
+        dest[destOffset + 1] = Math.sin(_selfy);
+        dest[destOffset + 2] = Math.sin(_selfz);
+        dest[destOffset + 3] = Math.sin(_selfw);
+        return dest;
+    }
+
+    /** {@link #sin(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer sin(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.sin_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.sin_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #sin(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer sin(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.sin_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.sin_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #sin(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment sin(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.sin_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.sin_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #sin(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long sin(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.sin_unsafe(dest, src);
+        sin(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the hyperbolic sine of each component of this vector and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] sinh(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.sinh(_selfx);
+        dest[destOffset + 1] = Math.sinh(_selfy);
+        dest[destOffset + 2] = Math.sinh(_selfz);
+        dest[destOffset + 3] = Math.sinh(_selfw);
+        return dest;
+    }
+
+    /** {@link #sinh(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer sinh(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.sinh_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.sinh_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #sinh(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer sinh(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.sinh_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.sinh_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #sinh(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment sinh(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.sinh_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.sinh_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #sinh(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long sinh(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.sinh_unsafe(dest, src);
+        sinh(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the smooth Hermite step of each component of this vector as it ramps between the
+     * lower edge {@code edge0} and the upper edge {@code edge1}, yielding 0 at or below the lower
+     * edge and 1 at or above the upper edge and store the result in {@code dest}.
+     * <p>
+     * Valid input: {@code edge0} and {@code edge1} must differ.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param edge0 the lower edge
+     * @param edge1 the upper edge
+     * @return {@code dest}
+     */
+    public static double[] smoothstep(double[] dest, int destOffset, double[] src, int srcOffset, double edge0, double edge1) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _t0_inv = 1.0 / (edge1 - edge0);
+        double _t13 = Math.max(0.0, Math.min(1.0, (_selfx - edge0) * _t0_inv));
+        double _t14 = Math.max(0.0, Math.min(1.0, (_selfy - edge0) * _t0_inv));
+        double _t15 = Math.max(0.0, Math.min(1.0, (_selfz - edge0) * _t0_inv));
+        double _t16 = Math.max(0.0, Math.min(1.0, (_selfw - edge0) * _t0_inv));
+        dest[destOffset + 0] = Math.fma(-2.0, _t13, 3.0) * _t13 * _t13;
+        dest[destOffset + 1] = Math.fma(-2.0, _t14, 3.0) * _t14 * _t14;
+        dest[destOffset + 2] = Math.fma(-2.0, _t15, 3.0) * _t15 * _t15;
+        dest[destOffset + 3] = Math.fma(-2.0, _t16, 3.0) * _t16 * _t16;
+        return dest;
+    }
+
+    /** {@link #smoothstep(double[], int, double[], int, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer smoothstep(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double edge0, double edge1) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.smoothstep_unsafe(dest, destOffset, src, srcOffset, edge0, edge1);
+        return Double4OpsKernelsTypedBuffer.smoothstep_api(dest, destOffset, src, srcOffset, edge0, edge1);
+    }
+
+    /** {@link #smoothstep(double[], int, double[], int, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer smoothstep(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double edge0, double edge1) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.smoothstep_unsafe(dest, destOffset, src, srcOffset, edge0, edge1);
+        return Double4OpsKernelsByteBuffer.smoothstep_api(dest, destOffset, src, srcOffset, edge0, edge1);
+    }
+
+    /** {@link #smoothstep(double[], int, double[], int, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment smoothstep(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double edge0, double edge1) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.smoothstep_unsafe(dest, destOffset, src, srcOffset, edge0, edge1);
+        return Double4OpsKernelsSegment.smoothstep_api(dest, destOffset, src, srcOffset, edge0, edge1);
+    }
+
+    /** {@link #smoothstep(double[], int, double[], int, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long smoothstep(long dest, long src, double edge0, double edge1) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.smoothstep_unsafe(dest, src, edge0, edge1);
+        smoothstep(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, edge0, edge1);
+        return dest;
+    }
+
+    /**
+     * Compute the smooth Hermite step of each component of this vector as it ramps between the
+     * lower edge ({@code edge0X}, {@code edge0Y}, {@code edge0Z}, {@code edge0W}) and the upper
+     * edge ({@code edge1X}, {@code edge1Y}, {@code edge1Z}, {@code edge1W}), yielding 0 at or below
+     * the lower edge and 1 at or above the upper edge and store the result in {@code dest}.
+     * <p>
+     * Valid input: {@code (edge0X, edge0Y, edge0Z, edge0W)} and
+     * {@code (edge1X, edge1Y, edge1Z, edge1W)} must differ in every component.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param edge0X the {@code x} component of the vector {@code (edge0X, edge0Y, edge0Z, edge0W)}
+     * @param edge0Y the {@code y} component of the vector {@code (edge0X, edge0Y, edge0Z, edge0W)}
+     * @param edge0Z the {@code z} component of the vector {@code (edge0X, edge0Y, edge0Z, edge0W)}
+     * @param edge0W the {@code w} component of the vector {@code (edge0X, edge0Y, edge0Z, edge0W)}
+     * @param edge1X the {@code x} component of the vector {@code (edge1X, edge1Y, edge1Z, edge1W)}
+     * @param edge1Y the {@code y} component of the vector {@code (edge1X, edge1Y, edge1Z, edge1W)}
+     * @param edge1Z the {@code z} component of the vector {@code (edge1X, edge1Y, edge1Z, edge1W)}
+     * @param edge1W the {@code w} component of the vector {@code (edge1X, edge1Y, edge1Z, edge1W)}
+     * @return {@code dest}
+     */
+    public static double[] smoothstep(double[] dest, int destOffset, double[] src, int srcOffset, double edge0X, double edge0Y, double edge0Z, double edge0W, double edge1X, double edge1Y, double edge1Z, double edge1W) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _t16 = Math.max(0.0, Math.min(1.0, (_selfx - edge0X) / (edge1X - edge0X)));
+        double _t17 = Math.max(0.0, Math.min(1.0, (_selfy - edge0Y) / (edge1Y - edge0Y)));
+        double _t18 = Math.max(0.0, Math.min(1.0, (_selfz - edge0Z) / (edge1Z - edge0Z)));
+        double _t19 = Math.max(0.0, Math.min(1.0, (_selfw - edge0W) / (edge1W - edge0W)));
+        dest[destOffset + 0] = Math.fma(-2.0, _t16, 3.0) * _t16 * _t16;
+        dest[destOffset + 1] = Math.fma(-2.0, _t17, 3.0) * _t17 * _t17;
+        dest[destOffset + 2] = Math.fma(-2.0, _t18, 3.0) * _t18 * _t18;
+        dest[destOffset + 3] = Math.fma(-2.0, _t19, 3.0) * _t19 * _t19;
+        return dest;
+    }
+
+    /** {@link #smoothstep(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer smoothstep(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double edge0X, double edge0Y, double edge0Z, double edge0W, double edge1X, double edge1Y, double edge1Z, double edge1W) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.smoothstep_unsafe(dest, destOffset, src, srcOffset, edge0X, edge0Y, edge0Z, edge0W, edge1X, edge1Y, edge1Z, edge1W);
+        return Double4OpsKernelsTypedBuffer.smoothstep_api(dest, destOffset, src, srcOffset, edge0X, edge0Y, edge0Z, edge0W, edge1X, edge1Y, edge1Z, edge1W);
+    }
+
+    /** {@link #smoothstep(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer smoothstep(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double edge0X, double edge0Y, double edge0Z, double edge0W, double edge1X, double edge1Y, double edge1Z, double edge1W) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.smoothstep_unsafe(dest, destOffset, src, srcOffset, edge0X, edge0Y, edge0Z, edge0W, edge1X, edge1Y, edge1Z, edge1W);
+        return Double4OpsKernelsByteBuffer.smoothstep_api(dest, destOffset, src, srcOffset, edge0X, edge0Y, edge0Z, edge0W, edge1X, edge1Y, edge1Z, edge1W);
+    }
+
+    /** {@link #smoothstep(double[], int, double[], int, double, double, double, double, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment smoothstep(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double edge0X, double edge0Y, double edge0Z, double edge0W, double edge1X, double edge1Y, double edge1Z, double edge1W) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.smoothstep_unsafe(dest, destOffset, src, srcOffset, edge0X, edge0Y, edge0Z, edge0W, edge1X, edge1Y, edge1Z, edge1W);
+        return Double4OpsKernelsSegment.smoothstep_api(dest, destOffset, src, srcOffset, edge0X, edge0Y, edge0Z, edge0W, edge1X, edge1Y, edge1Z, edge1W);
+    }
+
+    /** {@link #smoothstep(double[], int, double[], int, double, double, double, double, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long smoothstep(long dest, long src, double edge0X, double edge0Y, double edge0Z, double edge0W, double edge1X, double edge1Y, double edge1Z, double edge1W) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.smoothstep_unsafe(dest, src, edge0X, edge0Y, edge0Z, edge0W, edge1X, edge1Y, edge1Z, edge1W);
+        smoothstep(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, edge0X, edge0Y, edge0Z, edge0W, edge1X, edge1Y, edge1Z, edge1W);
+        return dest;
+    }
+
+    /**
+     * Compute the smooth Hermite step of each component of this vector as it ramps between the
+     * lower edge {@code edge0} and the upper edge {@code edge1}, yielding 0 at or below the lower
+     * edge and 1 at or above the upper edge and store the result in {@code dest}.
+     * <p>
+     * Valid input: {@code edge0} and {@code edge1} must differ in every component.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param edge0 the storage holding the lower edge
+     * @param edge0Offset the element index in {@code edge0} at which the vector starts
+     * @param edge1 the storage holding the upper edge
+     * @param edge1Offset the element index in {@code edge1} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] smoothstep(double[] dest, int destOffset, double[] src, int srcOffset, double[] edge0, int edge0Offset, double[] edge1, int edge1Offset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _edge0x = edge0[edge0Offset + 0];
+        double _edge0y = edge0[edge0Offset + 1];
+        double _edge0z = edge0[edge0Offset + 2];
+        double _edge0w = edge0[edge0Offset + 3];
+        double _edge1x = edge1[edge1Offset + 0];
+        double _edge1y = edge1[edge1Offset + 1];
+        double _edge1z = edge1[edge1Offset + 2];
+        double _edge1w = edge1[edge1Offset + 3];
+        double _t16 = Math.max(0.0, Math.min(1.0, (_selfx - _edge0x) / (_edge1x - _edge0x)));
+        double _t17 = Math.max(0.0, Math.min(1.0, (_selfy - _edge0y) / (_edge1y - _edge0y)));
+        double _t18 = Math.max(0.0, Math.min(1.0, (_selfz - _edge0z) / (_edge1z - _edge0z)));
+        double _t19 = Math.max(0.0, Math.min(1.0, (_selfw - _edge0w) / (_edge1w - _edge0w)));
+        dest[destOffset + 0] = Math.fma(-2.0, _t16, 3.0) * _t16 * _t16;
+        dest[destOffset + 1] = Math.fma(-2.0, _t17, 3.0) * _t17 * _t17;
+        dest[destOffset + 2] = Math.fma(-2.0, _t18, 3.0) * _t18 * _t18;
+        dest[destOffset + 3] = Math.fma(-2.0, _t19, 3.0) * _t19 * _t19;
+        return dest;
+    }
+
+    /** {@link #smoothstep(double[], int, double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer smoothstep(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer edge0, int edge0Offset, java.nio.DoubleBuffer edge1, int edge1Offset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && edge0.isDirect() && edge0.order() == java.nio.ByteOrder.nativeOrder() && edge1.isDirect() && edge1.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.smoothstep_unsafe(dest, destOffset, src, srcOffset, edge0, edge0Offset, edge1, edge1Offset);
+        return Double4OpsKernelsTypedBuffer.smoothstep_api(dest, destOffset, src, srcOffset, edge0, edge0Offset, edge1, edge1Offset);
+    }
+
+    /** {@link #smoothstep(double[], int, double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer smoothstep(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer edge0, int edge0Offset, java.nio.ByteBuffer edge1, int edge1Offset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && edge0.isDirect() && edge0.order() == java.nio.ByteOrder.nativeOrder() && edge1.isDirect() && edge1.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.smoothstep_unsafe(dest, destOffset, src, srcOffset, edge0, edge0Offset, edge1, edge1Offset);
+        return Double4OpsKernelsByteBuffer.smoothstep_api(dest, destOffset, src, srcOffset, edge0, edge0Offset, edge1, edge1Offset);
+    }
+
+    /** {@link #smoothstep(double[], int, double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment smoothstep(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment edge0, long edge0Offset, java.lang.foreign.MemorySegment edge1, long edge1Offset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && edge0.isNative() && edge1.isNative()) return Double4OpsKernelsSegment.smoothstep_unsafe(dest, destOffset, src, srcOffset, edge0, edge0Offset, edge1, edge1Offset);
+        return Double4OpsKernelsSegment.smoothstep_api(dest, destOffset, src, srcOffset, edge0, edge0Offset, edge1, edge1Offset);
+    }
+
+    /** {@link #smoothstep(double[], int, double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long smoothstep(long dest, long src, long edge0, long edge1) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.smoothstep_unsafe(dest, src, edge0, edge1);
+        smoothstep(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(edge0, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(edge1, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the square root of each component of this vector and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: each component of this vector must not be negative.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] sqrt(double[] dest, int destOffset, double[] src, int srcOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.sqrt(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsArray.sqrt_scalar(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #sqrt(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer sqrt(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.sqrt_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.sqrt_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #sqrt(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer sqrt(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.sqrt_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.sqrt_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #sqrt(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment sqrt(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.sqrt(dest, destOffset, src, srcOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.sqrt_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.sqrt_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #sqrt(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long sqrt(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.sqrt_unsafe(dest, src);
+        sqrt(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Set each component of this vector to {@code 0} when it is smaller than {@code edge}, and to
+     * {@code 1} otherwise and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param edge the edge to compare each component against
+     * @return {@code dest}
+     */
+    public static double[] step(double[] dest, int destOffset, double[] src, int srcOffset, double edge) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = _selfx < edge ? 0.0 : 1.0;
+        dest[destOffset + 1] = _selfy < edge ? 0.0 : 1.0;
+        dest[destOffset + 2] = _selfz < edge ? 0.0 : 1.0;
+        dest[destOffset + 3] = _selfw < edge ? 0.0 : 1.0;
+        return dest;
+    }
+
+    /** {@link #step(double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer step(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double edge) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.step_unsafe(dest, destOffset, src, srcOffset, edge);
+        return Double4OpsKernelsTypedBuffer.step_api(dest, destOffset, src, srcOffset, edge);
+    }
+
+    /** {@link #step(double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer step(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double edge) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.step_unsafe(dest, destOffset, src, srcOffset, edge);
+        return Double4OpsKernelsByteBuffer.step_api(dest, destOffset, src, srcOffset, edge);
+    }
+
+    /** {@link #step(double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment step(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double edge) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.step_unsafe(dest, destOffset, src, srcOffset, edge);
+        return Double4OpsKernelsSegment.step_api(dest, destOffset, src, srcOffset, edge);
+    }
+
+    /** {@link #step(double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long step(long dest, long src, double edge) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.step_unsafe(dest, src, edge);
+        step(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, edge);
+        return dest;
+    }
+
+    /**
+     * Set each component of this vector to {@code 0} when it is smaller than the corresponding
+     * component of the given edge, and to {@code 1} otherwise and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param edgeX the {@code x} component of the vector {@code (edgeX, edgeY, edgeZ, edgeW)}
+     * @param edgeY the {@code y} component of the vector {@code (edgeX, edgeY, edgeZ, edgeW)}
+     * @param edgeZ the {@code z} component of the vector {@code (edgeX, edgeY, edgeZ, edgeW)}
+     * @param edgeW the {@code w} component of the vector {@code (edgeX, edgeY, edgeZ, edgeW)}
+     * @return {@code dest}
+     */
+    public static double[] step(double[] dest, int destOffset, double[] src, int srcOffset, double edgeX, double edgeY, double edgeZ, double edgeW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = _selfx < edgeX ? 0.0 : 1.0;
+        dest[destOffset + 1] = _selfy < edgeY ? 0.0 : 1.0;
+        dest[destOffset + 2] = _selfz < edgeZ ? 0.0 : 1.0;
+        dest[destOffset + 3] = _selfw < edgeW ? 0.0 : 1.0;
+        return dest;
+    }
+
+    /** {@link #step(double[], int, double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer step(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double edgeX, double edgeY, double edgeZ, double edgeW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.step_unsafe(dest, destOffset, src, srcOffset, edgeX, edgeY, edgeZ, edgeW);
+        return Double4OpsKernelsTypedBuffer.step_api(dest, destOffset, src, srcOffset, edgeX, edgeY, edgeZ, edgeW);
+    }
+
+    /** {@link #step(double[], int, double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer step(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double edgeX, double edgeY, double edgeZ, double edgeW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.step_unsafe(dest, destOffset, src, srcOffset, edgeX, edgeY, edgeZ, edgeW);
+        return Double4OpsKernelsByteBuffer.step_api(dest, destOffset, src, srcOffset, edgeX, edgeY, edgeZ, edgeW);
+    }
+
+    /** {@link #step(double[], int, double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment step(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double edgeX, double edgeY, double edgeZ, double edgeW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.step_unsafe(dest, destOffset, src, srcOffset, edgeX, edgeY, edgeZ, edgeW);
+        return Double4OpsKernelsSegment.step_api(dest, destOffset, src, srcOffset, edgeX, edgeY, edgeZ, edgeW);
+    }
+
+    /** {@link #step(double[], int, double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long step(long dest, long src, double edgeX, double edgeY, double edgeZ, double edgeW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.step_unsafe(dest, src, edgeX, edgeY, edgeZ, edgeW);
+        step(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, edgeX, edgeY, edgeZ, edgeW);
+        return dest;
+    }
+
+    /**
+     * Set each component of this vector to {@code 0} when it is smaller than the corresponding
+     * component of the given edge, and to {@code 1} otherwise and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param edge the storage holding the edge to compare each component against
+     * @param edgeOffset the element index in {@code edge} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] step(double[] dest, int destOffset, double[] src, int srcOffset, double[] edge, int edgeOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _edgex = edge[edgeOffset + 0];
+        double _edgey = edge[edgeOffset + 1];
+        double _edgez = edge[edgeOffset + 2];
+        double _edgew = edge[edgeOffset + 3];
+        dest[destOffset + 0] = _selfx < _edgex ? 0.0 : 1.0;
+        dest[destOffset + 1] = _selfy < _edgey ? 0.0 : 1.0;
+        dest[destOffset + 2] = _selfz < _edgez ? 0.0 : 1.0;
+        dest[destOffset + 3] = _selfw < _edgew ? 0.0 : 1.0;
+        return dest;
+    }
+
+    /** {@link #step(double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer step(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer edge, int edgeOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && edge.isDirect() && edge.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.step_unsafe(dest, destOffset, src, srcOffset, edge, edgeOffset);
+        return Double4OpsKernelsTypedBuffer.step_api(dest, destOffset, src, srcOffset, edge, edgeOffset);
+    }
+
+    /** {@link #step(double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer step(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer edge, int edgeOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && edge.isDirect() && edge.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.step_unsafe(dest, destOffset, src, srcOffset, edge, edgeOffset);
+        return Double4OpsKernelsByteBuffer.step_api(dest, destOffset, src, srcOffset, edge, edgeOffset);
+    }
+
+    /** {@link #step(double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment step(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment edge, long edgeOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && edge.isNative()) return Double4OpsKernelsSegment.step_unsafe(dest, destOffset, src, srcOffset, edge, edgeOffset);
+        return Double4OpsKernelsSegment.step_api(dest, destOffset, src, srcOffset, edge, edgeOffset);
+    }
+
+    /** {@link #step(double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long step(long dest, long src, long edge) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.step_unsafe(dest, src, edge);
+        step(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(edge, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the tangent of each component of this vector and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] tan(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.tan(_selfx);
+        dest[destOffset + 1] = Math.tan(_selfy);
+        dest[destOffset + 2] = Math.tan(_selfz);
+        dest[destOffset + 3] = Math.tan(_selfw);
+        return dest;
+    }
+
+    /** {@link #tan(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer tan(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.tan_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.tan_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #tan(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer tan(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.tan_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.tan_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #tan(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment tan(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.tan_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.tan_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #tan(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long tan(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.tan_unsafe(dest, src);
+        tan(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the hyperbolic tangent of each component of this vector and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] tanh(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.tanh(_selfx);
+        dest[destOffset + 1] = Math.tanh(_selfy);
+        dest[destOffset + 2] = Math.tanh(_selfz);
+        dest[destOffset + 3] = Math.tanh(_selfw);
+        return dest;
+    }
+
+    /** {@link #tanh(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer tanh(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.tanh_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.tanh_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #tanh(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer tanh(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.tanh_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.tanh_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #tanh(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment tanh(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.tanh_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.tanh_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #tanh(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long tanh(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.tanh_unsafe(dest, src);
+        tanh(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the truncated value of each component of this vector and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] trunc(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = _selfx >= 0.0 ? Math.floor(_selfx) : Math.ceil(_selfx);
+        dest[destOffset + 1] = _selfy >= 0.0 ? Math.floor(_selfy) : Math.ceil(_selfy);
+        dest[destOffset + 2] = _selfz >= 0.0 ? Math.floor(_selfz) : Math.ceil(_selfz);
+        dest[destOffset + 3] = _selfw >= 0.0 ? Math.floor(_selfw) : Math.ceil(_selfw);
+        return dest;
+    }
+
+    /** {@link #trunc(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer trunc(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.trunc_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.trunc_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #trunc(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer trunc(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.trunc_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.trunc_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #trunc(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment trunc(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.trunc_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.trunc_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #trunc(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long trunc(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.trunc_unsafe(dest, src);
+        trunc(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Compute the unit in the last place (ulp) of each component of this vector and store the
+     * result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @return {@code dest}
+     */
+    public static double[] ulp(double[] dest, int destOffset, double[] src, int srcOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        dest[destOffset + 0] = Math.ulp(_selfx);
+        dest[destOffset + 1] = Math.ulp(_selfy);
+        dest[destOffset + 2] = Math.ulp(_selfz);
+        dest[destOffset + 3] = Math.ulp(_selfw);
+        return dest;
+    }
+
+    /** {@link #ulp(double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer ulp(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.ulp_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsTypedBuffer.ulp_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #ulp(double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer ulp(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.ulp_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsByteBuffer.ulp_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #ulp(double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment ulp(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.ulp_unsafe(dest, destOffset, src, srcOffset);
+        return Double4OpsKernelsSegment.ulp_api(dest, destOffset, src, srcOffset);
+    }
+
+    /** {@link #ulp(double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long ulp(long dest, long src) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.ulp_unsafe(dest, src);
+        ulp(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Pre-multiply {@code mat} onto this vector, i.e. compute {@code mat * this} and store the
+     * result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param mat the storage holding the matrix to apply
+     * @param matOffset the element index in {@code mat} at which the matrix starts
+     * @return {@code dest}
+     */
+    public static double[] preMul(double[] dest, int destOffset, double[] src, int srcOffset, double[] mat, int matOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.preMul(dest, destOffset, src, srcOffset, mat, matOffset);
+        return Double4OpsKernelsArray.preMul_scalar(dest, destOffset, src, srcOffset, mat, matOffset);
+    }
+
+    /** {@link #preMul(double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer preMul(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer mat, int matOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && mat.isDirect() && mat.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.preMul_unsafe(dest, destOffset, src, srcOffset, mat, matOffset);
+        return Double4OpsKernelsTypedBuffer.preMul_api(dest, destOffset, src, srcOffset, mat, matOffset);
+    }
+
+    /** {@link #preMul(double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer preMul(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer mat, int matOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && mat.isDirect() && mat.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.preMul_unsafe(dest, destOffset, src, srcOffset, mat, matOffset);
+        return Double4OpsKernelsByteBuffer.preMul_api(dest, destOffset, src, srcOffset, mat, matOffset);
+    }
+
+    /** {@link #preMul(double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment preMul(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment mat, long matOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.preMul(dest, destOffset, src, srcOffset, mat, matOffset);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && mat.isNative()) return Double4OpsKernelsSegment.preMul_unsafe(dest, destOffset, src, srcOffset, mat, matOffset);
+        return Double4OpsKernelsSegment.preMul_api(dest, destOffset, src, srcOffset, mat, matOffset);
+    }
+
+    /** {@link #preMul(double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long preMul(long dest, long src, long mat) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.preMul_unsafe(dest, src, mat);
+        preMul(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(mat, 128L), 0L);
+        return dest;
+    }
+
+    /**
+     * Rotate the {@code (x, y, z)} components of this vector by the quaternion ({@code quatX},
+     * {@code quatY}, {@code quatZ}, {@code quatW}), i.e. compute {@code q * this.xyz * q^-1},
+     * leaving {@code w} unchanged, and store the result in {@code dest}.
+     * <p>
+     * Valid input: {@code (quatX, quatY, quatZ, quatW)} must have unit length.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param quatX the {@code x} component of the quaternion {@code (quatX, quatY, quatZ, quatW)}
+     * @param quatY the {@code y} component of the quaternion {@code (quatX, quatY, quatZ, quatW)}
+     * @param quatZ the {@code z} component of the quaternion {@code (quatX, quatY, quatZ, quatW)}
+     * @param quatW the {@code w} component of the quaternion {@code (quatX, quatY, quatZ, quatW)}
+     * @return {@code dest}
+     */
+    public static double[] rotate(double[] dest, int destOffset, double[] src, int srcOffset, double quatX, double quatY, double quatZ, double quatW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _t9 = 2.0 * Math.fma(quatX, _selfy, -(quatY * _selfx));
+        double _t10 = 2.0 * Math.fma(quatZ, _selfx, -(quatX * _selfz));
+        double _t11 = 2.0 * Math.fma(quatY, _selfz, -(quatZ * _selfy));
+        dest[destOffset + 0] = Math.fma(quatY, _t9, Math.fma(-quatZ, _t10, Math.fma(quatW, _t11, _selfx)));
+        dest[destOffset + 1] = Math.fma(quatZ, _t11, Math.fma(-quatX, _t9, Math.fma(quatW, _t10, _selfy)));
+        dest[destOffset + 2] = Math.fma(quatX, _t10, Math.fma(-quatY, _t11, Math.fma(quatW, _t9, _selfz)));
+        dest[destOffset + 3] = _selfw;
+        return dest;
+    }
+
+    /** {@link #rotate(double[], int, double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer rotate(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double quatX, double quatY, double quatZ, double quatW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.rotate_unsafe(dest, destOffset, src, srcOffset, quatX, quatY, quatZ, quatW);
+        return Double4OpsKernelsTypedBuffer.rotate_api(dest, destOffset, src, srcOffset, quatX, quatY, quatZ, quatW);
+    }
+
+    /** {@link #rotate(double[], int, double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer rotate(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double quatX, double quatY, double quatZ, double quatW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.rotate_unsafe(dest, destOffset, src, srcOffset, quatX, quatY, quatZ, quatW);
+        return Double4OpsKernelsByteBuffer.rotate_api(dest, destOffset, src, srcOffset, quatX, quatY, quatZ, quatW);
+    }
+
+    /** {@link #rotate(double[], int, double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment rotate(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double quatX, double quatY, double quatZ, double quatW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.rotate_unsafe(dest, destOffset, src, srcOffset, quatX, quatY, quatZ, quatW);
+        return Double4OpsKernelsSegment.rotate_api(dest, destOffset, src, srcOffset, quatX, quatY, quatZ, quatW);
+    }
+
+    /** {@link #rotate(double[], int, double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long rotate(long dest, long src, double quatX, double quatY, double quatZ, double quatW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.rotate_unsafe(dest, src, quatX, quatY, quatZ, quatW);
+        rotate(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, quatX, quatY, quatZ, quatW);
+        return dest;
+    }
+
+    /**
+     * Rotate the {@code (x, y, z)} components of this vector by the quaternion {@code quat}, i.e.
+     * compute {@code q * this.xyz * q^-1}, leaving {@code w} unchanged, and store the result in
+     * {@code dest}.
+     * <p>
+     * Valid input: {@code quat} must have unit length.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param quat the storage holding the rotation to apply
+     * @param quatOffset the element index in {@code quat} at which the quaternion starts
+     * @return {@code dest}
+     */
+    public static double[] rotate(double[] dest, int destOffset, double[] src, int srcOffset, double[] quat, int quatOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _quatx = quat[quatOffset + 0];
+        double _quaty = quat[quatOffset + 1];
+        double _quatz = quat[quatOffset + 2];
+        double _quatw = quat[quatOffset + 3];
+        double _t9 = 2.0 * Math.fma(_quatx, _selfy, -(_quaty * _selfx));
+        double _t10 = 2.0 * Math.fma(_quatz, _selfx, -(_quatx * _selfz));
+        double _t11 = 2.0 * Math.fma(_quaty, _selfz, -(_quatz * _selfy));
+        dest[destOffset + 0] = Math.fma(_quaty, _t9, Math.fma(-_quatz, _t10, Math.fma(_quatw, _t11, _selfx)));
+        dest[destOffset + 1] = Math.fma(_quatz, _t11, Math.fma(-_quatx, _t9, Math.fma(_quatw, _t10, _selfy)));
+        dest[destOffset + 2] = Math.fma(_quatx, _t10, Math.fma(-_quaty, _t11, Math.fma(_quatw, _t9, _selfz)));
+        dest[destOffset + 3] = _selfw;
+        return dest;
+    }
+
+    /** {@link #rotate(double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer rotate(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer quat, int quatOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && quat.isDirect() && quat.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.rotate_unsafe(dest, destOffset, src, srcOffset, quat, quatOffset);
+        return Double4OpsKernelsTypedBuffer.rotate_api(dest, destOffset, src, srcOffset, quat, quatOffset);
+    }
+
+    /** {@link #rotate(double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer rotate(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer quat, int quatOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && quat.isDirect() && quat.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.rotate_unsafe(dest, destOffset, src, srcOffset, quat, quatOffset);
+        return Double4OpsKernelsByteBuffer.rotate_api(dest, destOffset, src, srcOffset, quat, quatOffset);
+    }
+
+    /** {@link #rotate(double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment rotate(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment quat, long quatOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && quat.isNative()) return Double4OpsKernelsSegment.rotate_unsafe(dest, destOffset, src, srcOffset, quat, quatOffset);
+        return Double4OpsKernelsSegment.rotate_api(dest, destOffset, src, srcOffset, quat, quatOffset);
+    }
+
+    /** {@link #rotate(double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long rotate(long dest, long src, long quat) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.rotate_unsafe(dest, src, quat);
+        rotate(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(quat, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Rotate the {@code (x, y, z)} components of this vector by {@code angle} radians about the
+     * axis ({@code axisX}, {@code axisY}, {@code axisZ}), leaving {@code w} unchanged, and store
+     * the result in {@code dest}.
+     * <p>
+     * Valid input: {@code (axisX, axisY, axisZ)} must have unit length.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param angle the angle in radians
+     * @param axisX the {@code x} component of the rotation axis {@code (axisX, axisY, axisZ)}
+     * @param axisY the {@code y} component of the rotation axis {@code (axisX, axisY, axisZ)}
+     * @param axisZ the {@code z} component of the rotation axis {@code (axisX, axisY, axisZ)}
+     * @return {@code dest}
+     */
+    public static double[] rotateAxis(double[] dest, int destOffset, double[] src, int srcOffset, double angle, double axisX, double axisY, double axisZ) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _t0 = Math.sin(angle);
+        double _t1 = Math.cosFromSin(_t0, angle);
+        double _t3 = 1.0 - _t1;
+        double _t5 = Math.fma(axisZ, _selfz, Math.fma(axisX, _selfx, axisY * _selfy));
+        dest[destOffset + 0] = Math.fma(_t3, axisX * _t5, Math.fma(_selfx, _t1, Math.fma(axisY, _selfz, -(axisZ * _selfy)) * _t0));
+        dest[destOffset + 1] = Math.fma(_t3, axisY * _t5, Math.fma(_selfy, _t1, Math.fma(axisZ, _selfx, -(axisX * _selfz)) * _t0));
+        dest[destOffset + 2] = Math.fma(_t3, axisZ * _t5, Math.fma(_selfz, _t1, Math.fma(axisX, _selfy, -(axisY * _selfx)) * _t0));
+        dest[destOffset + 3] = _selfw;
+        return dest;
+    }
+
+    /** {@link #rotateAxis(double[], int, double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer rotateAxis(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double angle, double axisX, double axisY, double axisZ) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.rotateAxis_unsafe(dest, destOffset, src, srcOffset, angle, axisX, axisY, axisZ);
+        return Double4OpsKernelsTypedBuffer.rotateAxis_api(dest, destOffset, src, srcOffset, angle, axisX, axisY, axisZ);
+    }
+
+    /** {@link #rotateAxis(double[], int, double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer rotateAxis(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double angle, double axisX, double axisY, double axisZ) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.rotateAxis_unsafe(dest, destOffset, src, srcOffset, angle, axisX, axisY, axisZ);
+        return Double4OpsKernelsByteBuffer.rotateAxis_api(dest, destOffset, src, srcOffset, angle, axisX, axisY, axisZ);
+    }
+
+    /** {@link #rotateAxis(double[], int, double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment rotateAxis(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double angle, double axisX, double axisY, double axisZ) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.rotateAxis_unsafe(dest, destOffset, src, srcOffset, angle, axisX, axisY, axisZ);
+        return Double4OpsKernelsSegment.rotateAxis_api(dest, destOffset, src, srcOffset, angle, axisX, axisY, axisZ);
+    }
+
+    /** {@link #rotateAxis(double[], int, double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long rotateAxis(long dest, long src, double angle, double axisX, double axisY, double axisZ) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.rotateAxis_unsafe(dest, src, angle, axisX, axisY, axisZ);
+        rotateAxis(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, angle, axisX, axisY, axisZ);
+        return dest;
+    }
+
+    /**
+     * Rotate the {@code (x, y, z)} components of this vector by {@code angle} radians about the
+     * axis {@code axis}, leaving {@code w} unchanged, and store the result in {@code dest}.
+     * <p>
+     * Valid input: {@code axis} must have unit length.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param axis the storage holding the rotation axis
+     * @param axisOffset the element index in {@code axis} at which the vector starts
+     * @param angle the angle in radians
+     * @return {@code dest}
+     */
+    public static double[] rotateAxis(double[] dest, int destOffset, double[] src, int srcOffset, double[] axis, int axisOffset, double angle) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _axisx = axis[axisOffset + 0];
+        double _axisy = axis[axisOffset + 1];
+        double _axisz = axis[axisOffset + 2];
+        double _t0 = Math.sin(angle);
+        double _t1 = Math.cosFromSin(_t0, angle);
+        double _t3 = 1.0 - _t1;
+        double _t5 = Math.fma(_axisz, _selfz, Math.fma(_axisx, _selfx, _axisy * _selfy));
+        dest[destOffset + 0] = Math.fma(_t3, _axisx * _t5, Math.fma(_selfx, _t1, Math.fma(_axisy, _selfz, -(_axisz * _selfy)) * _t0));
+        dest[destOffset + 1] = Math.fma(_t3, _axisy * _t5, Math.fma(_selfy, _t1, Math.fma(_axisz, _selfx, -(_axisx * _selfz)) * _t0));
+        dest[destOffset + 2] = Math.fma(_t3, _axisz * _t5, Math.fma(_selfz, _t1, Math.fma(_axisx, _selfy, -(_axisy * _selfx)) * _t0));
+        dest[destOffset + 3] = _selfw;
+        return dest;
+    }
+
+    /** {@link #rotateAxis(double[], int, double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer rotateAxis(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer axis, int axisOffset, double angle) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && axis.isDirect() && axis.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.rotateAxis_unsafe(dest, destOffset, src, srcOffset, axis, axisOffset, angle);
+        return Double4OpsKernelsTypedBuffer.rotateAxis_api(dest, destOffset, src, srcOffset, axis, axisOffset, angle);
+    }
+
+    /** {@link #rotateAxis(double[], int, double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer rotateAxis(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer axis, int axisOffset, double angle) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && axis.isDirect() && axis.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.rotateAxis_unsafe(dest, destOffset, src, srcOffset, axis, axisOffset, angle);
+        return Double4OpsKernelsByteBuffer.rotateAxis_api(dest, destOffset, src, srcOffset, axis, axisOffset, angle);
+    }
+
+    /** {@link #rotateAxis(double[], int, double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment rotateAxis(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment axis, long axisOffset, double angle) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && axis.isNative()) return Double4OpsKernelsSegment.rotateAxis_unsafe(dest, destOffset, src, srcOffset, axis, axisOffset, angle);
+        return Double4OpsKernelsSegment.rotateAxis_api(dest, destOffset, src, srcOffset, axis, axisOffset, angle);
+    }
+
+    /** {@link #rotateAxis(double[], int, double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long rotateAxis(long dest, long src, long axis, double angle) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.rotateAxis_unsafe(dest, src, axis, angle);
+        rotateAxis(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(axis, 24L), 0L, angle);
+        return dest;
+    }
+
+    /**
+     * Rotate the {@code (x, y, z)} components of this vector by the inverse of the given rotation,
+     * leaving {@code w} unchanged, and store the result in {@code dest}.
+     * <p>
+     * Valid input: {@code (quatX, quatY, quatZ, quatW)} must have unit length.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param quatX the {@code x} component of the quaternion {@code (quatX, quatY, quatZ, quatW)}
+     * @param quatY the {@code y} component of the quaternion {@code (quatX, quatY, quatZ, quatW)}
+     * @param quatZ the {@code z} component of the quaternion {@code (quatX, quatY, quatZ, quatW)}
+     * @param quatW the {@code w} component of the quaternion {@code (quatX, quatY, quatZ, quatW)}
+     * @return {@code dest}
+     */
+    public static double[] rotateInverse(double[] dest, int destOffset, double[] src, int srcOffset, double quatX, double quatY, double quatZ, double quatW) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _t9 = 2.0 * Math.fma(quatX, _selfz, -(quatZ * _selfx));
+        double _t10 = 2.0 * Math.fma(quatY, _selfx, -(quatX * _selfy));
+        double _t11 = 2.0 * Math.fma(quatZ, _selfy, -(quatY * _selfz));
+        dest[destOffset + 0] = Math.fma(quatZ, _t9, Math.fma(-quatY, _t10, Math.fma(quatW, _t11, _selfx)));
+        dest[destOffset + 1] = Math.fma(quatX, _t10, Math.fma(-quatZ, _t11, Math.fma(quatW, _t9, _selfy)));
+        dest[destOffset + 2] = Math.fma(quatY, _t11, Math.fma(-quatX, _t9, Math.fma(quatW, _t10, _selfz)));
+        dest[destOffset + 3] = _selfw;
+        return dest;
+    }
+
+    /** {@link #rotateInverse(double[], int, double[], int, double, double, double, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer rotateInverse(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double quatX, double quatY, double quatZ, double quatW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.rotateInverse_unsafe(dest, destOffset, src, srcOffset, quatX, quatY, quatZ, quatW);
+        return Double4OpsKernelsTypedBuffer.rotateInverse_api(dest, destOffset, src, srcOffset, quatX, quatY, quatZ, quatW);
+    }
+
+    /** {@link #rotateInverse(double[], int, double[], int, double, double, double, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer rotateInverse(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double quatX, double quatY, double quatZ, double quatW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.rotateInverse_unsafe(dest, destOffset, src, srcOffset, quatX, quatY, quatZ, quatW);
+        return Double4OpsKernelsByteBuffer.rotateInverse_api(dest, destOffset, src, srcOffset, quatX, quatY, quatZ, quatW);
+    }
+
+    /** {@link #rotateInverse(double[], int, double[], int, double, double, double, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment rotateInverse(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double quatX, double quatY, double quatZ, double quatW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.rotateInverse_unsafe(dest, destOffset, src, srcOffset, quatX, quatY, quatZ, quatW);
+        return Double4OpsKernelsSegment.rotateInverse_api(dest, destOffset, src, srcOffset, quatX, quatY, quatZ, quatW);
+    }
+
+    /** {@link #rotateInverse(double[], int, double[], int, double, double, double, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long rotateInverse(long dest, long src, double quatX, double quatY, double quatZ, double quatW) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.rotateInverse_unsafe(dest, src, quatX, quatY, quatZ, quatW);
+        rotateInverse(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, quatX, quatY, quatZ, quatW);
+        return dest;
+    }
+
+    /**
+     * Rotate the {@code (x, y, z)} components of this vector by the inverse of the given rotation,
+     * leaving {@code w} unchanged, and store the result in {@code dest}.
+     * <p>
+     * Valid input: {@code quat} must have unit length.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param quat the storage holding the rotation whose inverse to apply
+     * @param quatOffset the element index in {@code quat} at which the quaternion starts
+     * @return {@code dest}
+     */
+    public static double[] rotateInverse(double[] dest, int destOffset, double[] src, int srcOffset, double[] quat, int quatOffset) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _quatx = quat[quatOffset + 0];
+        double _quaty = quat[quatOffset + 1];
+        double _quatz = quat[quatOffset + 2];
+        double _quatw = quat[quatOffset + 3];
+        double _t9 = 2.0 * Math.fma(_quatx, _selfz, -(_quatz * _selfx));
+        double _t10 = 2.0 * Math.fma(_quaty, _selfx, -(_quatx * _selfy));
+        double _t11 = 2.0 * Math.fma(_quatz, _selfy, -(_quaty * _selfz));
+        dest[destOffset + 0] = Math.fma(_quatz, _t9, Math.fma(-_quaty, _t10, Math.fma(_quatw, _t11, _selfx)));
+        dest[destOffset + 1] = Math.fma(_quatx, _t10, Math.fma(-_quatz, _t11, Math.fma(_quatw, _t9, _selfy)));
+        dest[destOffset + 2] = Math.fma(_quaty, _t11, Math.fma(-_quatx, _t9, Math.fma(_quatw, _t10, _selfz)));
+        dest[destOffset + 3] = _selfw;
+        return dest;
+    }
+
+    /** {@link #rotateInverse(double[], int, double[], int, double[], int)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer rotateInverse(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, java.nio.DoubleBuffer quat, int quatOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && quat.isDirect() && quat.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.rotateInverse_unsafe(dest, destOffset, src, srcOffset, quat, quatOffset);
+        return Double4OpsKernelsTypedBuffer.rotateInverse_api(dest, destOffset, src, srcOffset, quat, quatOffset);
+    }
+
+    /** {@link #rotateInverse(double[], int, double[], int, double[], int)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer rotateInverse(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, java.nio.ByteBuffer quat, int quatOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder() && quat.isDirect() && quat.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.rotateInverse_unsafe(dest, destOffset, src, srcOffset, quat, quatOffset);
+        return Double4OpsKernelsByteBuffer.rotateInverse_api(dest, destOffset, src, srcOffset, quat, quatOffset);
+    }
+
+    /** {@link #rotateInverse(double[], int, double[], int, double[], int)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment rotateInverse(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, java.lang.foreign.MemorySegment quat, long quatOffset) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative() && quat.isNative()) return Double4OpsKernelsSegment.rotateInverse_unsafe(dest, destOffset, src, srcOffset, quat, quatOffset);
+        return Double4OpsKernelsSegment.rotateInverse_api(dest, destOffset, src, srcOffset, quat, quatOffset);
+    }
+
+    /** {@link #rotateInverse(double[], int, double[], int, double[], int)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long rotateInverse(long dest, long src, long quat) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.rotateInverse_unsafe(dest, src, quat);
+        rotateInverse(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(quat, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Rotate the {@code (x, y, z)} components of this vector by {@code angle} radians about the X
+     * axis, leaving {@code w} unchanged, and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param angle the angle in radians
+     * @return {@code dest}
+     */
+    public static double[] rotateX(double[] dest, int destOffset, double[] src, int srcOffset, double angle) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _t0 = Math.sin(angle);
+        double _t1 = Math.cosFromSin(_t0, angle);
+        dest[destOffset + 0] = _selfx;
+        dest[destOffset + 1] = Math.fma(_selfy, _t1, -(_selfz * _t0));
+        dest[destOffset + 2] = Math.fma(_selfy, _t0, _selfz * _t1);
+        dest[destOffset + 3] = _selfw;
+        return dest;
+    }
+
+    /** {@link #rotateX(double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer rotateX(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double angle) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.rotateX_unsafe(dest, destOffset, src, srcOffset, angle);
+        return Double4OpsKernelsTypedBuffer.rotateX_api(dest, destOffset, src, srcOffset, angle);
+    }
+
+    /** {@link #rotateX(double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer rotateX(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double angle) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.rotateX_unsafe(dest, destOffset, src, srcOffset, angle);
+        return Double4OpsKernelsByteBuffer.rotateX_api(dest, destOffset, src, srcOffset, angle);
+    }
+
+    /** {@link #rotateX(double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment rotateX(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double angle) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.rotateX_unsafe(dest, destOffset, src, srcOffset, angle);
+        return Double4OpsKernelsSegment.rotateX_api(dest, destOffset, src, srcOffset, angle);
+    }
+
+    /** {@link #rotateX(double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long rotateX(long dest, long src, double angle) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.rotateX_unsafe(dest, src, angle);
+        rotateX(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, angle);
+        return dest;
+    }
+
+    /**
+     * Rotate the {@code (x, y, z)} components of this vector by {@code angle} radians about the Y
+     * axis, leaving {@code w} unchanged, and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param angle the angle in radians
+     * @return {@code dest}
+     */
+    public static double[] rotateY(double[] dest, int destOffset, double[] src, int srcOffset, double angle) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _t0 = Math.sin(angle);
+        double _t1 = Math.cosFromSin(_t0, angle);
+        dest[destOffset + 0] = Math.fma(_selfx, _t1, _selfz * _t0);
+        dest[destOffset + 1] = _selfy;
+        dest[destOffset + 2] = Math.fma(_selfz, _t1, -(_selfx * _t0));
+        dest[destOffset + 3] = _selfw;
+        return dest;
+    }
+
+    /** {@link #rotateY(double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer rotateY(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double angle) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.rotateY_unsafe(dest, destOffset, src, srcOffset, angle);
+        return Double4OpsKernelsTypedBuffer.rotateY_api(dest, destOffset, src, srcOffset, angle);
+    }
+
+    /** {@link #rotateY(double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer rotateY(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double angle) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.rotateY_unsafe(dest, destOffset, src, srcOffset, angle);
+        return Double4OpsKernelsByteBuffer.rotateY_api(dest, destOffset, src, srcOffset, angle);
+    }
+
+    /** {@link #rotateY(double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment rotateY(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double angle) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.rotateY_unsafe(dest, destOffset, src, srcOffset, angle);
+        return Double4OpsKernelsSegment.rotateY_api(dest, destOffset, src, srcOffset, angle);
+    }
+
+    /** {@link #rotateY(double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long rotateY(long dest, long src, double angle) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.rotateY_unsafe(dest, src, angle);
+        rotateY(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, angle);
+        return dest;
+    }
+
+    /**
+     * Rotate the {@code (x, y, z)} components of this vector by {@code angle} radians about the Z
+     * axis, leaving {@code w} unchanged, and store the result in {@code dest}.
+     * <p>
+     * Valid input: the default range of the package documentation.
+     *
+     * @param dest will hold the result
+     * @param destOffset the element index in {@code dest} at which the vector starts
+     * @param src the storage holding the vector
+     * @param srcOffset the element index in {@code src} at which the vector starts
+     * @param angle the angle in radians
+     * @return {@code dest}
+     */
+    public static double[] rotateZ(double[] dest, int destOffset, double[] src, int srcOffset, double angle) {
+        double _selfx = src[srcOffset + 0];
+        double _selfy = src[srcOffset + 1];
+        double _selfz = src[srcOffset + 2];
+        double _selfw = src[srcOffset + 3];
+        double _t0 = Math.sin(angle);
+        double _t1 = Math.cosFromSin(_t0, angle);
+        dest[destOffset + 0] = Math.fma(_selfx, _t1, -(_selfy * _t0));
+        dest[destOffset + 1] = Math.fma(_selfx, _t0, _selfy * _t1);
+        dest[destOffset + 2] = _selfz;
+        dest[destOffset + 3] = _selfw;
+        return dest;
+    }
+
+    /** {@link #rotateZ(double[], int, double[], int, double)} on {@link java.nio.DoubleBuffer} storage. <p>Valid input: as for that overload. */
+    public static java.nio.DoubleBuffer rotateZ(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double angle) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsTypedBuffer.rotateZ_unsafe(dest, destOffset, src, srcOffset, angle);
+        return Double4OpsKernelsTypedBuffer.rotateZ_api(dest, destOffset, src, srcOffset, angle);
+    }
+
+    /** {@link #rotateZ(double[], int, double[], int, double)} on {@link java.nio.ByteBuffer} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.nio.ByteBuffer rotateZ(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double angle) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsKernelsByteBuffer.rotateZ_unsafe(dest, destOffset, src, srcOffset, angle);
+        return Double4OpsKernelsByteBuffer.rotateZ_api(dest, destOffset, src, srcOffset, angle);
+    }
+
+    /** {@link #rotateZ(double[], int, double[], int, double)} on {@link java.lang.foreign.MemorySegment} storage; the {@code *Offset} parameters are byte offsets, not element indices. <p>Valid input: as for that overload. */
+    public static java.lang.foreign.MemorySegment rotateZ(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double angle) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) return Double4OpsKernelsSegment.rotateZ_unsafe(dest, destOffset, src, srcOffset, angle);
+        return Double4OpsKernelsSegment.rotateZ_api(dest, destOffset, src, srcOffset, angle);
+    }
+
+    /** {@link #rotateZ(double[], int, double[], int, double)} on storage addressed by a raw native address - each address points at the first element, so there are no offsets. <p>Valid input: as for that overload. */
+    public static long rotateZ(long dest, long src, double angle) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) return Double4OpsKernelsAddress.rotateZ_unsafe(dest, src, angle);
+        rotateZ(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L, angle);
+        return dest;
+    }
+
+
+    /**
+     * Bulk out-of-place component-wise {@code add} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code add}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for the single-value overload, for each element.
+     */
+    public static double[] add(double[] dest, int destOffset, double[] a, int aOffset, double[] b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.add(dest, destOffset, a, aOffset, b, bOffset, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest[destOffset + _i] = a[aOffset + _i] + b[bOffset + _i];
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code add} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code add}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.DoubleBuffer add(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer a, int aOffset, java.nio.DoubleBuffer b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.put(destOffset + _i, a.get(aOffset + _i) + b.get(bOffset + _i));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code add} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code add}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.ByteBuffer add(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer a, int aOffset, java.nio.ByteBuffer b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.putDouble(destOffset + _i * 8, a.getDouble(aOffset + _i * 8) + b.getDouble(bOffset + _i * 8));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code add} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code add}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.lang.foreign.MemorySegment add(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment a, long aOffset, java.lang.foreign.MemorySegment b, long bOffset, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.add(dest, destOffset, a, aOffset, b, bOffset, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.set(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, destOffset + (long) _i * 8L, a.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, aOffset + (long) _i * 8L) + b.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, bOffset + (long) _i * 8L));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code sub} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code sub}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for the single-value overload, for each element.
+     */
+    public static double[] sub(double[] dest, int destOffset, double[] a, int aOffset, double[] b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.sub(dest, destOffset, a, aOffset, b, bOffset, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest[destOffset + _i] = a[aOffset + _i] - b[bOffset + _i];
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code sub} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code sub}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.DoubleBuffer sub(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer a, int aOffset, java.nio.DoubleBuffer b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.put(destOffset + _i, a.get(aOffset + _i) - b.get(bOffset + _i));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code sub} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code sub}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.ByteBuffer sub(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer a, int aOffset, java.nio.ByteBuffer b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.putDouble(destOffset + _i * 8, a.getDouble(aOffset + _i * 8) - b.getDouble(bOffset + _i * 8));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code sub} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code sub}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.lang.foreign.MemorySegment sub(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment a, long aOffset, java.lang.foreign.MemorySegment b, long bOffset, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.sub(dest, destOffset, a, aOffset, b, bOffset, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.set(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, destOffset + (long) _i * 8L, a.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, aOffset + (long) _i * 8L) - b.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, bOffset + (long) _i * 8L));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code mul} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code mul}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for the single-value overload, for each element.
+     */
+    public static double[] mul(double[] dest, int destOffset, double[] a, int aOffset, double[] b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.mul(dest, destOffset, a, aOffset, b, bOffset, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest[destOffset + _i] = a[aOffset + _i] * b[bOffset + _i];
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code mul} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code mul}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.DoubleBuffer mul(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer a, int aOffset, java.nio.DoubleBuffer b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.put(destOffset + _i, a.get(aOffset + _i) * b.get(bOffset + _i));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code mul} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code mul}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.ByteBuffer mul(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer a, int aOffset, java.nio.ByteBuffer b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.putDouble(destOffset + _i * 8, a.getDouble(aOffset + _i * 8) * b.getDouble(bOffset + _i * 8));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code mul} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code mul}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.lang.foreign.MemorySegment mul(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment a, long aOffset, java.lang.foreign.MemorySegment b, long bOffset, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.mul(dest, destOffset, a, aOffset, b, bOffset, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.set(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, destOffset + (long) _i * 8L, a.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, aOffset + (long) _i * 8L) * b.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, bOffset + (long) _i * 8L));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code div} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code div}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for the single-value overload, for each element.
+     */
+    public static double[] div(double[] dest, int destOffset, double[] a, int aOffset, double[] b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.div(dest, destOffset, a, aOffset, b, bOffset, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest[destOffset + _i] = a[aOffset + _i] / b[bOffset + _i];
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code div} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code div}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.DoubleBuffer div(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer a, int aOffset, java.nio.DoubleBuffer b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.put(destOffset + _i, a.get(aOffset + _i) / b.get(bOffset + _i));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code div} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code div}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.ByteBuffer div(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer a, int aOffset, java.nio.ByteBuffer b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.putDouble(destOffset + _i * 8, a.getDouble(aOffset + _i * 8) / b.getDouble(bOffset + _i * 8));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code div} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code div}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.lang.foreign.MemorySegment div(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment a, long aOffset, java.lang.foreign.MemorySegment b, long bOffset, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.div(dest, destOffset, a, aOffset, b, bOffset, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.set(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, destOffset + (long) _i * 8L, a.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, aOffset + (long) _i * 8L) / b.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, bOffset + (long) _i * 8L));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code min} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code min}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for the single-value overload, for each element.
+     */
+    public static double[] min(double[] dest, int destOffset, double[] a, int aOffset, double[] b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.min(dest, destOffset, a, aOffset, b, bOffset, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest[destOffset + _i] = Math.min(a[aOffset + _i], b[bOffset + _i]);
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code min} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code min}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.DoubleBuffer min(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer a, int aOffset, java.nio.DoubleBuffer b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.put(destOffset + _i, Math.min(a.get(aOffset + _i), b.get(bOffset + _i)));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code min} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code min}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.ByteBuffer min(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer a, int aOffset, java.nio.ByteBuffer b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.putDouble(destOffset + _i * 8, Math.min(a.getDouble(aOffset + _i * 8), b.getDouble(bOffset + _i * 8)));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code min} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code min}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.lang.foreign.MemorySegment min(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment a, long aOffset, java.lang.foreign.MemorySegment b, long bOffset, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.min(dest, destOffset, a, aOffset, b, bOffset, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.set(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, destOffset + (long) _i * 8L, Math.min(a.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, aOffset + (long) _i * 8L), b.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, bOffset + (long) _i * 8L)));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code max} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code max}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for the single-value overload, for each element.
+     */
+    public static double[] max(double[] dest, int destOffset, double[] a, int aOffset, double[] b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.max(dest, destOffset, a, aOffset, b, bOffset, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest[destOffset + _i] = Math.max(a[aOffset + _i], b[bOffset + _i]);
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code max} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code max}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.DoubleBuffer max(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer a, int aOffset, java.nio.DoubleBuffer b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.put(destOffset + _i, Math.max(a.get(aOffset + _i), b.get(bOffset + _i)));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code max} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code max}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.ByteBuffer max(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer a, int aOffset, java.nio.ByteBuffer b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.putDouble(destOffset + _i * 8, Math.max(a.getDouble(aOffset + _i * 8), b.getDouble(bOffset + _i * 8)));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code max} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code max}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.lang.foreign.MemorySegment max(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment a, long aOffset, java.lang.foreign.MemorySegment b, long bOffset, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.max(dest, destOffset, a, aOffset, b, bOffset, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.set(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, destOffset + (long) _i * 8L, Math.max(a.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, aOffset + (long) _i * 8L), b.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, bOffset + (long) _i * 8L)));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code negate} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code negate}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for the single-value overload, for each element.
+     */
+    public static double[] negate(double[] dest, int destOffset, double[] src, int srcOffset, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.negate(dest, destOffset, src, srcOffset, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest[destOffset + _i] = -src[srcOffset + _i];
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code negate} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code negate}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.DoubleBuffer negate(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.put(destOffset + _i, -src.get(srcOffset + _i));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code negate} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code negate}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.ByteBuffer negate(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.putDouble(destOffset + _i * 8, -src.getDouble(srcOffset + _i * 8));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code negate} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code negate}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.lang.foreign.MemorySegment negate(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.negate(dest, destOffset, src, srcOffset, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.set(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, destOffset + (long) _i * 8L, -src.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, srcOffset + (long) _i * 8L));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code abs} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code abs}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for the single-value overload, for each element.
+     */
+    public static double[] abs(double[] dest, int destOffset, double[] src, int srcOffset, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.abs(dest, destOffset, src, srcOffset, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest[destOffset + _i] = Math.abs(src[srcOffset + _i]);
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code abs} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code abs}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.DoubleBuffer abs(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.put(destOffset + _i, Math.abs(src.get(srcOffset + _i)));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code abs} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code abs}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.ByteBuffer abs(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.putDouble(destOffset + _i * 8, Math.abs(src.getDouble(srcOffset + _i * 8)));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code abs} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code abs}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.lang.foreign.MemorySegment abs(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.abs(dest, destOffset, src, srcOffset, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.set(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, destOffset + (long) _i * 8L, Math.abs(src.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, srcOffset + (long) _i * 8L)));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code lerp} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code lerp}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for the single-value overload, for each element.
+     */
+    public static double[] lerp(double[] dest, int destOffset, double[] a, int aOffset, double[] b, int bOffset, double t, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.lerp(dest, destOffset, a, aOffset, b, bOffset, t, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest[destOffset + _i] = a[aOffset + _i] + t * (b[bOffset + _i] - a[aOffset + _i]);
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code lerp} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code lerp}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.DoubleBuffer lerp(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer a, int aOffset, java.nio.DoubleBuffer b, int bOffset, double t, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.put(destOffset + _i, a.get(aOffset + _i) + t * (b.get(bOffset + _i) - a.get(aOffset + _i)));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code lerp} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code lerp}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.ByteBuffer lerp(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer a, int aOffset, java.nio.ByteBuffer b, int bOffset, double t, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.putDouble(destOffset + _i * 8, a.getDouble(aOffset + _i * 8) + t * (b.getDouble(bOffset + _i * 8) - a.getDouble(aOffset + _i * 8)));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code lerp} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code lerp}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.lang.foreign.MemorySegment lerp(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment a, long aOffset, java.lang.foreign.MemorySegment b, long bOffset, double t, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.lerp(dest, destOffset, a, aOffset, b, bOffset, t, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.set(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, destOffset + (long) _i * 8L, a.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, aOffset + (long) _i * 8L) + t * (b.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, bOffset + (long) _i * 8L) - a.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, aOffset + (long) _i * 8L)));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code scale} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code scale}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for the single-value overload, for each element.
+     */
+    public static double[] scale(double[] dest, int destOffset, double[] src, int srcOffset, double s, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.scale(dest, destOffset, src, srcOffset, s, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest[destOffset + _i] = src[srcOffset + _i] * s;
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code scale} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code scale}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.DoubleBuffer scale(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, double s, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.put(destOffset + _i, src.get(srcOffset + _i) * s);
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code scale} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code scale}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.ByteBuffer scale(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, double s, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.putDouble(destOffset + _i * 8, src.getDouble(srcOffset + _i * 8) * s);
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code scale} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code scale}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.lang.foreign.MemorySegment scale(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, double s, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.scale(dest, destOffset, src, srcOffset, s, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.set(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, destOffset + (long) _i * 8L, src.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, srcOffset + (long) _i * 8L) * s);
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code fma} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code fma}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for the single-value overload, for each element.
+     */
+    public static double[] fma(double[] dest, int destOffset, double[] self, int selfOffset, double[] a, int aOffset, double[] b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.fma(dest, destOffset, self, selfOffset, a, aOffset, b, bOffset, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest[destOffset + _i] = Math.fma(self[selfOffset + _i], a[aOffset + _i], b[bOffset + _i]);
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code fma} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code fma}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.DoubleBuffer fma(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer self, int selfOffset, java.nio.DoubleBuffer a, int aOffset, java.nio.DoubleBuffer b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.put(destOffset + _i, Math.fma(self.get(selfOffset + _i), a.get(aOffset + _i), b.get(bOffset + _i)));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code fma} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code fma}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.nio.ByteBuffer fma(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer self, int selfOffset, java.nio.ByteBuffer a, int aOffset, java.nio.ByteBuffer b, int bOffset, int count) {
+        if (count < 0) return dest;
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.putDouble(destOffset + _i * 8, Math.fma(self.getDouble(selfOffset + _i * 8), a.getDouble(aOffset + _i * 8), b.getDouble(bOffset + _i * 8)));
+        }
+        return dest;
+    }
+
+    /**
+     * Bulk out-of-place component-wise {@code fma} over {@code count} consecutive Double4 values: reads the
+     * source buffer(s) and writes {@code dest} (which may also be one of the sources, at the
+     * same offset). This batched form is distinct from the single-value {@code fma}
+     * overload of the same name, which processes exactly one Double4.
+     * <p>
+     * Valid input: as for that overload.
+     */
+    public static java.lang.foreign.MemorySegment fma(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment self, long selfOffset, java.lang.foreign.MemorySegment a, long aOffset, java.lang.foreign.MemorySegment b, long bOffset, int count) {
+        if (count < 0) return dest;
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.fma(dest, destOffset, self, selfOffset, a, aOffset, b, bOffset, count);
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++) {
+            dest.set(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, destOffset + (long) _i * 8L, Math.fma(self.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, selfOffset + (long) _i * 8L), a.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, aOffset + (long) _i * 8L), b.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, bOffset + (long) _i * 8L)));
+        }
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static double[] copy(double[] dest, int destOffset, double[] src, int srcOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset);
+        return copy(dest, destOffset, src, srcOffset, 1);
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static double[] copy(double[] dest, int destOffset, double[] src, int srcOffset, int count) {
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset, count);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) {
+            java.util.Objects.checkFromIndexSize(srcOffset, (count > 536870911 ? -1 : count * 4), src.length);
+            java.util.Objects.checkFromIndexSize(destOffset, (count > 536870911 ? -1 : count * 4), dest.length);
+            UnsafeOpsHolder.U.copyMemory(src, UnsafeCopy.DOUBLE_ARRAY_BASE + (long) srcOffset * 8L, dest, UnsafeCopy.DOUBLE_ARRAY_BASE + (long) destOffset * 8L, (long) count * 32L);
+            return dest;
+        }
+        if (count < 0) return dest;
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++)
+            dest[destOffset + _i] = src[srcOffset + _i];
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static double[] copy(double[] dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (SimdSupport.VECTOR_API && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset);
+        return copy(dest, destOffset, src, srcOffset, 1);
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static double[] copy(double[] dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, int count) {
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        if (SimdSupport.VECTOR_API && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset, count);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) {
+            java.util.Objects.checkFromIndexSize(destOffset, (count > 536870911 ? -1 : count * 4), dest.length);
+            UnsafeOpsHolder.U.copyMemory(null, UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + (long) srcOffset * 8L, dest, UnsafeCopy.DOUBLE_ARRAY_BASE + (long) destOffset * 8L, (long) count * 32L);
+            return dest;
+        }
+        if (count < 0) return dest;
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++)
+            dest[destOffset + _i] = src.get(srcOffset + _i);
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code srcOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static double[] copy(double[] dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (SimdSupport.VECTOR_API && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset);
+        return copy(dest, destOffset, src, srcOffset, 1);
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code srcOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static double[] copy(double[] dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, int count) {
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        if (SimdSupport.VECTOR_API && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset, count);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) {
+            java.util.Objects.checkFromIndexSize(destOffset, (count > 536870911 ? -1 : count * 4), dest.length);
+            UnsafeOpsHolder.U.copyMemory(null, UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset, dest, UnsafeCopy.DOUBLE_ARRAY_BASE + (long) destOffset * 8L, (long) count * 32L);
+            return dest;
+        }
+        if (count < 0) return dest;
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++)
+            dest[destOffset + _i] = src.getDouble(srcOffset + _i * 8);
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code srcOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static double[] copy(double[] dest, int destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset);
+        return copy(dest, destOffset, src, srcOffset, 1);
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code srcOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static double[] copy(double[] dest, int destOffset, java.lang.foreign.MemorySegment src, long srcOffset, int count) {
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset, count);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isNative()) {
+            java.util.Objects.checkFromIndexSize(destOffset, (count > 536870911 ? -1 : count * 4), dest.length);
+            UnsafeOpsHolder.U.copyMemory(null, src.address() + srcOffset, dest, UnsafeCopy.DOUBLE_ARRAY_BASE + (long) destOffset * 8L, (long) count * 32L);
+            return dest;
+        }
+        if (count < 0) return dest;
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++)
+            dest[destOffset + _i] = src.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, srcOffset + (long) _i * 8L);
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static double[] copy(double[] dest, int destOffset, long src) {
+        return copy(dest, destOffset, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static double[] copy(double[] dest, int destOffset, long src, int count) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) {
+            java.util.Objects.checkFromIndexSize(destOffset, (count > 536870911 ? -1 : count * 4), dest.length);
+            UnsafeOpsHolder.U.copyMemory(null, src, dest, UnsafeCopy.DOUBLE_ARRAY_BASE + (long) destOffset * 8L, (long) count * 32L);
+            return dest;
+        }
+        return copy(dest, destOffset, VirtualMemoryHolder.virtualMemory().asSlice(src, (long) count * 32L), 0L, count);
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.nio.DoubleBuffer copy(java.nio.DoubleBuffer dest, int destOffset, double[] src, int srcOffset) {
+        if (SimdSupport.VECTOR_API && dest.order() == java.nio.ByteOrder.nativeOrder() && !dest.isReadOnly()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset);
+        return copy(dest, destOffset, src, srcOffset, 1);
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.nio.DoubleBuffer copy(java.nio.DoubleBuffer dest, int destOffset, double[] src, int srcOffset, int count) {
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        if (SimdSupport.VECTOR_API && dest.order() == java.nio.ByteOrder.nativeOrder() && !dest.isReadOnly()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset, count);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder()) {
+            java.util.Objects.checkFromIndexSize(srcOffset, (count > 536870911 ? -1 : count * 4), src.length);
+            UnsafeOpsHolder.U.copyMemory(src, UnsafeCopy.DOUBLE_ARRAY_BASE + (long) srcOffset * 8L, null, UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + (long) destOffset * 8L, (long) count * 32L);
+            return dest;
+        }
+        if (count < 0) return dest;
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++)
+            dest.put(destOffset + _i, src[srcOffset + _i]);
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.nio.DoubleBuffer copy(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (SimdSupport.VECTOR_API && dest.order() == java.nio.ByteOrder.nativeOrder() && !dest.isReadOnly() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset);
+        return copy(dest, destOffset, src, srcOffset, 1);
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.nio.DoubleBuffer copy(java.nio.DoubleBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, int count) {
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        if (SimdSupport.VECTOR_API && dest.order() == java.nio.ByteOrder.nativeOrder() && !dest.isReadOnly() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset, count);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) {
+            UnsafeOpsHolder.U.copyMemory(null, UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + (long) srcOffset * 8L, null, UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + (long) destOffset * 8L, (long) count * 32L);
+            return dest;
+        }
+        if (count < 0) return dest;
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++)
+            dest.put(destOffset + _i, src.get(srcOffset + _i));
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code srcOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.nio.DoubleBuffer copy(java.nio.DoubleBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (SimdSupport.VECTOR_API && dest.order() == java.nio.ByteOrder.nativeOrder() && !dest.isReadOnly() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset);
+        return copy(dest, destOffset, src, srcOffset, 1);
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code srcOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.nio.DoubleBuffer copy(java.nio.DoubleBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, int count) {
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        if (SimdSupport.VECTOR_API && dest.order() == java.nio.ByteOrder.nativeOrder() && !dest.isReadOnly() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset, count);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) {
+            UnsafeOpsHolder.U.copyMemory(null, UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset, null, UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + (long) destOffset * 8L, (long) count * 32L);
+            return dest;
+        }
+        if (count < 0) return dest;
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++)
+            dest.put(destOffset + _i, src.getDouble(srcOffset + _i * 8));
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code srcOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.nio.DoubleBuffer copy(java.nio.DoubleBuffer dest, int destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (SimdSupport.VECTOR_API && dest.order() == java.nio.ByteOrder.nativeOrder() && !dest.isReadOnly()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset);
+        return copy(dest, destOffset, src, srcOffset, 1);
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code srcOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.nio.DoubleBuffer copy(java.nio.DoubleBuffer dest, int destOffset, java.lang.foreign.MemorySegment src, long srcOffset, int count) {
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        if (SimdSupport.VECTOR_API && dest.order() == java.nio.ByteOrder.nativeOrder() && !dest.isReadOnly()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset, count);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isNative()) {
+            UnsafeOpsHolder.U.copyMemory(null, src.address() + srcOffset, null, UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + (long) destOffset * 8L, (long) count * 32L);
+            return dest;
+        }
+        if (count < 0) return dest;
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++)
+            dest.put(destOffset + _i, src.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, srcOffset + (long) _i * 8L));
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.nio.DoubleBuffer copy(java.nio.DoubleBuffer dest, int destOffset, long src) {
+        return copy(dest, destOffset, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.nio.DoubleBuffer copy(java.nio.DoubleBuffer dest, int destOffset, long src, int count) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder()) {
+            UnsafeOpsHolder.U.copyMemory(null, src, null, UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + (long) destOffset * 8L, (long) count * 32L);
+            return dest;
+        }
+        return copy(dest, destOffset, VirtualMemoryHolder.virtualMemory().asSlice(src, (long) count * 32L), 0L, count);
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code destOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.nio.ByteBuffer copy(java.nio.ByteBuffer dest, int destOffset, double[] src, int srcOffset) {
+        if (SimdSupport.VECTOR_API && dest.order() == java.nio.ByteOrder.nativeOrder() && !dest.isReadOnly()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset);
+        return copy(dest, destOffset, src, srcOffset, 1);
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code destOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.nio.ByteBuffer copy(java.nio.ByteBuffer dest, int destOffset, double[] src, int srcOffset, int count) {
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        if (SimdSupport.VECTOR_API && dest.order() == java.nio.ByteOrder.nativeOrder() && !dest.isReadOnly()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset, count);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder()) {
+            java.util.Objects.checkFromIndexSize(srcOffset, (count > 536870911 ? -1 : count * 4), src.length);
+            UnsafeOpsHolder.U.copyMemory(src, UnsafeCopy.DOUBLE_ARRAY_BASE + (long) srcOffset * 8L, null, UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset, (long) count * 32L);
+            return dest;
+        }
+        if (count < 0) return dest;
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++)
+            dest.putDouble(destOffset + _i * 8, src[srcOffset + _i]);
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code destOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.nio.ByteBuffer copy(java.nio.ByteBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (SimdSupport.VECTOR_API && dest.order() == java.nio.ByteOrder.nativeOrder() && !dest.isReadOnly() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset);
+        return copy(dest, destOffset, src, srcOffset, 1);
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code destOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.nio.ByteBuffer copy(java.nio.ByteBuffer dest, int destOffset, java.nio.DoubleBuffer src, int srcOffset, int count) {
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        if (SimdSupport.VECTOR_API && dest.order() == java.nio.ByteOrder.nativeOrder() && !dest.isReadOnly() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset, count);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) {
+            UnsafeOpsHolder.U.copyMemory(null, UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + (long) srcOffset * 8L, null, UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset, (long) count * 32L);
+            return dest;
+        }
+        if (count < 0) return dest;
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++)
+            dest.putDouble(destOffset + _i * 8, src.get(srcOffset + _i));
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code destOffset} and {@code srcOffset} are byte offsets, not element indices.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.nio.ByteBuffer copy(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (SimdSupport.VECTOR_API && dest.order() == java.nio.ByteOrder.nativeOrder() && !dest.isReadOnly() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset);
+        return copy(dest, destOffset, src, srcOffset, 1);
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code destOffset} and {@code srcOffset} are byte offsets, not element indices.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.nio.ByteBuffer copy(java.nio.ByteBuffer dest, int destOffset, java.nio.ByteBuffer src, int srcOffset, int count) {
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        if (SimdSupport.VECTOR_API && dest.order() == java.nio.ByteOrder.nativeOrder() && !dest.isReadOnly() && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset, count);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) {
+            UnsafeOpsHolder.U.copyMemory(null, UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset, null, UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset, (long) count * 32L);
+            return dest;
+        }
+        if (count < 0) return dest;
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++)
+            dest.putDouble(destOffset + _i * 8, src.getDouble(srcOffset + _i * 8));
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code destOffset} and {@code srcOffset} are byte offsets, not element indices.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.nio.ByteBuffer copy(java.nio.ByteBuffer dest, int destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (SimdSupport.VECTOR_API && dest.order() == java.nio.ByteOrder.nativeOrder() && !dest.isReadOnly()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset);
+        return copy(dest, destOffset, src, srcOffset, 1);
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code destOffset} and {@code srcOffset} are byte offsets, not element indices.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.nio.ByteBuffer copy(java.nio.ByteBuffer dest, int destOffset, java.lang.foreign.MemorySegment src, long srcOffset, int count) {
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        if (SimdSupport.VECTOR_API && dest.order() == java.nio.ByteOrder.nativeOrder() && !dest.isReadOnly()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset, count);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder() && src.isNative()) {
+            UnsafeOpsHolder.U.copyMemory(null, src.address() + srcOffset, null, UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset, (long) count * 32L);
+            return dest;
+        }
+        if (count < 0) return dest;
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++)
+            dest.putDouble(destOffset + _i * 8, src.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, srcOffset + (long) _i * 8L));
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code destOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.nio.ByteBuffer copy(java.nio.ByteBuffer dest, int destOffset, long src) {
+        return copy(dest, destOffset, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code destOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.nio.ByteBuffer copy(java.nio.ByteBuffer dest, int destOffset, long src, int count) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isDirect() && !dest.isReadOnly() && dest.order() == java.nio.ByteOrder.nativeOrder()) {
+            UnsafeOpsHolder.U.copyMemory(null, src, null, UnsafeOpsHolder.U.getLong(dest, UnsafeCopy.BB_ADDRESS_OFFSET) + destOffset, (long) count * 32L);
+            return dest;
+        }
+        return copy(dest, destOffset, VirtualMemoryHolder.virtualMemory().asSlice(src, (long) count * 32L), 0L, count);
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code destOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.lang.foreign.MemorySegment copy(java.lang.foreign.MemorySegment dest, long destOffset, double[] src, int srcOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset);
+        return copy(dest, destOffset, src, srcOffset, 1);
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code destOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.lang.foreign.MemorySegment copy(java.lang.foreign.MemorySegment dest, long destOffset, double[] src, int srcOffset, int count) {
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset, count);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly()) {
+            java.util.Objects.checkFromIndexSize(srcOffset, (count > 536870911 ? -1 : count * 4), src.length);
+            UnsafeOpsHolder.U.copyMemory(src, UnsafeCopy.DOUBLE_ARRAY_BASE + (long) srcOffset * 8L, null, dest.address() + destOffset, (long) count * 32L);
+            return dest;
+        }
+        if (count < 0) return dest;
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++)
+            dest.set(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, destOffset + (long) _i * 8L, src[srcOffset + _i]);
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code destOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.lang.foreign.MemorySegment copy(java.lang.foreign.MemorySegment dest, long destOffset, java.nio.DoubleBuffer src, int srcOffset) {
+        if (SimdSupport.VECTOR_API && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset);
+        return copy(dest, destOffset, src, srcOffset, 1);
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code destOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.lang.foreign.MemorySegment copy(java.lang.foreign.MemorySegment dest, long destOffset, java.nio.DoubleBuffer src, int srcOffset, int count) {
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        if (SimdSupport.VECTOR_API && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset, count);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) {
+            UnsafeOpsHolder.U.copyMemory(null, UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + (long) srcOffset * 8L, null, dest.address() + destOffset, (long) count * 32L);
+            return dest;
+        }
+        if (count < 0) return dest;
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++)
+            dest.set(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, destOffset + (long) _i * 8L, src.get(srcOffset + _i));
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code destOffset} and {@code srcOffset} are byte offsets, not element indices.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.lang.foreign.MemorySegment copy(java.lang.foreign.MemorySegment dest, long destOffset, java.nio.ByteBuffer src, int srcOffset) {
+        if (SimdSupport.VECTOR_API && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset);
+        return copy(dest, destOffset, src, srcOffset, 1);
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code destOffset} and {@code srcOffset} are byte offsets, not element indices.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.lang.foreign.MemorySegment copy(java.lang.foreign.MemorySegment dest, long destOffset, java.nio.ByteBuffer src, int srcOffset, int count) {
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        if (SimdSupport.VECTOR_API && src.order() == java.nio.ByteOrder.nativeOrder()) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset, count);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) {
+            UnsafeOpsHolder.U.copyMemory(null, UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset, null, dest.address() + destOffset, (long) count * 32L);
+            return dest;
+        }
+        if (count < 0) return dest;
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++)
+            dest.set(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, destOffset + (long) _i * 8L, src.getDouble(srcOffset + _i * 8));
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code destOffset} and {@code srcOffset} are byte offsets, not element indices.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.lang.foreign.MemorySegment copy(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset) {
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset);
+        return copy(dest, destOffset, src, srcOffset, 1);
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code destOffset} and {@code srcOffset} are byte offsets, not element indices.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.lang.foreign.MemorySegment copy(java.lang.foreign.MemorySegment dest, long destOffset, java.lang.foreign.MemorySegment src, long srcOffset, int count) {
+        if (count > 536870911) throw new IndexOutOfBoundsException("count " + count + " exceeds the addressable range");
+        if (SimdSupport.VECTOR_API) return Double4OpsSimd.copy(dest, destOffset, src, srcOffset, count);
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly() && src.isNative()) {
+            UnsafeOpsHolder.U.copyMemory(null, src.address() + srcOffset, null, dest.address() + destOffset, (long) count * 32L);
+            return dest;
+        }
+        if (count < 0) return dest;
+        int n = count * 4;
+        for (int _i = 0; _i < n; _i++)
+            dest.set(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, destOffset + (long) _i * 8L, src.get(java.lang.foreign.ValueLayout.JAVA_DOUBLE_UNALIGNED, srcOffset + (long) _i * 8L));
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code destOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.lang.foreign.MemorySegment copy(java.lang.foreign.MemorySegment dest, long destOffset, long src) {
+        return copy(dest, destOffset, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code destOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static java.lang.foreign.MemorySegment copy(java.lang.foreign.MemorySegment dest, long destOffset, long src, int count) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && dest.isNative() && !dest.isReadOnly()) {
+            UnsafeOpsHolder.U.copyMemory(null, src, null, dest.address() + destOffset, (long) count * 32L);
+            return dest;
+        }
+        return copy(dest, destOffset, VirtualMemoryHolder.virtualMemory().asSlice(src, (long) count * 32L), 0L, count);
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static long copy(long dest, double[] src, int srcOffset) {
+        copy(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, src, srcOffset);
+        return dest;
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static long copy(long dest, double[] src, int srcOffset, int count) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) {
+            java.util.Objects.checkFromIndexSize(srcOffset, (count > 536870911 ? -1 : count * 4), src.length);
+            UnsafeOpsHolder.U.copyMemory(src, UnsafeCopy.DOUBLE_ARRAY_BASE + (long) srcOffset * 8L, null, dest, (long) count * 32L);
+            return dest;
+        }
+        copy(VirtualMemoryHolder.virtualMemory().asSlice(dest, (long) count * 32L), 0L, src, srcOffset, count);
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static long copy(long dest, java.nio.DoubleBuffer src, int srcOffset) {
+        copy(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, src, srcOffset);
+        return dest;
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static long copy(long dest, java.nio.DoubleBuffer src, int srcOffset, int count) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) {
+            UnsafeOpsHolder.U.copyMemory(null, UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + (long) srcOffset * 8L, null, dest, (long) count * 32L);
+            return dest;
+        }
+        copy(VirtualMemoryHolder.virtualMemory().asSlice(dest, (long) count * 32L), 0L, src, srcOffset, count);
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code srcOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static long copy(long dest, java.nio.ByteBuffer src, int srcOffset) {
+        copy(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, src, srcOffset);
+        return dest;
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code srcOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static long copy(long dest, java.nio.ByteBuffer src, int srcOffset, int count) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isDirect() && src.order() == java.nio.ByteOrder.nativeOrder()) {
+            UnsafeOpsHolder.U.copyMemory(null, UnsafeOpsHolder.U.getLong(src, UnsafeCopy.BB_ADDRESS_OFFSET) + srcOffset, null, dest, (long) count * 32L);
+            return dest;
+        }
+        copy(VirtualMemoryHolder.virtualMemory().asSlice(dest, (long) count * 32L), 0L, src, srcOffset, count);
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code srcOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static long copy(long dest, java.lang.foreign.MemorySegment src, long srcOffset) {
+        copy(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, src, srcOffset);
+        return dest;
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * {@code srcOffset} is a byte offset, not an element index.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static long copy(long dest, java.lang.foreign.MemorySegment src, long srcOffset, int count) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE && src.isNative()) {
+            UnsafeOpsHolder.U.copyMemory(null, src.address() + srcOffset, null, dest, (long) count * 32L);
+            return dest;
+        }
+        copy(VirtualMemoryHolder.virtualMemory().asSlice(dest, (long) count * 32L), 0L, src, srcOffset, count);
+        return dest;
+    }
+
+    /**
+     * Copy one Double4 (4 doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static long copy(long dest, long src) {
+        copy(VirtualMemoryHolder.virtualMemory().asSlice(dest, 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, 32L), 0L);
+        return dest;
+    }
+
+    /**
+     * Bulk-copy {@code count} consecutive Double4 values ({@code count * 4} doubles) from {@code src}
+     * to {@code dest}, translating between their storage backings. Returns {@code dest}.
+     * The source and destination ranges must not overlap unless they are identical.
+     * <p>
+     * Valid input: any value, NaN and the infinities included.
+     */
+    public static long copy(long dest, long src, int count) {
+        if (Joml.storeLoadBackend() == StoreLoadBackend.UNSAFE) {
+            UnsafeOpsHolder.U.copyMemory(null, src, null, dest, (long) count * 32L);
+            return dest;
+        }
+        copy(VirtualMemoryHolder.virtualMemory().asSlice(dest, (long) count * 32L), 0L, VirtualMemoryHolder.virtualMemory().asSlice(src, (long) count * 32L), 0L, count);
+        return dest;
+    }
+    /**
+     * The floored remainder of x and y, exactly kotlin.Float.mod: q = floor(x / y) is off by
+     * at most one (too large) while it fits the mantissa, so x - y * q with one correction is
+     * the floored remainder - a zero one with the sign of x, like x % y; % (a runtime call) only
+     * when it does not fit or y is infinite.
+     */
+    private static float flooredMod(float x, float y) {
+        float q = (float) Math.floor(x / y);
+        if (java.lang.Math.abs(q) < 0x1p24f && java.lang.Math.abs(y) <= Float.MAX_VALUE) {
+            float r = java.lang.Math.fma(-y, q, x);
+            if (r * java.lang.Math.signum(y) < 0) r = java.lang.Math.fma(-y, (q - 1.0f), x);
+            return r == 0 ? java.lang.Math.copySign(r, x) : r;
+        }
+        float r = x % y;
+        return r * java.lang.Math.signum(y) < 0 ? r + y : r;
+    }
+
+    /** Double-precision twin of {@link #flooredMod(float, float)}. */
+    private static double flooredMod(double x, double y) {
+        double q = Math.floor(x / y);
+        if (java.lang.Math.abs(q) < 0x1p53 && java.lang.Math.abs(y) <= Double.MAX_VALUE) {
+            double r = java.lang.Math.fma(-y, q, x);
+            if (r * java.lang.Math.signum(y) < 0) r = java.lang.Math.fma(-y, (q - 1.0), x);
+            return r == 0 ? java.lang.Math.copySign(r, x) : r;
+        }
+        double r = x % y;
+        return r * java.lang.Math.signum(y) < 0 ? r + y : r;
+    }
+}
